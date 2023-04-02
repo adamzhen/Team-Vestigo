@@ -84,7 +84,7 @@ void loop()
   {
     myICM.getAGMT();         // The values are only updated when you call 'getAGMT'
                              //    printRawAGMT( myICM.agmt );     // Uncomment this to see the raw values, taken directly from the agmt structure
-    printScaledAGMT(&myICM, false); // This function takes into account the scale settings from when the measurement was made to calculate the values with units
+    printScaledAGMT(&myICM, true); // This function takes into account the scale settings from when the measurement was made to calculate the values with units
     delay(0.01);
   }
   else

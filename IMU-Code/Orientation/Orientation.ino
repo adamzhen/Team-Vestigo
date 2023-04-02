@@ -40,7 +40,7 @@
 // On the SparkFun 9DoF IMU breakout the default is 1, and when the ADR jumper is closed the value becomes 0
 #define AD0_VAL 1
 
-#define DEBUG // used for debugging
+//#define DEBUG // used for debugging
 
 #ifdef USE_SPI
 ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
@@ -252,6 +252,7 @@ void loop()
       double yaw = atan2(t3, t4) * 180.0 / PI;
 
 #ifndef QUAT_ANIMATION
+      // Output the Quaternion data in the format expected by ZaneL's Node.js Quaternion animation tool
       SERIAL_PORT.print(F("{\"quat_w\":"));
       SERIAL_PORT.print(q0, 3);
       SERIAL_PORT.print(F(", \"quat_x\":"));
@@ -263,7 +264,7 @@ void loop()
       SERIAL_PORT.println(F("}"));
 
 #else
-      // Output the Quaternion data in the format expected by ZaneL's Node.js Quaternion animation tool
+      bool formatted = false;
       if (ERROR){
         //SERIAL_PORT.println(ERROR);
         SERIAL_PORT.print(F("~ Error: ["));
@@ -271,18 +272,26 @@ void loop()
         SERIAL_PORT.print(F("] -> "));        
         SERIAL_PORT.println(((q1 * q1) + (q2 * q2) + (q3 * q3)), 5);
       } else {
-        // SERIAL_PORT.print(F("Q1:"));
-        // SERIAL_PORT.print(q1, 3);
-        // SERIAL_PORT.print(F(" Q2:"));
-        // SERIAL_PORT.print(q2, 3);
-        // SERIAL_PORT.print(F(" Q3:"));
-        // SERIAL_PORT.print(q3, 3);
-        SERIAL_PORT.print(F("Roll:"));
-        SERIAL_PORT.print(roll, 1);
-        SERIAL_PORT.print(F(" Pitch:"));
-        SERIAL_PORT.print(pitch, 1);
-        SERIAL_PORT.print(F(" Yaw:"));
-        SERIAL_PORT.println(yaw, 1);
+        if (formatted){
+          // SERIAL_PORT.print(F("Q1:"));
+          // SERIAL_PORT.print(q1, 3);
+          // SERIAL_PORT.print(F(" Q2:"));
+          // SERIAL_PORT.print(q2, 3);
+          // SERIAL_PORT.print(F(" Q3:"));
+          // SERIAL_PORT.print(q3, 3);
+          SERIAL_PORT.print(F("Roll:"));
+          SERIAL_PORT.print(roll, 1);
+          SERIAL_PORT.print(F(" Pitch:"));
+          SERIAL_PORT.print(pitch, 1);
+          SERIAL_PORT.print(F(" Yaw:"));
+          SERIAL_PORT.println(yaw, 1);
+        } else {
+          SERIAL_PORT.print(roll, 1);
+          SERIAL_PORT.print(F(","));
+          SERIAL_PORT.print(pitch, 1);
+          SERIAL_PORT.print(F(","));
+          SERIAL_PORT.println(yaw, 1);       
+        }
       }
 #endif
     } else {
