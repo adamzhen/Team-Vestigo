@@ -303,7 +303,7 @@ void loop()
   }
 
   // find average of each distance list
-  if (sizeof(distance_1_data) > 0) {
+  if (distance_1_data.size() > 0) {
     float sum = 0;
     for (float d : distance_1_data) {
     sum += d;
@@ -312,9 +312,10 @@ void loop()
     Serial.print("Average 1: ");
     Serial.println(average_1);
   } else {
+    Serial.println("average 1 zeroed");
     average_1 = 0;
   }
-  if (sizeof(distance_2_data) > 0) {
+  if (distance_2_data.size() > 0) {
     float sum = 0;
     for (float d : distance_2_data) {
     sum += d;
@@ -323,9 +324,10 @@ void loop()
     Serial.print("Average 2: ");
     Serial.println(average_2);
   } else {
+    Serial.println("average 2 zeroed");
     average_2 = 0;
   }
-  if (sizeof(distance_3_data) > 0) {
+  if (distance_3_data.size() > 0) {
     float sum = 0;
     for (float d : distance_3_data) {
     sum += d;
@@ -334,9 +336,10 @@ void loop()
     Serial.print("Average 3: ");
     Serial.println(average_3);
   } else {
+    Serial.println("average 3 zeroed");
     average_3 = 0;
   }
-  if (sizeof(distance_4_data) > 0) {
+  if (distance_4_data.size() > 0) {
     float sum = 0;
     for (float d : distance_4_data) {
     sum += d;
@@ -345,41 +348,42 @@ void loop()
     Serial.print("Average 4: ");
     Serial.println(average_4);
   } else {
+    Serial.println("average 4 zeroed");
     average_4 = 0;
   }
 
   // Checks if average is nan or zero
-  if (isnan(average_1)) {
-    Serial.println("nan");    
-    average_1 = 0;
+  if (average_1 == 0) {  
+    averages.push_back(0);
   } else {
-    Serial.println("pushed");
     averages.push_back(average_1);
   }
-  if (isnan(average_2)) {
-    Serial.println("nan");
-    average_2 = 0;
+  if (average_2 == 0) {
+    averages.push_back(0);
   } else {
-    Serial.println("pushed");
     averages.push_back(average_2);
   }
-  if (isnan(average_3)) {
-    Serial.println("nan");
-    average_3 = 0;
+  if (average_3 == 0) {
+    averages.push_back(0);
   } else {
-    Serial.println("pushed");
     averages.push_back(average_3);
   }
-  if (isnan(average_4)) {
-    Serial.println("nan");
-    average_4 = 0;
+  if (average_4 == 0) {
+    averages.push_back(0);
   } else {
-    Serial.println("pushed");
+    Serial.print("Average 4 push: ");
+    Serial.println(average_4);
     averages.push_back(average_4);
+  }
+
+  // convert vector into Json array
+  JsonArray averaged_points = jsonDoc.to<JsonArray>();
+  for (int i = 0; i < averages.size(); i++){
+    averaged_points.add(averages[i]);
   }
   
   // creates jsondoc
-  jsonDoc["WIP"] = distance_1;
+  jsonDoc["WIP"] = averaged_points;
 
  
   Serial.println("Posting JSON data to server...");
@@ -411,8 +415,8 @@ void loop()
       Serial.print(", ");
     }
     Serial.println("");
-    Serial.print("sizeof: ");
-    Serial.println(sizeof(averages));
+    Serial.print("Size: ");
+    Serial.println(averages.size());
     Serial.print("New Array: ");
     for (int i = 0; i < averages.size(); i++){
       Serial.print(averages[i]);
