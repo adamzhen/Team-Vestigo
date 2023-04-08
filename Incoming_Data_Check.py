@@ -59,7 +59,7 @@ data = []
 ax.set_ylim([0, 8])
 
 UDP_IP_ADDRESS = "0.0.0.0"
-UDP_PORT_NO = 1221
+UDP_PORT_NO = 1234
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind((UDP_IP_ADDRESS, UDP_PORT_NO))
