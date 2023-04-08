@@ -24,12 +24,16 @@
  * Distributed as-is; no warranty is given.
  ***************************************************************/
 
-#define QUAT_ANIMATION // Uncomment this line to output data in the correct format for ZaneL's Node.js Quaternion animation tool: https://github.com/ZaneL/quaternion_sensor_3d_nodejs
-
 #include "ICM_20948.h" // Click here to get the library: http://librarymanager/All#SparkFun_ICM_20948_IMU
+#include <ArduinoJson.h>
+#include <WiFiUdp.h>
+#include <vector>
+#include <math.h>
+#include <WiFi.h>
 
 //#define USE_SPI       // Uncomment this to use SPI
 
+#define QUAT_ANIMATION // Uncomment this line to output data in the correct format for ZaneL's Node.js Quaternion animation tool: https://github.com/ZaneL/quaternion_sensor_3d_nodejs
 #define SERIAL_PORT Serial
 
 #define SPI_PORT SPI // Your desired SPI port.       Used only when "USE_SPI" is defined
@@ -48,10 +52,27 @@ ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
 ICM_20948_I2C myICM; // Otherwise create an ICM_20948_I2C object
 #endif
 
+// Wifi creds
+const char *ssid = "UMAT_WiFi";
+const char *password = "andito21";
+const char *host = "192.168.115.177"; // 192.168.110.169 
+const int port = 1221;
+
 void setup()
 {
-
   SERIAL_PORT.begin(9600); // Start the serial console
+
+  // Connecting to WiFi
+  SERIAL_PORT.print("Connecting to ");
+  SERIAL_PORT.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    SERIAL_PORT.println("Connecting to Wifi... ");
+  }
+  SERIAL_PORT.println("Wifi connected");
+  delay(2000);
+
 #ifndef QUAT_ANIMATION
   SERIAL_PORT.println(F("ICM-20948 Example"));
 #endif
@@ -238,18 +259,18 @@ void loop()
       // roll (x-axis rotation)
       double t0 = +2.0 * (q0 * q1 + q2 * q3);
       double t1 = +1.0 - 2.0 * (q1 * q1 + q2sqr);
-      double roll = atan2(t0, t1) * 180.0 / PI;
+      float roll = atan2(t0, t1) * 180.0 / PI;
 
       // pitch (y-axis rotation)
       double t2 = +2.0 * (q0 * q2 - q3 * q1);
       t2 = t2 > 1.0 ? 1.0 : t2;
       t2 = t2 < -1.0 ? -1.0 : t2;
-      double pitch = asin(t2) * 180.0 / PI;
+      float pitch = asin(t2) * 180.0 / PI;
 
       // yaw (z-axis rotation)
       double t3 = +2.0 * (q0 * q3 + q1 * q2);
       double t4 = +1.0 - 2.0 * (q2sqr + q3 * q3);
-      double yaw = atan2(t3, t4) * 180.0 / PI;
+      float yaw = atan2(t3, t4) * 180.0 / PI;
 
 #ifndef QUAT_ANIMATION
       // Output the Quaternion data in the format expected by ZaneL's Node.js Quaternion animation tool
@@ -265,26 +286,59 @@ void loop()
 
 #else
       bool formatted = true;
-      if (ERROR){
+      std::vector<float> angles; // Vector of Euler Angles
+      if (ERROR){ // if quaternions cannot add to 1
         //SERIAL_PORT.println(ERROR);
+#ifdef DEBUG
         SERIAL_PORT.print(F("~ Error: ["));
         SERIAL_PORT.print(ERROR);
         SERIAL_PORT.print(F("] -> "));        
         SERIAL_PORT.println(((q1 * q1) + (q2 * q2) + (q3 * q3)), 5);
+#endif
       } else {
         if (formatted){
-          // SERIAL_PORT.print(F("Q1:"));
-          // SERIAL_PORT.print(q1, 3);
-          // SERIAL_PORT.print(F(" Q2:"));
-          // SERIAL_PORT.print(q2, 3);
-          // SERIAL_PORT.print(F(" Q3:"));
-          // SERIAL_PORT.print(q3, 3);
           SERIAL_PORT.print(F("Roll:"));
           SERIAL_PORT.print(roll, 1);
           SERIAL_PORT.print(F(" Pitch:"));
           SERIAL_PORT.print(pitch, 1);
           SERIAL_PORT.print(F(" Yaw:"));
           SERIAL_PORT.println(yaw, 1);
+
+          // filling vector of Euler Angles
+          angles.push_back(int(roll));
+          angles.push_back(int(pitch));
+          angles.push_back(int(yaw));
+
+          // convert vector into Json array
+          const size_t capacity = JSON_ARRAY_SIZE(3);
+          DynamicJsonDocument doc(capacity);
+          JsonArray angle_data = doc.to<JsonArray>();
+          for (int i = 0; i < angles.size(); i++){
+            SERIAL_PORT.print("Added Point: ");
+            SERIAL_PORT.println(angles[i]);
+            angle_data.add(angles[i]);
+          }
+
+          // convert the Json array to a string
+          String jsonString;
+          serializeJson(doc, jsonString);
+
+          // Create a UDP connection to the laptop
+          WiFiUDP udp;
+          udp.begin(port);
+          IPAddress ip;
+          if (WiFi.hostByName(host, ip)) {
+            // Send the Json data over the socket connection
+            udp.beginPacket(ip, port);
+            udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
+            udp.endPacket();
+            SERIAL_PORT.println("Json data sent");
+            SERIAL_PORT.println(jsonString.length());
+          } else {
+            SERIAL_PORT.println("Unable to resolve hostname");
+          }
+
+          angles.clear();
         } else {
           SERIAL_PORT.print(roll, 1);
           SERIAL_PORT.print(F(","));
