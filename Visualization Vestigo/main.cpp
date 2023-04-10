@@ -19,9 +19,9 @@
 #include <fstream>
 #include <vector>
 
-// Define the coordinate system (in pixels)
-const int SCREEN_WIDTH = 2560;
-const int SCREEN_HEIGHT = 1440;
+using std::cout;
+using std::cin;
+using std::endl;
 
 // Function to draw the tag
 void drawTag(SDL_Renderer* renderer, float x, float y)
@@ -68,13 +68,48 @@ Eigen::Vector3d trilateration(double distance_1, double distance_2, double dista
 // main code
 int main()
 {
-    // initializes location variables
-    double x_location = 0.0;
-    double y_location = 0.0;
-    double z_location = 0.0;
+    // Ask for dimensions of the room in inches
+    std::cout << "Enter the dimensions of the room in inches (X Y): ";
+    double room_width_inches, room_height_inches;
+    std::cin >> room_width_inches >> room_height_inches;
 
-    // creates total locations vector for outfile
-    std::vector<std::vector<double>> locations;
+    // Convert dimensions from inches to meters and set screen size
+    const double inch_to_meter = 0.0254;
+    double room_width_meters = room_width_inches * inch_to_meter;
+    double room_height_meters = room_height_inches * inch_to_meter;
+    const double screen_scale = 150.0;
+    double screen_width = room_width_meters * screen_scale;
+    double screen_height = room_height_meters * screen_scale;
+
+    // Ask for dimensions of the anchor points in inches
+    std::cout << "Enter the x, y, and z position of four anchor points in inches: " << std::endl;
+    double x, y, z;
+
+    // Convert each anchor point from inches to meters and replace variables
+    std::cout << "Anchor Point 1: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_1(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 2: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_2(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 3: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_3(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 4: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_4(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    // Print out results
+    std::cout << "Room dimensions (m): " << room_width_meters << " x " << room_height_meters << std::endl;
+    std::cout << "Screen size (pixels): " << screen_width << " x " << screen_height << std::endl;
+    std::cout << "Anchor points (m): " << std::endl;
+    std::cout << "  Point 1: " << point_1.transpose() << std::endl;
+    std::cout << "  Point 2: " << point_2.transpose() << std::endl;
+    std::cout << "  Point 3: " << point_3.transpose() << std::endl;
+    std::cout << "  Point 4: " << point_4.transpose() << std::endl;
 
     WSADATA wsaData;
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -118,7 +153,7 @@ int main()
     }
 
     // Create a window and renderer
-    SDL_Window* window = SDL_CreateWindow("Object Movement", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("Object Movement", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screen_width, screen_height, SDL_WINDOW_SHOWN);
 
     // Create a renderer
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
@@ -126,14 +161,6 @@ int main()
     // Initial position of the object
     double x_location = 3.0;
     double y_locatioin = 3.0;
-
-    // Set meter-to-pixel ratio
-    double pixel_to_meter_ratio_x = 96.0;
-    double pixel_to_meter_ratio_y = 96.0;
-
-    // Convert the initial position from meters to pixels
-    int x_location_pixel = static_cast<int>(x_location * pixel_to_meter_ratio_x);
-    int y_location_pixel = static_cast<int>(x_location * pixel_to_meter_ratio_y);
 
     // Set the size and color of the object
     int object_width = 5;
@@ -146,12 +173,6 @@ int main()
         recvLen = recvfrom(sock, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr, &clientAddrLen);
         if (recvLen > 0) {
             std::string str(buffer, recvLen);
-
-            // labels the location of the anchors
-            Eigen::Vector3d point_1(6.223, 0.6604, 0.8636);
-            Eigen::Vector3d point_2(6.223, 2.667, 0.8636);
-            Eigen::Vector3d point_3(1.44478, 3.0988, 0);
-            Eigen::Vector3d point_4(0, 0, 0);
 
             // converts incoming string into 4 distance doubles
             size_t start = str.find("[") + 1;
@@ -199,8 +220,8 @@ int main()
             SDL_RenderClear(renderer);
 
             // Convert the object position from meters to pixels
-            x_location_pixel = static_cast<int>(x_location * pixel_to_meter_ratio_x);
-            y_location_pixel = static_cast<int>(y_location * pixel_to_meter_ratio_y);
+            int x_location_pixel = static_cast<int>(x_location * 150);
+            int y_location_pixel = static_cast<int>(y_location * 150);
 
             // Draw the object
             SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
@@ -210,23 +231,7 @@ int main()
             // Presents the rendereer to the screen
             SDL_RenderPresent(renderer);
 
-            // append the object's location to the vector
-            std::vector<double> current_location = { x_location, y_location, z_location };
-            locations.push_back(current_location);
-
         }
-
-        // open outfile
-        std::ofstream outfile;
-        outfile.open("locations.txt");
-
-        // write location data into outfile
-        for (auto& location : locations) {
-            outfile << location[0] << " " << location[1] << " " << location[2] << "\n";
-        }
-
-        // close file
-        outfile.close();
 
     }
 
