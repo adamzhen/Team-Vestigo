@@ -16,6 +16,8 @@
 #include <Windows.h>
 #include <SDL.h>
 #undef main
+#include <fstream>
+#include <vector>
 
 // Define the coordinate system (in pixels)
 const int SCREEN_WIDTH = 2560;
@@ -66,6 +68,14 @@ Eigen::Vector3d trilateration(double distance_1, double distance_2, double dista
 // main code
 int main()
 {
+    // initializes location variables
+    double x_location = 0.0;
+    double y_location = 0.0;
+    double z_location = 0.0;
+
+    // creates total locations vector for outfile
+    std::vector<std::vector<double>> locations;
+
     WSADATA wsaData;
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0) {
@@ -199,8 +209,24 @@ int main()
 
             // Presents the rendereer to the screen
             SDL_RenderPresent(renderer);
-            
+
+            // append the object's location to the vector
+            std::vector<double> current_location = { x_location, y_location, z_location };
+            locations.push_back(current_location);
+
         }
+
+        // open outfile
+        std::ofstream outfile;
+        outfile.open("locations.txt");
+
+        // write location data into outfile
+        for (auto& location : locations) {
+            outfile << location[0] << " " << location[1] << " " << location[2] << "\n";
+        }
+
+        // close file
+        outfile.close();
 
     }
 
