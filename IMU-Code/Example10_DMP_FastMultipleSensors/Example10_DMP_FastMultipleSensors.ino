@@ -204,12 +204,12 @@ void loop()
       double q2 = ((double)data.Quat6.Data.Q2) / 1073741824.0; // Convert to double. Divide by 2^30
       double q3 = ((double)data.Quat6.Data.Q3) / 1073741824.0; // Convert to double. Divide by 2^30
 
-      SERIAL_PORT.print(F("Q1:"));
-      SERIAL_PORT.print(q1, 3);
-      SERIAL_PORT.print(F(" Q2:"));
-      SERIAL_PORT.print(q2, 3);
-      SERIAL_PORT.print(F(" Q3:"));
-      SERIAL_PORT.println(q3, 3);
+      // SERIAL_PORT.print(F("Q1:"));
+      // SERIAL_PORT.print(q1, 3);
+      // SERIAL_PORT.print(F(" Q2:"));
+      // SERIAL_PORT.print(q2, 3);
+      // SERIAL_PORT.print(F(" Q3:"));
+      // SERIAL_PORT.println(q3, 3);
     }
 
     if ((data.header & DMP_header_bitmap_Accel) > 0) // Check for Accel

@@ -1,5 +1,5 @@
 % Define the serial port
-port = "COM3"; % replace "COM4" with the port your device is connected to
+port = "COM3";
 baudrate = 9600;
 
 % Create the serial port object
@@ -9,7 +9,7 @@ s = serialport(port, baudrate);
 configureTerminator(s, "LF");
 
 % Open a text file for writing
-filename = 'euler_data.txt';
+filename = 'euler_and_acceleration_data.txt';
 fileID = fopen(filename,'w');
 
 % Start timer
@@ -18,12 +18,14 @@ tic;
 % Read and display the serial data
 for c = 1:1000
     data = readline(s);
-    % Get elapsed time
-    elapsed_time = toc;
     % Write the array to the text file using fprintf
     fprintf(fileID, '%d,%s\n',c,data);
     disp(c)
 end
+
+% Get elapsed time
+elapsed_time = toc;
+disp(elapsed_time)
 
 % Close the file
 fclose(fileID);
