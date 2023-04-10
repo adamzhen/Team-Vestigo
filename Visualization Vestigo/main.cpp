@@ -14,22 +14,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Windows.h>
+#include <SDL.h>
+#undef main
 
+// Define the coordinate system (in pixels)
+const int SCREEN_WIDTH = 2560;
+const int SCREEN_HEIGHT = 1440;
 
+// Function to draw the tag
+void drawTag(SDL_Renderer* renderer, float x, float y)
+{
+    // Draw a red square at the tag's position
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_Rect rect = { (int)x, (int)y, 10, 10 };
+    SDL_RenderFillRect(renderer, &rect);
+}
 
+// calculates the primes points of intersection
 Eigen::Vector3d trilateration(double distance_1, double distance_2, double distance_3, Eigen::Vector3d point_1, Eigen::Vector3d point_2, Eigen::Vector3d point_3)
 {
+
+    // renames the anchor locations
     Eigen::Vector3d p1 = point_1;
     Eigen::Vector3d p2 = point_2;
     Eigen::Vector3d p3 = point_3;
 
+    // renames the distances
     double d1 = distance_1;
     double d2 = distance_2;
     double d3 = distance_3;
 
+    // defines locations and distances into matrices
     Eigen::MatrixXd A(3, 3);
     Eigen::VectorXd B(3);
 
+    // performs matrix calculations to determine prime point
     A << 2 * (p2(0) - p1(0)), 2 * (p2(1) - p1(1)), 2 * (p2(2) - p1(2)),
         2 * (p3(0) - p1(0)), 2 * (p3(1) - p1(1)), 2 * (p3(2) - p1(2)),
         2 * (p3(0) - p2(0)), 2 * (p3(1) - p2(1)), 2 * (p3(2) - p2(2));
@@ -40,9 +59,11 @@ Eigen::Vector3d trilateration(double distance_1, double distance_2, double dista
 
     Eigen::Vector3d x = A.colPivHouseholderQr().solve(B);
 
+    // returns prime point
     return x;
 }
 
+// main code
 int main()
 {
     WSADATA wsaData;
@@ -52,6 +73,7 @@ int main()
         return 1;
     }
 
+    // check if socket connection is good
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock == INVALID_SOCKET) {
         std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
@@ -59,11 +81,13 @@ int main()
         return 1;
     }
 
+    // defines port and ip address
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(1234);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
 
+    // checks if port binded properly
     if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
         closesocket(sock);
@@ -71,22 +95,55 @@ int main()
         return 1;
     }
 
+    // defines buffer size and client address
     char buffer[1024];
     int recvLen;
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
 
-    while (true) {
+    // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        std::cout << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+
+    // Create a window and renderer
+    SDL_Window* window = SDL_CreateWindow("Object Movement", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN);
+
+    // Create a renderer
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+    // Initial position of the object
+    double x_location = 3.0;
+    double y_locatioin = 3.0;
+
+    // Set meter-to-pixel ratio
+    double pixel_to_meter_ratio_x = 96.0;
+    double pixel_to_meter_ratio_y = 96.0;
+
+    // Convert the initial position from meters to pixels
+    int x_location_pixel = static_cast<int>(x_location * pixel_to_meter_ratio_x);
+    int y_location_pixel = static_cast<int>(x_location * pixel_to_meter_ratio_y);
+
+    // Set the size and color of the object
+    int object_width = 5;
+    int object_height = 5;
+    SDL_Color object_color = { 255, 0 , 0, 255 };
+
+    // data collection and display loop
+    bool quit = false;
+    while (!quit) {
         recvLen = recvfrom(sock, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr, &clientAddrLen);
         if (recvLen > 0) {
             std::string str(buffer, recvLen);
 
-            Eigen::Vector3d point_1(0, 0, 0);
-            Eigen::Vector3d point_2(1.71, 0, 0);
-            Eigen::Vector3d point_3(-0.75, 2.74, 0);
-            Eigen::Vector3d point_4(0.935, 2.79, 0);
+            // labels the location of the anchors
+            Eigen::Vector3d point_1(6.223, 0.6604, 0.8636);
+            Eigen::Vector3d point_2(6.223, 2.667, 0.8636);
+            Eigen::Vector3d point_3(1.44478, 3.0988, 0);
+            Eigen::Vector3d point_4(0, 0, 0);
 
-
+            // converts incoming string into 4 distance doubles
             size_t start = str.find("[") + 1;
             size_t end = str.find(",");
             double distance_1 = std::stod(str.substr(start, end - start));
@@ -103,18 +160,54 @@ int main()
             end = str.find("]", start);
             double distance_4 = std::stod(str.substr(start, end - start));
 
+            // calculates the prime points to determine the location given overestimates
             Eigen::Vector3d point_1_prime = trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3);
             Eigen::Vector3d point_2_prime = trilateration(distance_1, distance_2, distance_4, point_1, point_2, point_4);
             Eigen::Vector3d point_3_prime = trilateration(distance_4, distance_2, distance_3, point_4, point_2, point_3);
             Eigen::Vector3d point_4_prime = trilateration(distance_1, distance_4, distance_3, point_1, point_4, point_3);
 
+            // finds location of tag in (x,y,z)
             double x_location = (point_1_prime(0) + point_2_prime(0) + point_3_prime(0) + point_4_prime(0)) / 4;
             double y_location = (point_1_prime(1) + point_2_prime(1) + point_3_prime(1) + point_4_prime(1)) / 4;
             double z_location = (point_1_prime(2) + point_2_prime(2) + point_3_prime(2) + point_4_prime(2)) / 4;
 
-
+            // writes the location data to the console
             std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
+
+            // Handle events (such as window close)
+            SDL_Event event;
+            while (SDL_PollEvent(&event))
+            {
+                if (event.type == SDL_QUIT)
+                {
+                    quit = true;
+                }
+            }
+
+            // Clear the screen
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+
+            // Convert the object position from meters to pixels
+            x_location_pixel = static_cast<int>(x_location * pixel_to_meter_ratio_x);
+            y_location_pixel = static_cast<int>(y_location * pixel_to_meter_ratio_y);
+
+            // Draw the object
+            SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
+            SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
+            SDL_RenderFillRect(renderer, &object_rect);
+
+            // Presents the rendereer to the screen
+            SDL_RenderPresent(renderer);
+            
         }
+
     }
+
+    // Clean up resources
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
     return 0;
 }
