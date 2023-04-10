@@ -111,6 +111,15 @@ int main()
     std::cout << "  Point 3: " << point_3.transpose() << std::endl;
     std::cout << "  Point 4: " << point_4.transpose() << std::endl;
 
+    // Open the file for writing
+    std::ofstream outFile("Tracked Location", std::ios::app);
+
+    // Check if the file was opened successfully
+    if (!outFile) {
+        std::cerr << "Error opening file." << std::endl;
+        return 1;
+    }
+
     WSADATA wsaData;
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0) {
@@ -157,10 +166,6 @@ int main()
 
     // Create a renderer
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-    // Initial position of the object
-    double x_location = 3.0;
-    double y_locatioin = 3.0;
 
     // Set the size and color of the object
     int object_width = 5;
@@ -215,6 +220,9 @@ int main()
                 }
             }
 
+            // Write location data to file
+            outFile << "X Position: " << x_location << ", Y Position: " << y_location << std::endl;
+
             // Clear the screen
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
@@ -234,6 +242,9 @@ int main()
         }
 
     }
+
+    // Close the file
+    outFile.close();
 
     // Clean up resources
     SDL_DestroyRenderer(renderer);
