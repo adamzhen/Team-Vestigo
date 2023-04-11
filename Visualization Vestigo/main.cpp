@@ -236,14 +236,22 @@ int main()
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     // Set the size and color of the object
-    int object_width = 10;
-    int object_height = 10;
+    int object_width = 7;
+    int object_height = 7;
     SDL_Color object_color = { 210, 0 , 0, 255 };
 
     // Defines variables for location coordinates
     double x_location = 0;
     double y_location = 0;
     double z_location = 0;
+
+    // Defines position and velocity variables
+    float imuX = 0;
+    float imuY = 0;
+    float imuZ = 0;
+    float vx = 0;
+    float vy = 0;
+    float vz = 0;
 
     // data collection and display loop
     bool quit = false;
@@ -261,9 +269,9 @@ int main()
             float roll = 0;
             float pitch = 0;
             float yaw = 0;
-            float ax = 0;
-            float ay = 0;
-            float az = 0;
+            float rawAx = 0;
+            float rawAy = 0;
+            float rawAz = 0;
             float dt = 0;
 
             size_t start = str.find("[") + 1;
@@ -290,13 +298,13 @@ int main()
                 distance_4 = data[3];
             }
             else if (data.size() == 7) {
-                roll = data[0];
-                pitch = data[1];
-                yaw = data[2];
-                ax = data[3];
-                ay = data[4];
-                az = data[5];
-                dt = data[6];
+                roll = data[0]; // degrees
+                pitch = data[1]; // degrees
+                yaw = data[2]; // degrees
+                rawAx = data[3]; // mg
+                rawAy = data[4]; // mg
+                rawAz = data[5]; // mg
+                dt = data[6]/1000000; // s
             }
 
             /***************/
@@ -315,7 +323,7 @@ int main()
             z_location = (point_1_prime(2) + point_2_prime(2) + point_3_prime(2) + point_4_prime(2)) / 4;
 
             // writes the location data to the console
-            std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
+            //std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
 
             // Handle events (such as window close)
             SDL_Event event;
@@ -334,13 +342,6 @@ int main()
             /***** IMU *****/
             /***************/
 
-            double PI = M_PI;
-
-            // calculating gravity components
-            float gx = -1000 * sin(pitch * PI / 180);
-            float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
-            float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
-
             // calculating orientation
             float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
             float compass = zerodir - yaw;
@@ -354,6 +355,31 @@ int main()
             //std::cout << "  Angle 1: " << angle1 << std::endl;
             //std::cout << "  Angle 2: " << angle2 << std::endl;
 
+            double PI = M_PI;
+            // calculating gravity components (mg)
+            float gx = -1000 * sin(pitch * PI / 180);
+            float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
+            float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
+
+            // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
+            float ax = (rawAx - gx) / 9810;
+            float ay = (rawAz - gz) / 9810;
+            float az = (rawAy - gy) / 9810;
+
+            // update velocity (m/s)
+            vx += ax * dt;
+            vy += ay * dt;
+            vz += az * dt;
+
+            // update position (m)
+            imuX += vx * dt;
+            imuY += vy * dt;
+            imuZ += vz * dt;
+
+            std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
+            std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
+            std::cout << "  X: " << imuX << "  Y: " << imuY << "  Z: " << imuZ << std::endl;
+
             /***************/
             /***** Vis *****/
             /***************/
@@ -363,8 +389,12 @@ int main()
             SDL_RenderClear(renderer);
 
             // Convert the object position from meters to pixels
-            int x_location_pixel = static_cast<int>(x_location * 150);
-            int y_location_pixel = static_cast<int>(y_location * 150);
+            x_location = imuX;
+            y_location = imuY;
+            int x_location_pixel = static_cast<int>(x_location * screen_scale);
+            int y_location_pixel = static_cast<int>(y_location * screen_scale);
+            //x_location_pixel = 40;
+            //y_location_pixel = 40;
 
             // Calculate line for orientation, currently assuming that North is in the positive x direction
             int length = 20;

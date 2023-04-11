@@ -45,8 +45,8 @@
 #define AD0_VAL 1
 
 //#define DEBUG // used for debugging
-#define TRANSMIT
-//#define PRINT
+//#define TRANSMIT
+#define PRINT
 
 #ifdef USE_SPI
 ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
@@ -350,7 +350,7 @@ void loop()
     //SERIAL_PORT.print(F("Scaled. Acc (mg): "));
 
     float biasAccX = 0;
-    float biasAccY = 0;
+    float biasAccY = -10;
     float biasAccZ = 20;
 
     ICM_20948_I2C *sensor = &myICM;
@@ -380,7 +380,7 @@ void loop()
     //SERIAL_PORT.println();
       
 #ifdef PRINT
-    bool formatted = true;
+    bool formatted = false;
     if (formatted){
       SERIAL_PORT.print(F("Roll:"));
       SERIAL_PORT.print(roll, 1);
@@ -397,25 +397,23 @@ void loop()
     } else {
       char sep = ',';
       SERIAL_PORT.print(roll, 1);
-      SERIAL_PORT.print(F(sep));
+      SERIAL_PORT.print(sep);
       SERIAL_PORT.print(pitch, 1);
-      SERIAL_PORT.print(F(sep));
-      SERIAL_PORT.println(yaw, 1);   
-      SERIAL_PORT.print(F(sep));
-      SERIAL_PORT.print(accX-gx, 2);
-      SERIAL_PORT.print(F(sep));
-      SERIAL_PORT.print(accY-gy, 2);
-      SERIAL_PORT.print(F(sep));
-      SERIAL_PORT.print(accZ-gz, 2);
-      SERIAL_PORT.print(F(sep));
+      SERIAL_PORT.print(sep);
+      SERIAL_PORT.print(yaw, 1);   
+      SERIAL_PORT.print(sep);
+      SERIAL_PORT.print(gx, 2);
+      SERIAL_PORT.print(sep);
+      SERIAL_PORT.print(gy, 2);
+      SERIAL_PORT.print(sep);
+      SERIAL_PORT.print(gz, 2);
+      SERIAL_PORT.print(sep);
+      SERIAL_PORT.print(accX, 2);
+      SERIAL_PORT.print(sep);
+      SERIAL_PORT.print(accY, 2);
+      SERIAL_PORT.print(sep);
+      SERIAL_PORT.println(accZ, 2);
     }
-    // SERIAL_PORT.printf(" Ax:%f", accX-gx);
-    // SERIAL_PORT.printf(" Ay:%f", sep, accY-gy);
-    // SERIAL_PORT.printf(" Az:%f", sep, accZ-gz);
-    // //SERIAL_PORT.print(", Gyr (DPS): Gx: ");
-    // // SERIAL_PORT.printf("%c gx: %f ", sep, gx);
-    // // SERIAL_PORT.printf("%c gy: %f ", sep, gy);
-    // // SERIAL_PORT.printf("%c gz: %f ", sep, gz);
     // //SERIAL_PORT.print(", Mag (uT): Mx: ");
     // // SERIAL_PORT.printf("%c Mx:", sep);
     // // SERIAL_PORT.print(sensor->magX()); //printFormattedFloat(sensor->magX(), 5, 2);

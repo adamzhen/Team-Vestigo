@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 UDP_IP_ADDRESS = "0.0.0.0"
-UDP_PORT_NO = 1221
+UDP_PORT_NO = 1233
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind((UDP_IP_ADDRESS, UDP_PORT_NO))
