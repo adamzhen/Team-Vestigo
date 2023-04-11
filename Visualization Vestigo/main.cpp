@@ -18,10 +18,78 @@
 #undef main
 #include <fstream>
 #include <vector>
+#include <tuple>
 
 using std::cout;
 using std::cin;
 using std::endl;
+
+// Definitions
+const double inch_to_meter = 0.0254;
+
+// Function to get dimensions of room from user input
+void getDimensions(double& length, double& width)
+{
+    std::cout << "Enter the length of the room in feet: ";
+    std::cin >> length;
+
+    std::cout << "Enter the width of the room in feet: ";
+    std::cin >> width;
+
+    std::cout << std::endl;
+}
+
+// Function to get anchor locations within room from user input
+std::vector<Eigen::Vector3d> getAnchors()
+{
+    // Ask for dimensions of the anchor points in inches
+    std::cout << "Enter the x, y, and z position of four anchor points in inches: " << std::endl;
+    double x, y, z;
+
+    // Convert each anchor point from inches to meters and replace variables
+    std::cout << "Anchor Point 1: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_1(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 2: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_2(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 3: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_3(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 4: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_4(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::vector<Eigen::Vector3d> result;
+    result.push_back(point_1);
+    result.push_back(point_2);
+    result.push_back(point_3);
+    result.push_back(point_4);
+
+    return result;
+}
+
+// Function to save dimensions to a text file
+void saveDimensions(double length, double width, std::string filename)
+{
+    std::ofstream outputFile;
+    outputFile.open(filename);
+
+    if (outputFile.is_open())
+    {
+        outputFile << length << " " << width << std::endl;
+        std::cout << "Dimensions saved to " << filename << std::endl;
+    }
+    else
+    {
+        std::cout << "Error: Unable to open file" << std::endl;
+    }
+
+    outputFile.close();
+}
 
 // Function to draw the tag
 void drawTag(SDL_Renderer* renderer, float x, float y)
@@ -74,7 +142,6 @@ int main()
     std::cin >> room_width_inches >> room_height_inches;
 
     // Convert dimensions from inches to meters and set screen size
-    const double inch_to_meter = 0.0254;
     double room_width_meters = room_width_inches * inch_to_meter;
     double room_height_meters = room_height_inches * inch_to_meter;
     const double screen_scale = 150.0;
