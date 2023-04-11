@@ -45,7 +45,8 @@
 #define AD0_VAL 1
 
 //#define DEBUG // used for debugging
-//#define TRANSMIT
+#define TRANSMIT
+//#define PRINT
 
 #ifdef USE_SPI
 ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
@@ -54,16 +55,36 @@ ICM_20948_I2C myICM; // Otherwise create an ICM_20948_I2C object
 #endif
 
 // Wifi creds
-const char *ssid = "UMAT_WiFi";
-const char *password = "andito21";
-const char *host = "192.168.106.177"; // 192.168.110.169 
-const int port = 1221;
+const char *ssid;
+const char *password;
+const char *host;  
+
+const int network = 1; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
+const int port = 1233;
 
 void setup()
 {
   SERIAL_PORT.begin(9600); // Start the serial console
 
 #ifdef TRANSMIT
+  // Setting WiFi
+  if (network == 0) {
+    ssid = "";
+    password = "";
+    host = "192.168.";   
+  } 
+  else if (network == 1){
+    ssid = "UMAT_WiFi";
+    password = "andito21";
+    host = "192.168.106.177"; 
+  
+  } 
+  else if (network == 2){
+    ssid = "FREE WIFI NO MALWARE";
+    password = "Playadel2005?";
+    host = "192.168."; 
+  }
+
   // Connecting to WiFi
   SERIAL_PORT.print("Connecting to ");
   SERIAL_PORT.println(ssid);
@@ -132,73 +153,75 @@ void setup()
   SERIAL_PORT.println(F("Device connected!"));
 #endif
 
-  bool success = true; // Use success to show if the DMP configuration was successful
+  bool success = false; // Use success to show if the DMP configuration was successful
 
-  // Initialize the DMP. initializeDMP is a weak function. You can overwrite it if you want to e.g. to change the sample rate
-  success &= (myICM.initializeDMP() == ICM_20948_Stat_Ok);
+  while (!success){
+    success = true;
+    // Initialize the DMP. initializeDMP is a weak function. You can overwrite it if you want to e.g. to change the sample rate
+    success &= (myICM.initializeDMP() == ICM_20948_Stat_Ok);
 
-  // DMP sensor options are defined in ICM_20948_DMP.h
-  //    INV_ICM20948_SENSOR_ACCELEROMETER               (16-bit accel)
-  //    INV_ICM20948_SENSOR_GYROSCOPE                   (16-bit gyro + 32-bit calibrated gyro)
-  //    INV_ICM20948_SENSOR_RAW_ACCELEROMETER           (16-bit accel)
-  //    INV_ICM20948_SENSOR_RAW_GYROSCOPE               (16-bit gyro + 32-bit calibrated gyro)
-  //    INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED (16-bit compass)
-  //    INV_ICM20948_SENSOR_GYROSCOPE_UNCALIBRATED      (16-bit gyro)
-  //    INV_ICM20948_SENSOR_STEP_DETECTOR               (Pedometer Step Detector)
-  //    INV_ICM20948_SENSOR_STEP_COUNTER                (Pedometer Step Detector)
-  //    INV_ICM20948_SENSOR_GAME_ROTATION_VECTOR        (32-bit 6-axis quaternion)
-  //    INV_ICM20948_SENSOR_ROTATION_VECTOR             (32-bit 9-axis quaternion + heading accuracy)
-  //    INV_ICM20948_SENSOR_GEOMAGNETIC_ROTATION_VECTOR (32-bit Geomag RV + heading accuracy)
-  //    INV_ICM20948_SENSOR_GEOMAGNETIC_FIELD           (32-bit calibrated compass)
-  //    INV_ICM20948_SENSOR_GRAVITY                     (32-bit 6-axis quaternion)
-  //    INV_ICM20948_SENSOR_LINEAR_ACCELERATION         (16-bit accel + 32-bit 6-axis quaternion)
-  //    INV_ICM20948_SENSOR_ORIENTATION                 (32-bit 9-axis quaternion + heading accuracy)
+    // DMP sensor options are defined in ICM_20948_DMP.h
+    //    INV_ICM20948_SENSOR_ACCELEROMETER               (16-bit accel)
+    //    INV_ICM20948_SENSOR_GYROSCOPE                   (16-bit gyro + 32-bit calibrated gyro)
+    //    INV_ICM20948_SENSOR_RAW_ACCELEROMETER           (16-bit accel)
+    //    INV_ICM20948_SENSOR_RAW_GYROSCOPE               (16-bit gyro + 32-bit calibrated gyro)
+    //    INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED (16-bit compass)
+    //    INV_ICM20948_SENSOR_GYROSCOPE_UNCALIBRATED      (16-bit gyro)
+    //    INV_ICM20948_SENSOR_STEP_DETECTOR               (Pedometer Step Detector)
+    //    INV_ICM20948_SENSOR_STEP_COUNTER                (Pedometer Step Detector)
+    //    INV_ICM20948_SENSOR_GAME_ROTATION_VECTOR        (32-bit 6-axis quaternion)
+    //    INV_ICM20948_SENSOR_ROTATION_VECTOR             (32-bit 9-axis quaternion + heading accuracy)
+    //    INV_ICM20948_SENSOR_GEOMAGNETIC_ROTATION_VECTOR (32-bit Geomag RV + heading accuracy)
+    //    INV_ICM20948_SENSOR_GEOMAGNETIC_FIELD           (32-bit calibrated compass)
+    //    INV_ICM20948_SENSOR_GRAVITY                     (32-bit 6-axis quaternion)
+    //    INV_ICM20948_SENSOR_LINEAR_ACCELERATION         (16-bit accel + 32-bit 6-axis quaternion)
+    //    INV_ICM20948_SENSOR_ORIENTATION                 (32-bit 9-axis quaternion + heading accuracy)
 
-  // Enable the DMP orientation sensor
-  success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_ORIENTATION) == ICM_20948_Stat_Ok);
+    // Enable the DMP orientation sensor
+    success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_ORIENTATION) == ICM_20948_Stat_Ok);
 
-  // Enable any additional sensors / features
-  //success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_RAW_GYROSCOPE) == ICM_20948_Stat_Ok);
-  //success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_RAW_ACCELEROMETER) == ICM_20948_Stat_Ok);
-  //success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED) == ICM_20948_Stat_Ok);
+    // Enable any additional sensors / features
+    //success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_RAW_GYROSCOPE) == ICM_20948_Stat_Ok);
+    //success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_RAW_ACCELEROMETER) == ICM_20948_Stat_Ok);
+    //success &= (myICM.enableDMPSensor(INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED) == ICM_20948_Stat_Ok);
 
-  // Configuring DMP to output data at multiple ODRs:
-  // DMP is capable of outputting multiple sensor data at different rates to FIFO.
-  // Setting value can be calculated as follows:
-  // Value = (DMP running rate / ODR ) - 1
-  // E.g. For a 5Hz ODR rate when DMP is running at 55Hz, value = (55/5) - 1 = 10.
-  success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Quat6, 0) == ICM_20948_Stat_Ok); // Set to the maximum // WHY THIS LINE!?
-  //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Accel, 0) == ICM_20948_Stat_Ok); // Set to the maximum
-  //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Gyro, 0) == ICM_20948_Stat_Ok); // Set to the maximum
-  //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Gyro_Calibr, 0) == ICM_20948_Stat_Ok); // Set to the maximum
-  //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Cpass, 0) == ICM_20948_Stat_Ok); // Set to the maximum
-  //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Cpass_Calibr, 0) == ICM_20948_Stat_Ok); // Set to the maximum
+    // Configuring DMP to output data at multiple ODRs:
+    // DMP is capable of outputting multiple sensor data at different rates to FIFO.
+    // Setting value can be calculated as follows:
+    // Value = (DMP running rate / ODR ) - 1
+    // E.g. For a 5Hz ODR rate when DMP is running at 55Hz, value = (55/5) - 1 = 10.
+    success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Quat6, 0) == ICM_20948_Stat_Ok); // Set to the maximum // WHY THIS LINE!?
+    //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Accel, 0) == ICM_20948_Stat_Ok); // Set to the maximum
+    //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Gyro, 0) == ICM_20948_Stat_Ok); // Set to the maximum
+    //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Gyro_Calibr, 0) == ICM_20948_Stat_Ok); // Set to the maximum
+    //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Cpass, 0) == ICM_20948_Stat_Ok); // Set to the maximum
+    //success &= (myICM.setDMPODRrate(DMP_ODR_Reg_Cpass_Calibr, 0) == ICM_20948_Stat_Ok); // Set to the maximum
 
-  // Enable the FIFO
-  success &= (myICM.enableFIFO() == ICM_20948_Stat_Ok);
+    // Enable the FIFO
+    success &= (myICM.enableFIFO() == ICM_20948_Stat_Ok);
 
-  // Enable the DMP
-  success &= (myICM.enableDMP() == ICM_20948_Stat_Ok);
+    // Enable the DMP
+    success &= (myICM.enableDMP() == ICM_20948_Stat_Ok);
 
-  // Reset DMP
-  success &= (myICM.resetDMP() == ICM_20948_Stat_Ok);
+    // Reset DMP
+    success &= (myICM.resetDMP() == ICM_20948_Stat_Ok);
 
-  // Reset FIFO
-  success &= (myICM.resetFIFO() == ICM_20948_Stat_Ok);
+    // Reset FIFO
+    success &= (myICM.resetFIFO() == ICM_20948_Stat_Ok);
 
-  // Check success
-  if (success)
-  {
-#ifndef QUAT_ANIMATION
-    SERIAL_PORT.println(F("DMP enabled!"));
-#endif
-  }
-  else
-  {
-    SERIAL_PORT.println(F("Enable DMP failed!"));
-    SERIAL_PORT.println(F("Please check that you have uncommented line 29 (#define ICM_20948_USE_DMP) in ICM_20948_C.h..."));
-    while (1)
-      ; // Do nothing more
+    // Check success
+    if (success)
+    {
+  #ifndef QUAT_ANIMATION
+      SERIAL_PORT.println(F("DMP enabled!"));
+  #endif
+    }
+    else
+    {
+      SERIAL_PORT.println(F("Enable DMP failed!"));
+      SERIAL_PORT.println(F("Trying again..."));
+      delay(500);
+    }
   }
 }
 
@@ -276,8 +299,6 @@ void loop()
       SERIAL_PORT.println(F("}"));
 
 #else
-      bool formatted = false;
-      
       if (ERROR){ // if quaternions cannot add to 1
         //SERIAL_PORT.println(ERROR);
 #ifdef DEBUG
@@ -345,55 +366,78 @@ void loop()
     float gy = 1000 * cos(pitch * PI/180) * sin(roll * PI/180);  
     float gz = 1000 * cos(pitch * PI/180) * cos(roll * PI/180);
 
-    SERIAL_PORT.printf("%f, %f, %f, %f, %f, %f", roll, pitch, yaw, accX-gx, accY-gy, accZ-gz);
+    // calculating orientation
+    float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
+    float compass = zerodir - yaw;
+    if (compass < 0){
+      compass += 360;
+    }
+    float angle1 = 90-roll; // tilt up = positive, tilt down = negative
+    float angle2 = -pitch; // right = positive, left = negative
+
+    //SERIAL_PORT.printf("%f, %f, %f, %f, %f, %f", roll, pitch, yaw, accX-gx, accY-gy, accZ-gz);
     //SERIAL_PORT.printf("%f, %f, %f, %f, %f, %f, %f, %f, %f", roll, pitch, yaw, gx, gy, gz, accX, accY, accZ);
-    SERIAL_PORT.println();
+    //SERIAL_PORT.println();
+      
+#ifdef PRINT
+    bool formatted = true;
+    if (formatted){
+      SERIAL_PORT.print(F("Roll:"));
+      SERIAL_PORT.print(roll, 1);
+      SERIAL_PORT.print(F(" Pitch:"));
+      SERIAL_PORT.print(pitch, 1);
+      SERIAL_PORT.print(F(" Yaw:"));
+      SERIAL_PORT.println(yaw, 1);
+      // SERIAL_PORT.print(F(" Compass:"));
+      // SERIAL_PORT.println(compass, 1);
+      // SERIAL_PORT.print(F(" Angle 1:"));
+      // SERIAL_PORT.println(angle1, 1);
+      // SERIAL_PORT.print(F(" Angle 2:"));
+      // SERIAL_PORT.println(angle2, 1);
+    } else {
+      char sep = ',';
+      SERIAL_PORT.print(roll, 1);
+      SERIAL_PORT.print(F(sep));
+      SERIAL_PORT.print(pitch, 1);
+      SERIAL_PORT.print(F(sep));
+      SERIAL_PORT.println(yaw, 1);   
+      SERIAL_PORT.print(F(sep));
+      SERIAL_PORT.print(accX-gx, 2);
+      SERIAL_PORT.print(F(sep));
+      SERIAL_PORT.print(accY-gy, 2);
+      SERIAL_PORT.print(F(sep));
+      SERIAL_PORT.print(accZ-gz, 2);
+      SERIAL_PORT.print(F(sep));
+    }
+    // SERIAL_PORT.printf(" Ax:%f", accX-gx);
+    // SERIAL_PORT.printf(" Ay:%f", sep, accY-gy);
+    // SERIAL_PORT.printf(" Az:%f", sep, accZ-gz);
+    // //SERIAL_PORT.print(", Gyr (DPS): Gx: ");
+    // // SERIAL_PORT.printf("%c gx: %f ", sep, gx);
+    // // SERIAL_PORT.printf("%c gy: %f ", sep, gy);
+    // // SERIAL_PORT.printf("%c gz: %f ", sep, gz);
+    // //SERIAL_PORT.print(", Mag (uT): Mx: ");
+    // // SERIAL_PORT.printf("%c Mx:", sep);
+    // // SERIAL_PORT.print(sensor->magX()); //printFormattedFloat(sensor->magX(), 5, 2);
+    // // SERIAL_PORT.printf("%c My:", sep);
+    // // SERIAL_PORT.print(sensor->magY()); //printFormattedFloat(sensor->magY(), 5, 2);
+    // // SERIAL_PORT.printf("%c Mz:", sep);
+    // // SERIAL_PORT.print(sensor->magZ()); //printFormattedFloat(sensor->magZ(), 5, 2);
+    // // SERIAL_PORT.print(" ], Tmp (C) [ ");
+#endif
   }
 #ifdef DEBUG
   else {
     SERIAL_PORT.println("Waiting for data");
     delay(0.1); }
 #endif
-  // char sep = ',';
-  // SERIAL_PORT.print(roll, 1);
-  // SERIAL_PORT.print(F(sep));
-  // SERIAL_PORT.print(pitch, 1);
-  // SERIAL_PORT.print(F(sep));
-  // SERIAL_PORT.println(yaw, 1);   
-  // SERIAL_PORT.print(F(sep));
-  // SERIAL_PORT.printf(accX-gx, 2);
-  // SERIAL_PORT.print(F(sep));
-  // SERIAL_PORT.printf(accY-gy, 2);
-  // SERIAL_PORT.print(F(sep));
-  // SERIAL_PORT.printf(accZ-gz, 2);
-  // SERIAL_PORT.print(F(sep));
-  // // SERIAL_PORT.print(F("Roll:"));
-  // // SERIAL_PORT.print(roll, 1);
-  // // SERIAL_PORT.print(F(" Pitch:"));
-  // // SERIAL_PORT.print(pitch, 1);
-  // // SERIAL_PORT.print(F(" Yaw:"));
-  // // SERIAL_PORT.println(yaw, 1);
-  // SERIAL_PORT.printf(" Ax:%f", accX-gx);
-  // SERIAL_PORT.printf(" Ay:%f", sep, accY-gy);
-  // SERIAL_PORT.printf(" Az:%f", sep, accZ-gz);
-  // //SERIAL_PORT.print(", Gyr (DPS): Gx: ");
-  // // SERIAL_PORT.printf("%c gx: %f ", sep, gx);
-  // // SERIAL_PORT.printf("%c gy: %f ", sep, gy);
-  // // SERIAL_PORT.printf("%c gz: %f ", sep, gz);
-  // //SERIAL_PORT.print(", Mag (uT): Mx: ");
-  // // SERIAL_PORT.printf("%c Mx:", sep);
-  // // SERIAL_PORT.print(sensor->magX()); //printFormattedFloat(sensor->magX(), 5, 2);
-  // // SERIAL_PORT.printf("%c My:", sep);
-  // // SERIAL_PORT.print(sensor->magY()); //printFormattedFloat(sensor->magY(), 5, 2);
-  // // SERIAL_PORT.printf("%c Mz:", sep);
-  // // SERIAL_PORT.print(sensor->magZ()); //printFormattedFloat(sensor->magZ(), 5, 2);
-  // // SERIAL_PORT.print(" ], Tmp (C) [ ");
+
 #ifdef TRANSMIT
   std::vector<float> imu_data;
   // roll, pitch, yaw, ax, ay, az, dt
-  imu_data.push_back(int(roll));
-  imu_data.push_back(int(pitch));
-  imu_data.push_back(int(yaw));
+  imu_data.push_back(roll);
+  imu_data.push_back(pitch);
+  imu_data.push_back(yaw);
   imu_data.push_back(accX);
   imu_data.push_back(accY);
   imu_data.push_back(accZ);
@@ -405,7 +449,7 @@ void loop()
   JsonArray angle_data = doc.to<JsonArray>();
   for (int i = 0; i < imu_data.size(); i++){
     //SERIAL_PORT.print("Added Point: ");
-    SERIAL_PORT.println(imu_data[i]);
+    //SERIAL_PORT.println(imu_data[i]);
     angle_data.add(imu_data[i]);
   }
 
@@ -423,7 +467,7 @@ void loop()
     udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
     udp.endPacket();
     SERIAL_PORT.println("Json data sent");
-    //SERIAL_PORT.println(jsonString.length());
+    SERIAL_PORT.println(jsonString.length());
   } else {
     SERIAL_PORT.println("Unable to resolve hostname");
   }

@@ -101,7 +101,7 @@ void drawTag(SDL_Renderer* renderer, float x, float y)
 }
 
 // calculates the primes points of intersection
-Eigen::Vector3d trilateration(double distance_1, double distance_2, double distance_3, Eigen::Vector3d point_1, Eigen::Vector3d point_2, Eigen::Vector3d point_3)
+Eigen::Vector3d trilateration(float distance_1, float distance_2, float distance_3, Eigen::Vector3d point_1, Eigen::Vector3d point_2, Eigen::Vector3d point_3)
 {
 
     // renames the anchor locations
@@ -206,6 +206,7 @@ int main()
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(1234);
+    serverAddr.sin_port = htons(1233);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
 
     // checks if port binded properly
@@ -235,9 +236,14 @@ int main()
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     // Set the size and color of the object
-    int object_width = 5;
-    int object_height = 5;
-    SDL_Color object_color = { 255, 0 , 0, 255 };
+    int object_width = 10;
+    int object_height = 10;
+    SDL_Color object_color = { 210, 0 , 0, 255 };
+
+    // Defines variables for location coordinates
+    double x_location = 0;
+    double y_location = 0;
+    double z_location = 0;
 
     // data collection and display loop
     bool quit = false;
@@ -246,22 +252,56 @@ int main()
         if (recvLen > 0) {
             std::string str(buffer, recvLen);
 
-            // converts incoming string into 4 distance doubles
+            // reads incoming string into data
+            std::vector<double> data;
+            float distance_1 = 0;
+            float distance_2 = 0;
+            float distance_3 = 0;
+            float distance_4 = 0;
+            float roll = 0;
+            float pitch = 0;
+            float yaw = 0;
+            float ax = 0;
+            float ay = 0;
+            float az = 0;
+            float dt = 0;
+
             size_t start = str.find("[") + 1;
             size_t end = str.find(",");
-            double distance_1 = std::stod(str.substr(start, end - start));
 
-            start = end + 1;
-            end = str.find(",", start);
-            double distance_2 = std::stod(str.substr(start, end - start));
+            while (str.find("]", start) != -1) {
+                data.push_back(std::stof(str.substr(start, end - start)));
+                start = end + 1;
+                end = str.find(",", start);
+                if (end == -1) {
+                    end = str.find("]", start);
+                }
+            }
+            for (int i = 0; i < data.size(); i++) {
+                std::cout << data[i] << ", ";
+            }
+            std::cout << std::endl;
 
-            start = end + 1;
-            end = str.find(",", start);
-            double distance_3 = std::stod(str.substr(start, end - start));
 
-            start = end + 1;
-            end = str.find("]", start);
-            double distance_4 = std::stod(str.substr(start, end - start));
+            if (data.size() == 4) {
+                distance_1 = data[0];
+                distance_2 = data[1];
+                distance_3 = data[2];
+                distance_4 = data[3];
+            }
+            else if (data.size() == 7) {
+                roll = data[0];
+                pitch = data[1];
+                yaw = data[2];
+                ax = data[3];
+                ay = data[4];
+                az = data[5];
+                dt = data[6];
+            }
+
+            /***************/
+            /***** UWB *****/
+            /***************/
 
             // calculates the prime points to determine the location given overestimates
             Eigen::Vector3d point_1_prime = trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3);
@@ -270,9 +310,9 @@ int main()
             Eigen::Vector3d point_4_prime = trilateration(distance_1, distance_4, distance_3, point_1, point_4, point_3);
 
             // finds location of tag in (x,y,z)
-            double x_location = (point_1_prime(0) + point_2_prime(0) + point_3_prime(0) + point_4_prime(0)) / 4;
-            double y_location = (point_1_prime(1) + point_2_prime(1) + point_3_prime(1) + point_4_prime(1)) / 4;
-            double z_location = (point_1_prime(2) + point_2_prime(2) + point_3_prime(2) + point_4_prime(2)) / 4;
+            x_location = (point_1_prime(0) + point_2_prime(0) + point_3_prime(0) + point_4_prime(0)) / 4;
+            y_location = (point_1_prime(1) + point_2_prime(1) + point_3_prime(1) + point_4_prime(1)) / 4;
+            z_location = (point_1_prime(2) + point_2_prime(2) + point_3_prime(2) + point_4_prime(2)) / 4;
 
             // writes the location data to the console
             std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
@@ -290,6 +330,34 @@ int main()
             // Write location data to file
             outFile << "X Position: " << x_location << ", Y Position: " << y_location << std::endl;
 
+            /***************/
+            /***** IMU *****/
+            /***************/
+
+            double PI = M_PI;
+
+            // calculating gravity components
+            float gx = -1000 * sin(pitch * PI / 180);
+            float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
+            float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
+
+            // calculating orientation
+            float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
+            float compass = zerodir - yaw;
+            if (compass < 0) {
+                compass += 360;
+            }
+            float angle1 = 90 - roll; // tilt up = positive, tilt down = negative
+            float angle2 = -pitch; // right = positive, left = negative
+
+            //std::cout << "  Compass: " << compass << std::endl;
+            //std::cout << "  Angle 1: " << angle1 << std::endl;
+            //std::cout << "  Angle 2: " << angle2 << std::endl;
+
+            /***************/
+            /***** Vis *****/
+            /***************/
+
             // Clear the screen
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
@@ -298,10 +366,18 @@ int main()
             int x_location_pixel = static_cast<int>(x_location * 150);
             int y_location_pixel = static_cast<int>(y_location * 150);
 
+            // Calculate line for orientation, currently assuming that North is in the positive x direction
+            int length = 20;
+            int x1 = x_location_pixel + length * cos(compass * PI / 180);
+            int y1 = y_location_pixel + length * sin(compass * PI / 180);
+
             // Draw the object
             SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
             SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
             SDL_RenderFillRect(renderer, &object_rect);
+
+            // Draw line for orientation
+            SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x1, y1);
 
             // Presents the rendereer to the screen
             SDL_RenderPresent(renderer);
