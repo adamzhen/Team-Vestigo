@@ -426,7 +426,7 @@ int main()
             z_location = (point_1_prime(2) + point_2_prime(2) + point_3_prime(2) + point_4_prime(2)) / 4;
 
             // writes the location data to the console
-            //std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
+            std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
 
             // Handle events (such as window close)
             SDL_Event event;
@@ -492,12 +492,10 @@ int main()
             SDL_RenderClear(renderer);
 
             // Convert the object position from meters to pixels
-            x_location = imuX;
-            y_location = imuY;
+            // x_location = imuX;
+            // y_location = imuY;
             int x_location_pixel = static_cast<int>(x_location * screen_scale);
             int y_location_pixel = static_cast<int>(y_location * screen_scale);
-            //x_location_pixel = 40;
-            //y_location_pixel = 40;
 
             // Calculate line for orientation, currently assuming that North is in the positive x direction
             int length = 20;

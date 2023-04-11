@@ -349,14 +349,25 @@ void loop()
                             //    printRawAGMT( myICM.agmt );     // Uncomment this to see the raw values, taken directly from the agmt structure
     //SERIAL_PORT.print(F("Scaled. Acc (mg): "));
 
-    float biasAccX = 0;
-    float biasAccY = -10;
-    float biasAccZ = 20;
-
     ICM_20948_I2C *sensor = &myICM;
-    accX = sensor->accX() - biasAccX;
-    accY = sensor->accY() - biasAccY;
-    accZ = sensor->accZ() - biasAccZ;
+    accX = sensor->accX();
+    accY = sensor->accY();
+    accZ = sensor->accZ();
+
+    // correcting biases
+    float biasAccX = 0;
+    float biasAccY = 0;
+    float biasAccZ = 0;
+    if (abs(accY-1000) < 50){
+      biasAccY = -12;      
+    } 
+    if (abs(accZ-1000) < 50){
+      biasAccZ = 20;      
+    } 
+    accX -= biasAccX;
+    accY -= biasAccY;
+    accZ -= biasAccZ;
+    
     // float gyrX = sensor->gyrX();
     // float gyrY = sensor->gyrY();
     // float gyrZ = sensor->gyrZ();

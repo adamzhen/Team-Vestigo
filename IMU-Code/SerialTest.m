@@ -16,7 +16,7 @@ fileID = fopen(filename,'w');
 tic;
 
 % Read and display the serial data
-for c = 1:1000
+for c = 1:2000
     data = readline(s);
     % Write the array to the text file using fprintf
     fprintf(fileID, '%d,%s\n',c,data);
