@@ -19,7 +19,21 @@
 #include <fstream>
 #include <vector>
 #include <tuple>
+
+// Kalman includes
+#include "SystemModel.hpp"
+#include "PositionMeasurementModel.hpp"
+#include <kalman/ExtendedKalmanFilter.hpp>
 #include <kalman/UnscentedKalmanFilter.hpp>
+
+typedef float T;
+// Some type shortcuts
+typedef KalmanExamples::Vestigo::State<T> State;
+typedef KalmanExamples::Vestigo::Control<T> Control;
+typedef KalmanExamples::Vestigo::SystemModel<T> SystemModel;
+
+typedef KalmanExamples::Vestigo::PositionMeasurement<T> PositionMeasurement;
+typedef KalmanExamples::Vestigo::PositionMeasurementModel<T> PositionModel;
 
 using std::cout;
 using std::cin;
@@ -186,7 +200,7 @@ Eigen::Vector3d trilateration(float distance_1, float distance_2, float distance
 }
 
 // Incoming Data Processing
-std::vector<float> dataProcessing(std::string str) 
+std::vector<float> dataProcessing(std::string str)
 {
     std::vector<float> data;
 
@@ -219,7 +233,7 @@ int main()
     /********* Variable *********
      ******* Declarations *******/
 
-    // Anchor Positions in x,y,z
+     // Anchor Positions in x,y,z
     Eigen::Vector3d point_1;
     Eigen::Vector3d point_2;
     Eigen::Vector3d point_3;
@@ -332,18 +346,18 @@ int main()
     std::cout << "  Point 4: " << point_4.transpose() << std::endl;
 
     // IMU Orientation Startup Delay
-    /*std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
-    int i = 30;
-    while (i != 0) {
-        std::cout << i << "seconds" << std::endl;
-        i -= 5;
-        Sleep(5000);
-    }*/
+    //std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
+    //int i = 30;
+    //while (i != 0) {
+    //    std::cout << i << " seconds" << std::endl;
+    //    i -= 5;
+    //    Sleep(5000);
+    //}
 
     /***** Tracking File ****
      ******** Startup *******/
 
-    // Open the file for writing
+     // Open the file for writing
     std::ofstream outFile("Tracked Location", std::ios::app);
 
     // Check if the file was opened successfully
@@ -363,7 +377,7 @@ int main()
     /********* UWB *********
      ******** Socket *******/
 
-    // check if UWB socket connection is good
+     // check if UWB socket connection is good
     SOCKET sock_1 = socket(AF_INET, SOCK_DGRAM, 0);
     u_long mode = 1;
     int result = ioctlsocket(sock_1, FIONBIO, &mode);
@@ -399,7 +413,7 @@ int main()
     /********* IMU *********
      ******** Socket *******/
 
-    // checks if IMU socket connection is good
+     // checks if IMU socket connection is good
     SOCKET sock_2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock_2 == INVALID_SOCKET) {
         std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
@@ -426,10 +440,10 @@ int main()
     sockaddr_in clientAddr_2;
     int clientAddrLen_2 = sizeof(clientAddr_2);
 
-     /********** SDL *********
-      ******** Startup *******/
+    /********** SDL *********
+     ******** Startup *******/
 
-    // Initialize SDL
+     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cout << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
         return 1;
@@ -467,7 +481,7 @@ int main()
 
         // pulls UWB data from first port
         recvLen_1 = recvfrom(sock_1, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr_1, &clientAddrLen_1);
-        
+
         // checks if data is received on port
         if (recvLen_1 > 0) {
             std::string str_1(buffer, recvLen_1);
@@ -477,7 +491,7 @@ int main()
             distance_3 = UWB_data[2];
             distance_4 = UWB_data[3];
         }
-        
+
 
         // pulls IMU data from second port
         recvLen_2 = recvfrom(sock_2, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr_2, &clientAddrLen_2);
@@ -489,18 +503,18 @@ int main()
         std::string str_2(buffer, recvLen_2);
         IMU_data = dataProcessing(str_2);
         roll = IMU_data[0]; // degrees
-        pitch =IMU_data[1]; // degrees
+        pitch = IMU_data[1]; // degrees
         yaw = IMU_data[2]; // degrees
-        rawAx =IMU_data[3]; // mg
-        rawAy =IMU_data[4]; // mg
-        rawAz =IMU_data[5]; // mg
+        rawAx = IMU_data[3]; // mg
+        rawAy = IMU_data[4]; // mg
+        rawAz = IMU_data[5]; // mg
         dt = IMU_data[6] / 1000000; // s
 
 
         /***************/
         /***** UWB *****/
         /***************/
-        
+
         // checks if UWB received data this pass
         if (recvLen_1 <= 0) {
             x_location = previous_UWB_position[0];
@@ -560,13 +574,13 @@ int main()
 
         double PI = M_PI;
         // calculating gravity components (mg)
-        float gx = -1000 * sin(pitch * PI / 180);
+        float gx = 1000 * sin(pitch * PI / 180);
         float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
         float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
 
         // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
         float ax = (rawAx - gx) / 9810;
-        float ay = (rawAz - gz) / 9810;
+        float ay = -(rawAz - gz) / 9810;
         float az = (rawAy - gy) / 9810;
 
         // update velocity (m/s)
@@ -575,13 +589,79 @@ int main()
         vz += az * dt;
 
         // update position (m)
-        imuX += vx * dt;
-        imuY += vy * dt;
-        imuZ += vz * dt;
+        //imuX += vx * dt;
+        //imuY += vy * dt;
+        //imuZ += vz * dt;
 
         std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
         std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
-        std::cout << "  X: " << imuX << "  Y: " << imuY << "  Z: " << imuZ << std::endl;
+
+        /***************/
+        /***** EKF *****/
+        /***************/
+
+        // Simulated (true) system state
+        State x;
+        x.setZero();
+
+        // Control input
+        Control u;
+        // System
+        SystemModel sys;
+
+        // Measurement models
+        // Set position landmarks at (0, 0) and (30, 75)
+        PositionModel pm(0, 0);
+
+        // Some filters for estimation
+        // Pure predictor without measurement updates
+        Kalman::ExtendedKalmanFilter<State> predictor;
+        // Extended Kalman Filter
+        Kalman::ExtendedKalmanFilter<State> ekf;
+        // Unscented Kalman Filter
+        Kalman::UnscentedKalmanFilter<State> ukf(1);
+
+        // Init filters with true system state
+        predictor.init(x);
+        ekf.init(x);
+        ukf.init(x);
+
+        // Sets control input
+        u.vx() = vx;
+        u.vx() = vy;
+        u.dt() = dt;
+
+        // System model
+        float room_orientation = 90; // compass direction of positive x-axis of the room
+        x.theta() = (compass) * PI / 180;
+        x = sys.f(x, u);
+
+        // Predict state for current time-step using the filters
+        auto x_pred = predictor.predict(sys, u);
+        auto x_ekf = ekf.predict(sys, u);
+        auto x_ukf = ukf.predict(sys, u);
+
+        // Position measurement
+        {
+            // We can measure the position every 10th step
+            PositionMeasurement position = pm.h(x); // pm.h(x)
+
+            // Update EKF
+            x_ekf = ekf.update(pm, position);
+
+            // Update UKF
+            x_ukf = ukf.update(pm, position);
+        }
+
+        // Print to stdout as csv format
+        std::cout << x.x() << "," << x.y() << "," << x.theta() << " | "
+            << x_pred.x() << "," << x_pred.y() << "," << x_pred.theta() << " | "
+            << x_ekf.x() << "," << x_ekf.y() << "," << x_ekf.theta() << " | "
+            << x_ukf.x() << "," << x_ukf.y() << "," << x_ukf.theta()
+            << std::endl;
+
+        float imuX= x.x();
+        float imuY = x.y();
 
         /***************/
         /***** Vis *****/
@@ -592,26 +672,35 @@ int main()
         SDL_RenderClear(renderer);
 
         // Convert the object position from meters to pixels
-        // x_location = imuX;
-        // y_location = imuY;
+        x_location = 1;
+        y_location = 1;
         int x_location_pixel = static_cast<int>(x_location * screen_scale);
         int y_location_pixel = static_cast<int>(y_location * screen_scale);
+        int imux_location_pixel = static_cast<int>(imuX * screen_scale);
+        int imuy_location_pixel = static_cast<int>(imuY * screen_scale);
 
         // Calculate line for orientation, currently assuming that North is in the positive x direction
         int length = 20;
-        int x1 = x_location_pixel + length * cos(compass * PI / 180);
-        int y1 = y_location_pixel + length * sin(compass * PI / 180);
+        int x1 = imux_location_pixel + length * cos(compass * PI / 180);
+        int y1 = imuy_location_pixel + length * sin(compass * PI / 180);
 
         // Draw the object
         SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
         SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
         SDL_RenderFillRect(renderer, &object_rect);
 
+        // Draw IMU position
+        SDL_Rect object_rect2 = { imux_location_pixel, imuy_location_pixel, 7, 7 };
+        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        SDL_RenderFillRect(renderer, &object_rect2);
+
         // Draw line for orientation
         SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x1, y1);
 
         // Presents the rendereer to the screen
         SDL_RenderPresent(renderer);
+
+
 
     }
 

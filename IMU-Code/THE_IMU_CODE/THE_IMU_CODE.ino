@@ -43,9 +43,10 @@
 // The value of the last bit of the I2C address.
 // On the SparkFun 9DoF IMU breakout the default is 1, and when the ADR jumper is closed the value becomes 0
 #define AD0_VAL 1
+#define LED_PIN 13
 
 //#define DEBUG // used for debugging
-//#define TRANSMIT
+#define TRANSMIT
 #define PRINT
 
 #ifdef USE_SPI
@@ -59,19 +60,29 @@ const char *ssid;
 const char *password;
 const char *host;  
 
-const int network = 1; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
-const int port = 1233;
+const int network = 0; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
+const int port = 1235;
 
 void setup()
 {
   SERIAL_PORT.begin(9600); // Start the serial console
 
+const char *Aiden_laptop = "192.168.8.101";
+const char *Evan_laptop = "192.168.8.162";
+const char *Adam_laptop = "192.168.8.203";
+const char *Aiden_PC = "192.168.8.122";
+const char *Aiden_laptop_LAN = "192.168.8.219";
+
 #ifdef TRANSMIT
   // Setting WiFi
   if (network == 0) {
-    ssid = "";
-    password = "";
-    host = "192.168.";   
+    ssid = "Vestigo-Router";
+    password = "Vestigo&2023";
+    // host = Aiden_laptop; 
+    // host = Evan_laptop;
+    host = Adam_laptop;
+    // host = Aiden_PC;
+    //host = Aiden_laptop_LAN; 
   } 
   else if (network == 1){
     ssid = "UMAT_WiFi";
@@ -223,6 +234,19 @@ void setup()
       delay(500);
     }
   }
+
+  // WAIT FOR SENSOR TO CALIBRATE (LOCK ONTO CORRECT ORIENTATION)
+  int elapsedCalibration = 0;
+  int calibrationTime = 30000;
+  pinMode(LED_PIN, OUTPUT);
+  while (elapsedCalibration <= calibrationTime){
+    digitalWrite(LED_PIN, HIGH); // turn the LED on   
+    delay(500);
+    digitalWrite(LED_PIN, LOW); // turn the LED off  
+    delay(500); 
+    SERIAL_PORT.println(elapsedCalibration/1000);     
+    elapsedCalibration += 1000;
+  }
 }
 
 float roll = 0;
@@ -362,12 +386,12 @@ void loop()
       biasAccY = -12;      
     } 
     if (abs(accZ-1000) < 50){
-      biasAccZ = 20;      
+      biasAccZ = 22;      
     } 
     accX -= biasAccX;
     accY -= biasAccY;
     accZ -= biasAccZ;
-    
+
     // float gyrX = sensor->gyrX();
     // float gyrY = sensor->gyrY();
     // float gyrZ = sensor->gyrZ();
@@ -475,8 +499,10 @@ void loop()
     udp.beginPacket(ip, port);
     udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
     udp.endPacket();
+#ifdef DEBUG
     SERIAL_PORT.println("Json data sent");
     SERIAL_PORT.println(jsonString.length());
+#endif
   } else {
     SERIAL_PORT.println("Unable to resolve hostname");
   }
