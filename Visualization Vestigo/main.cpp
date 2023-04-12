@@ -546,9 +546,6 @@ int main()
             }
         }
 
-        // Write location data to file
-        outFile << "X Position: " << x_location << ", Y Position: " << y_location << std::endl;
-
         // Storing current position
         if (x_location - previous_UWB_position[0] != 0) {
             previous_UWB_position[0] = x_location;
@@ -632,8 +629,12 @@ int main()
         u.dt() = dt;
 
         // System model
-        float room_orientation = 90; // compass direction of positive x-axis of the room
-        x.theta() = (compass) * PI / 180;
+        float room_orientation = 150; // compass direction of positive x-axis of the room
+        float theta = room_orientation - compass;
+        if (theta < 0) {
+            theta += 360;
+        }
+        x.theta() = theta * PI / 180;
         x = sys.f(x, u);
 
         // Predict state for current time-step using the filters
@@ -660,8 +661,11 @@ int main()
             << x_ukf.x() << "," << x_ukf.y() << "," << x_ukf.theta()
             << std::endl;
 
-        float imuX= x.x();
+        float imuX = x.x();
         float imuY = x.y();
+
+        // Write location data to file
+        outFile << "" << x_location << ", " << y_location << ", " << theta << std::endl;
 
         /***************/
         /***** Vis *****/
@@ -672,27 +676,25 @@ int main()
         SDL_RenderClear(renderer);
 
         // Convert the object position from meters to pixels
-        x_location = 1;
-        y_location = 1;
         int x_location_pixel = static_cast<int>(x_location * screen_scale);
         int y_location_pixel = static_cast<int>(y_location * screen_scale);
-        int imux_location_pixel = static_cast<int>(imuX * screen_scale);
-        int imuy_location_pixel = static_cast<int>(imuY * screen_scale);
+        //int imux_location_pixel = static_cast<int>(imuX * screen_scale);
+        //int imuy_location_pixel = static_cast<int>(imuY * screen_scale);
 
         // Calculate line for orientation, currently assuming that North is in the positive x direction
         int length = 20;
-        int x1 = imux_location_pixel + length * cos(compass * PI / 180);
-        int y1 = imuy_location_pixel + length * sin(compass * PI / 180);
+        int x1 = x_location_pixel + length * cos(theta * PI / 180);
+        int y1 = y_location_pixel + length * sin(theta * PI / 180);
 
         // Draw the object
         SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
         SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
         SDL_RenderFillRect(renderer, &object_rect);
 
-        // Draw IMU position
-        SDL_Rect object_rect2 = { imux_location_pixel, imuy_location_pixel, 7, 7 };
-        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-        SDL_RenderFillRect(renderer, &object_rect2);
+        //// Draw IMU position
+        //SDL_Rect object_rect2 = { imux_location_pixel, imuy_location_pixel, 7, 7 };
+        //SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        //SDL_RenderFillRect(renderer, &object_rect2);
 
         // Draw line for orientation
         SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x1, y1);

@@ -80,9 +80,9 @@ const char *Aiden_laptop_LAN = "192.168.8.219";
     password = "Vestigo&2023";
     // host = Aiden_laptop; 
     // host = Evan_laptop;
-    host = Adam_laptop;
+    // host = Adam_laptop;
     // host = Aiden_PC;
-    //host = Aiden_laptop_LAN; 
+    host = Adam_laptop; 
   } 
   else if (network == 1){
     ssid = "UMAT_WiFi";
