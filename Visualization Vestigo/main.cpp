@@ -613,8 +613,6 @@ int main()
         // Presents the rendereer to the screen
         SDL_RenderPresent(renderer);
 
-       
-
     }
 
     // Close the file
