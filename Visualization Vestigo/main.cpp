@@ -19,6 +19,7 @@
 #include <fstream>
 #include <vector>
 #include <tuple>
+#include <kalman/UnscentedKalmanFilter.hpp>
 
 using std::cout;
 using std::cin;
@@ -26,6 +27,7 @@ using std::endl;
 
 // Definitions
 const double inch_to_meter = 0.0254;
+std::vector<float> previous_UWB_position{ 0, 0, 0 };
 
 // Function to get dimensions of room from user input
 double* getDimensions()
@@ -183,17 +185,65 @@ Eigen::Vector3d trilateration(float distance_1, float distance_2, float distance
     return x;
 }
 
+// Incoming Data Processing
+std::vector<float> dataProcessing(std::string str) 
+{
+    std::vector<float> data;
+
+    size_t start = str.find("[") + 1;
+    size_t end = str.find(",");
+
+    while (str.find("]", start) != -1) {
+        data.push_back(std::stof(str.substr(start, end - start)));
+        start = end + 1;
+        end = str.find(",", start);
+        if (end == -1) {
+            end = str.find("]", start);
+        }
+    }
+    /*for (int i = 0; i < data.size(); i++) {
+        std::cout << data[i] << ", ";
+    }
+    std::cout << std::endl;*/
+
+    return data;
+}
+
+// Kalman Filter
+
+
+
 // main code
 int main()
 {
-    // Declarations
+    /********* Variable *********
+     ******* Declarations *******/
+
+    // Anchor Positions in x,y,z
     Eigen::Vector3d point_1;
     Eigen::Vector3d point_2;
     Eigen::Vector3d point_3;
     Eigen::Vector3d point_4;
 
+    // Room Dimensions
     double length;
     double width;
+
+    // Defines variables for location coordinates
+    double x_location = 0;
+    double y_location = 0;
+    double z_location = 0;
+
+    // Defines position and velocity variables
+    float imuX = 0;
+    float imuY = 0;
+    float imuZ = 0;
+    float vx = 0;
+    float vy = 0;
+    float vz = 0;
+
+    /********* Room *********
+     ******** Config *******/
 
     std::cout << "Do you want to set up a new room? (Y/N)? ";
     char choice_new_room;
@@ -281,6 +331,18 @@ int main()
     std::cout << "  Point 3: " << point_3.transpose() << std::endl;
     std::cout << "  Point 4: " << point_4.transpose() << std::endl;
 
+    // IMU Orientation Startup Delay
+    /*std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
+    int i = 30;
+    while (i != 0) {
+        std::cout << i << "seconds" << std::endl;
+        i -= 5;
+        Sleep(5000);
+    }*/
+
+    /***** Tracking File ****
+     ******** Startup *******/
+
     // Open the file for writing
     std::ofstream outFile("Tracked Location", std::ios::app);
 
@@ -290,6 +352,7 @@ int main()
         return 1;
     }
 
+    // Wifi Startup Check
     WSADATA wsaData;
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0) {
@@ -297,34 +360,74 @@ int main()
         return 1;
     }
 
-    // check if socket connection is good
-    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock == INVALID_SOCKET) {
+    /********* UWB *********
+     ******** Socket *******/
+
+    // check if UWB socket connection is good
+    SOCKET sock_1 = socket(AF_INET, SOCK_DGRAM, 0);
+    u_long mode = 1;
+    int result = ioctlsocket(sock_1, FIONBIO, &mode);
+    if (result != NO_ERROR) {
+        std::cerr << "Error setting socket to non-blocking mode: " << result << std::endl;
+    }
+    if (sock_1 == INVALID_SOCKET) {
         std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
         WSACleanup();
         return 1;
     }
 
-    // defines port and ip address
-    sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(1234);
-    serverAddr.sin_port = htons(1233);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    // defines port and ip address for UWB
+    sockaddr_in serverAddr_1;
+    serverAddr_1.sin_family = AF_INET;
+    serverAddr_1.sin_port = htons(1234);
+    serverAddr_1.sin_addr.s_addr = INADDR_ANY;
 
     // checks if port binded properly
-    if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+    if (bind(sock_1, (sockaddr*)&serverAddr_1, sizeof(serverAddr_1)) == SOCKET_ERROR) {
         std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
-        closesocket(sock);
+        closesocket(sock_1);
         WSACleanup();
         return 1;
     }
 
     // defines buffer size and client address
     char buffer[1024];
-    int recvLen;
-    sockaddr_in clientAddr;
-    int clientAddrLen = sizeof(clientAddr);
+    int recvLen_1;
+    sockaddr_in clientAddr_1;
+    int clientAddrLen_1 = sizeof(clientAddr_1);
+
+    /********* IMU *********
+     ******** Socket *******/
+
+    // checks if IMU socket connection is good
+    SOCKET sock_2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock_2 == INVALID_SOCKET) {
+        std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
+        WSACleanup();
+        return 1;
+    }
+
+    // defines port and ip address for IMU
+    sockaddr_in serverAddr_2;
+    serverAddr_2.sin_family = AF_INET;
+    serverAddr_2.sin_port = htons(1235);
+    serverAddr_2.sin_addr.s_addr = INADDR_ANY;
+
+    // checks if port binded properly
+    if (bind(sock_2, (sockaddr*)&serverAddr_2, sizeof(serverAddr_2)) == SOCKET_ERROR) {
+        std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
+        closesocket(sock_2);
+        WSACleanup();
+        return 1;
+    }
+
+    // defines buffer size and client address
+    int recvLen_2;
+    sockaddr_in clientAddr_2;
+    int clientAddrLen_2 = sizeof(clientAddr_2);
+
+     /********** SDL *********
+      ******** Startup *******/
 
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -343,77 +446,67 @@ int main()
     int object_height = 7;
     SDL_Color object_color = { 210, 0 , 0, 255 };
 
-    // Defines variables for location coordinates
-    double x_location = 0;
-    double y_location = 0;
-    double z_location = 0;
-
-    // Defines position and velocity variables
-    float imuX = 0;
-    float imuY = 0;
-    float imuZ = 0;
-    float vx = 0;
-    float vy = 0;
-    float vz = 0;
-
     // data collection and display loop
     bool quit = false;
     while (!quit) {
-        recvLen = recvfrom(sock, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr, &clientAddrLen);
-        if (recvLen > 0) {
-            std::string str(buffer, recvLen);
 
-            // reads incoming string into data
-            std::vector<double> data;
-            float distance_1 = 0;
-            float distance_2 = 0;
-            float distance_3 = 0;
-            float distance_4 = 0;
-            float roll = 0;
-            float pitch = 0;
-            float yaw = 0;
-            float rawAx = 0;
-            float rawAy = 0;
-            float rawAz = 0;
-            float dt = 0;
+        // reads incoming string into data
+        std::vector<float> UWB_data;
+        std::vector<float> IMU_data;
+        double distance_1;
+        float distance_2;
+        float distance_3;
+        float distance_4;
+        float roll = 0;
+        float pitch = 0;
+        float yaw = 0;
+        float rawAx = 0;
+        float rawAy = 0;
+        float rawAz = 0;
+        float dt = 0;
 
-            size_t start = str.find("[") + 1;
-            size_t end = str.find(",");
+        // pulls UWB data from first port
+        recvLen_1 = recvfrom(sock_1, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr_1, &clientAddrLen_1);
+        
+        // checks if data is received on port
+        if (recvLen_1 > 0) {
+            std::string str_1(buffer, recvLen_1);
+            UWB_data = dataProcessing(str_1);
+            distance_1 = UWB_data[0];
+            distance_2 = UWB_data[1];
+            distance_3 = UWB_data[2];
+            distance_4 = UWB_data[3];
+        }
+        
 
-            while (str.find("]", start) != -1) {
-                data.push_back(std::stof(str.substr(start, end - start)));
-                start = end + 1;
-                end = str.find(",", start);
-                if (end == -1) {
-                    end = str.find("]", start);
-                }
-            }
-            for (int i = 0; i < data.size(); i++) {
-                std::cout << data[i] << ", ";
-            }
-            std::cout << std::endl;
+        // pulls IMU data from second port
+        recvLen_2 = recvfrom(sock_2, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr_2, &clientAddrLen_2);
+
+        if (recvLen_2 <= 0) {
+            return 1;
+        }
+
+        std::string str_2(buffer, recvLen_2);
+        IMU_data = dataProcessing(str_2);
+        roll = IMU_data[0]; // degrees
+        pitch =IMU_data[1]; // degrees
+        yaw = IMU_data[2]; // degrees
+        rawAx =IMU_data[3]; // mg
+        rawAy =IMU_data[4]; // mg
+        rawAz =IMU_data[5]; // mg
+        dt = IMU_data[6] / 1000000; // s
 
 
-            if (data.size() == 4) {
-                distance_1 = data[0];
-                distance_2 = data[1];
-                distance_3 = data[2];
-                distance_4 = data[3];
-            }
-            else if (data.size() == 7) {
-                roll = data[0]; // degrees
-                pitch = data[1]; // degrees
-                yaw = data[2]; // degrees
-                rawAx = data[3]; // mg
-                rawAy = data[4]; // mg
-                rawAz = data[5]; // mg
-                dt = data[6] / 1000000; // s
-            }
-
-            /***************/
-            /***** UWB *****/
-            /***************/
-
+        /***************/
+        /***** UWB *****/
+        /***************/
+        
+        // checks if UWB received data this pass
+        if (recvLen_1 <= 0) {
+            x_location = previous_UWB_position[0];
+            y_location = previous_UWB_position[1];
+        }
+        else {
             // calculates the prime points to determine the location given overestimates
             Eigen::Vector3d point_1_prime = trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3);
             Eigen::Vector3d point_2_prime = trilateration(distance_1, distance_2, distance_4, point_1, point_2, point_4);
@@ -424,96 +517,103 @@ int main()
             x_location = (point_1_prime(0) + point_2_prime(0) + point_3_prime(0) + point_4_prime(0)) / 4;
             y_location = (point_1_prime(1) + point_2_prime(1) + point_3_prime(1) + point_4_prime(1)) / 4;
             z_location = (point_1_prime(2) + point_2_prime(2) + point_3_prime(2) + point_4_prime(2)) / 4;
-
-            // writes the location data to the console
-            std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
-
-            // Handle events (such as window close)
-            SDL_Event event;
-            while (SDL_PollEvent(&event))
-            {
-                if (event.type == SDL_QUIT)
-                {
-                    quit = true;
-                }
-            }
-
-            // Write location data to file
-            outFile << "X Position: " << x_location << ", Y Position: " << y_location << std::endl;
-
-            /***************/
-            /***** IMU *****/
-            /***************/
-
-            // calculating orientation
-            float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
-            float compass = zerodir - yaw;
-            if (compass < 0) {
-                compass += 360;
-            }
-            float angle1 = 90 - roll; // tilt up = positive, tilt down = negative
-            float angle2 = -pitch; // right = positive, left = negative
-
-            //std::cout << "  Compass: " << compass << std::endl;
-            //std::cout << "  Angle 1: " << angle1 << std::endl;
-            //std::cout << "  Angle 2: " << angle2 << std::endl;
-
-            double PI = M_PI;
-            // calculating gravity components (mg)
-            float gx = -1000 * sin(pitch * PI / 180);
-            float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
-            float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
-
-            // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
-            float ax = (rawAx - gx) / 9810;
-            float ay = (rawAz - gz) / 9810;
-            float az = (rawAy - gy) / 9810;
-
-            // update velocity (m/s)
-            vx += ax * dt;
-            vy += ay * dt;
-            vz += az * dt;
-
-            // update position (m)
-            imuX += vx * dt;
-            imuY += vy * dt;
-            imuZ += vz * dt;
-
-            std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
-            std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
-            std::cout << "  X: " << imuX << "  Y: " << imuY << "  Z: " << imuZ << std::endl;
-
-            /***************/
-            /***** Vis *****/
-            /***************/
-
-            // Clear the screen
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderClear(renderer);
-
-            // Convert the object position from meters to pixels
-            // x_location = imuX;
-            // y_location = imuY;
-            int x_location_pixel = static_cast<int>(x_location * screen_scale);
-            int y_location_pixel = static_cast<int>(y_location * screen_scale);
-
-            // Calculate line for orientation, currently assuming that North is in the positive x direction
-            int length = 20;
-            int x1 = x_location_pixel + length * cos(compass * PI / 180);
-            int y1 = y_location_pixel + length * sin(compass * PI / 180);
-
-            // Draw the object
-            SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
-            SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
-            SDL_RenderFillRect(renderer, &object_rect);
-
-            // Draw line for orientation
-            SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x1, y1);
-
-            // Presents the rendereer to the screen
-            SDL_RenderPresent(renderer);
-
         }
+
+        // writes the location data to the console
+        std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
+
+        // Handle events (such as window close)
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_QUIT)
+            {
+                quit = true;
+            }
+        }
+
+        // Write location data to file
+        outFile << "X Position: " << x_location << ", Y Position: " << y_location << std::endl;
+
+        // Storing current position
+        if (x_location - previous_UWB_position[0] != 0) {
+            previous_UWB_position[0] = x_location;
+            previous_UWB_position[1] = y_location;
+        }
+
+        /***************/
+        /***** IMU *****/
+        /***************/
+
+        // calculating orientation
+        float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
+        float compass = zerodir - yaw;
+        if (compass < 0) {
+            compass += 360;
+        }
+        float angle1 = 90 - roll; // tilt up = positive, tilt down = negative
+        float angle2 = -pitch; // right = positive, left = negative
+
+        std::cout << "  Compass: " << compass << std::endl;
+        std::cout << "  Angle 1: " << angle1 << std::endl;
+        std::cout << "  Angle 2: " << angle2 << std::endl;
+
+        double PI = M_PI;
+        // calculating gravity components (mg)
+        float gx = -1000 * sin(pitch * PI / 180);
+        float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
+        float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
+
+        // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
+        float ax = (rawAx - gx) / 9810;
+        float ay = (rawAz - gz) / 9810;
+        float az = (rawAy - gy) / 9810;
+
+        // update velocity (m/s)
+        vx += ax * dt;
+        vy += ay * dt;
+        vz += az * dt;
+
+        // update position (m)
+        imuX += vx * dt;
+        imuY += vy * dt;
+        imuZ += vz * dt;
+
+        std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
+        std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
+        std::cout << "  X: " << imuX << "  Y: " << imuY << "  Z: " << imuZ << std::endl;
+
+        /***************/
+        /***** Vis *****/
+        /***************/
+
+        // Clear the screen
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        // Convert the object position from meters to pixels
+        // x_location = imuX;
+        // y_location = imuY;
+        int x_location_pixel = static_cast<int>(x_location * screen_scale);
+        int y_location_pixel = static_cast<int>(y_location * screen_scale);
+
+        // Calculate line for orientation, currently assuming that North is in the positive x direction
+        int length = 20;
+        int x1 = x_location_pixel + length * cos(compass * PI / 180);
+        int y1 = y_location_pixel + length * sin(compass * PI / 180);
+
+        // Draw the object
+        SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
+        SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
+        SDL_RenderFillRect(renderer, &object_rect);
+
+        // Draw line for orientation
+        SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x1, y1);
+
+        // Presents the rendereer to the screen
+        SDL_RenderPresent(renderer);
+
+       
 
     }
 
