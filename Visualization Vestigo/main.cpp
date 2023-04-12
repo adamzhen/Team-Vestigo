@@ -625,7 +625,7 @@ int main()
 
         // Sets control input
         u.vx() = vx;
-        u.vx() = vy;
+        u.vy() = vy;
         u.dt() = dt;
 
         // System model
@@ -665,7 +665,7 @@ int main()
         float imuY = x.y();
 
         // Write location data to file
-        outFile << "" << x_location << ", " << y_location << ", " << theta << std::endl;
+        outFile << "" << x_location << ", " << y_location << ", " << theta << ", " << vx << ", " << vy << std::endl;
 
         /***************/
         /***** Vis *****/
