@@ -682,22 +682,28 @@ int main()
         //int imuy_location_pixel = static_cast<int>(imuY * screen_scale);
 
         // Calculate line for orientation, currently assuming that North is in the positive x direction
-        int length = 20;
-        int x1 = x_location_pixel + length * cos(theta * PI / 180);
-        int y1 = y_location_pixel + length * sin(theta * PI / 180);
+        int length = 50;
+        int x_top = x_location_pixel + length * cos(compass * PI / 180);
+        int y_top = y_location_pixel + length * sin(compass * PI / 180);
+        int x_side_left = x_location_pixel + length * cos(compass * PI / 180 - PI / 2);
+        int y_side_left = y_location_pixel + length * sin(compass * PI / 180 - PI / 2);
+        int x_side_right = x_location_pixel + length * cos(compass * PI / 180 + PI / 2);
+        int y_side_right = y_location_pixel + length * sin(compass * PI / 180 + PI / 2);
 
         // Draw the object
-        SDL_Rect object_rect = { x_location_pixel, y_location_pixel, object_width, object_height };
+        SDL_Rect object_rect = { x_location_pixel - object_width / 2, y_location_pixel - object_height / 2, x_location_pixel + object_width / 2, y_location_pixel + object_height / 2 };
         SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
         SDL_RenderFillRect(renderer, &object_rect);
+
+        // Draw line for orientation
+        SDL_RenderDrawLine(renderer, x_location_pixel - object_width / 2, y_location_pixel - object_height / 2, x_side_left, y_side_left);
+        SDL_RenderDrawLine(renderer, x_location_pixel + object_width / 2, y_location_pixel - object_height / 2, x_side_right, y_side_right);
+        SDL_RenderDrawLine(renderer, x_side_left, y_side_left, x_side_right, y_side_right);
 
         //// Draw IMU position
         //SDL_Rect object_rect2 = { imux_location_pixel, imuy_location_pixel, 7, 7 };
         //SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
         //SDL_RenderFillRect(renderer, &object_rect2);
-
-        // Draw line for orientation
-        SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x1, y1);
 
         // Presents the rendereer to the screen
         SDL_RenderPresent(renderer);
