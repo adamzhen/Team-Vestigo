@@ -43,10 +43,14 @@ using std::endl;
 // Definitions
 const double inch_to_meter = 0.0254;
 std::vector<float> previous_UWB_position{ 0, 0, 0 };
-std::vector<float> UWB_x_storage;
-std::vector<float> UWB_y_storage;
+std::vector<float> UWB_x_storage{ 0 };
+std::vector<float> UWB_y_storage{ 0 };
+float UWB_mean_x;
+float UWB_mean_y;
+float UWB_x_back;
+float UWB_y_back;
 int strike_count;
-float radius_limit = 0.1;
+float radius_limit = 0.5;
 
 // Function to get dimensions of room from user input
 double* getDimensions()
@@ -239,35 +243,45 @@ float calculate_average(std::vector<float> vector)
 }
 
 // Stationary IMU calibration
-void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY)
+void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY, float& imuXv, float& imuYv, float& imuZv)
 {
-    float UWB_mean_x;
-    float UWB_mean_y;
-
     // checks for exit conditions
-    if (strike_count == 3) {
+    if (UWB_x == UWB_x_back and UWB_y == UWB_y_back) {
+        UWB_x_back = UWB_x;
+        UWB_y_back = UWB_y;
+        return;
+    }
+    else if (strike_count == 3) {
         UWB_mean_x = 0;
         UWB_mean_y = 0;
         UWB_x_storage.clear();
         UWB_y_storage.clear();
 
+        strike_count = 0;
+
         return;
     }
     else if (UWB_x_storage.size() == 0) {
         UWB_mean_x = UWB_x;
-        UWB_mean_x = UWB_y;
+        UWB_mean_y = UWB_y;
 
         UWB_x_storage.push_back(UWB_x);
         UWB_y_storage.push_back(UWB_y);
 
+        UWB_x_back = UWB_x;
+        UWB_y_back = UWB_y;
+
         return;
     }
-    else if (UWB_x_storage.size() == 30) {
-        std::cout << "RESET IMU" << std::endl;
+    else if (UWB_x_storage.size() == 8) {
+        std::cout << "RESET RESET RESET IMU RESET RESET RESET" << std::endl;
         std::cout << "OLD IMU LOCATION: " << imuX << ", " << imuY << std::endl;
 
         imuX = UWB_mean_x;
         imuY = UWB_mean_y;
+        imuXv = 0;
+        imuYv = 0;
+        imuZv = 0;
 
         std::cout << "NEW IMU LOCATION: " << imuX << ", " << imuY << std::endl;
 
@@ -276,13 +290,21 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY)
         UWB_x_storage.clear();
         UWB_y_storage.clear();
 
+        UWB_x_back = UWB_x;
+        UWB_y_back = UWB_y;
+
         return;
     }
 
     float distance = sqrt(pow((UWB_x - UWB_mean_x), 2) + pow((UWB_y - UWB_mean_y), 2));
 
+
     if (distance > radius_limit) {
+        std::cout << "OUT OF BOUNDS" << std::endl;
         strike_count += 1;
+
+        UWB_x_back = UWB_x;
+        UWB_y_back = UWB_y;
 
         return;
     }
@@ -292,6 +314,9 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY)
 
     UWB_mean_x = calculate_average(UWB_x_storage);
     UWB_mean_y = calculate_average(UWB_y_storage);
+
+    UWB_x_back = UWB_x;
+    UWB_y_back = UWB_y;
 
 }
 
@@ -589,7 +614,10 @@ int main()
             x_location = previous_UWB_position[0];
             y_location = previous_UWB_position[1];
         }
-        else {
+        else if (distance_1 != 0 and distance_2 != 0 and distance_3 != 0 and distance_4 != 0) {
+
+            /********QUADLATERATION********/
+
             // calculates the prime points to determine the location given overestimates
             Eigen::Vector3d point_1_prime = trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3);
             Eigen::Vector3d point_2_prime = trilateration(distance_1, distance_2, distance_4, point_1, point_2, point_4);
@@ -600,6 +628,44 @@ int main()
             x_location = (point_1_prime(0) + point_2_prime(0) + point_3_prime(0) + point_4_prime(0)) / 4;
             y_location = (point_1_prime(1) + point_2_prime(1) + point_3_prime(1) + point_4_prime(1)) / 4;
             z_location = (point_1_prime(2) + point_2_prime(2) + point_3_prime(2) + point_4_prime(2)) / 4;
+        }
+        else {
+
+            /********TRILATERATION********/
+
+            std::cout << "TRILATERATION ATTEMPT" << std::endl;
+
+            if (distance_1 == 0) {
+                Eigen::Vector3d prime = trilateration(distance_4, distance_2, distance_3, point_4, point_2, point_3);
+
+                x_location = prime(0);
+                y_location = prime(1);
+                z_location = prime(2);
+            }
+            else if (distance_2 == 0) {
+                Eigen::Vector3d prime = trilateration(distance_1, distance_4, distance_3, point_1, point_4, point_3);
+
+                x_location = prime(0);
+                y_location = prime(1);
+                z_location = prime(2);
+            }
+            else if (distance_3 == 0) {
+                Eigen::Vector3d prime = trilateration(distance_1, distance_2, distance_4, point_1, point_2, point_4);
+
+                x_location = prime(0);
+                y_location = prime(1);
+                z_location = prime(2);
+            }
+            else if (distance_4 == 0) {
+                Eigen::Vector3d prime = trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3);
+
+                x_location = prime(0);
+                y_location = prime(1);
+                z_location = prime(2);
+            }
+            else {
+                std::cout << "ERROR, ALL DATA ACQUIRED" << std::endl;
+            }
         }
 
         // writes the location data to the console
@@ -668,7 +734,7 @@ int main()
         imuX += (cos(rtheta) * vy + cos(rtheta - PI / 2) * vx) * cos(rpitch) * dt;
         imuY += (sin(rtheta) * vy + sin(rtheta - PI / 2) * vx) * cos(rpitch) * dt;
 
-        IMUcalibration(x_location, y_location, imuX, imuY);
+        IMUcalibration(x_location, y_location, imuX, imuY, vx, vy, vz);
 
         //std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
         //std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;

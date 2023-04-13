@@ -8,10 +8,17 @@
 #include <math.h>
 #include <WiFi.h>
 
+const char *Aiden_laptop = "192.168.8.101";
+const char *Evan_laptop = "192.168.8.162";
+const char *Adam_laptop = "192.168.8.203";
+const char *Aiden_PC = "192.168.8.122";
+const char *Aiden_laptop_LAN = "192.168.8.219";
+const char *Adam_laptop_LAN = "192.168.8.148";
+
 // Wifi creds
-const char *ssid = "FREE WIFI NO MALWARE";
-const char *password = "Playadel2005?";
-const char *host = "192.168.110.169";
+const char *ssid = "Vestigo-Router";
+const char *password = "Vestigo&2023";
+const char *host = Aiden_laptop_LAN;
 const int port = 1234;
 
 
@@ -27,6 +34,7 @@ int key = 0;
 
 // counter
 int counter = 0;
+
 
 // connection pins
 const uint8_t PIN_RST = 27; // reset pin
@@ -281,9 +289,45 @@ void loop()
     distance_4_data.push_back(distance);
   }
 
+  int distance_counter = 0;
+
+  if (distance_1_data.size() > 5) {
+    distance_counter += 1;
+  }
+  if (distance_2_data.size() > 5) {
+    distance_counter += 1;
+  }
+  if (distance_3_data.size() > 5) {
+    distance_counter += 1;
+  }
+  if (distance_4_data.size() > 5) {
+    distance_counter += 1;
+  }
+
   // checks if there is enough data to send
-  if (counter >= 4 and distance_1_data.size() >= 1 and distance_2_data.size() >= 1 and distance_3_data.size() >= 1 and distance_4_data.size() >= 1) 
+  if (distance_counter >= 3) 
   {
+
+    Serial.print("D1: ");
+    for (int j = 0; j < distance_1_data.size(); j ++) {
+      Serial.print(distance_1_data[j]);
+    }
+    Serial.println("");
+    Serial.print("D2: ");
+    for (int j = 0; j < distance_2_data.size(); j ++) {
+      Serial.print(distance_2_data[j]);
+    }
+    Serial.println("");
+    Serial.print("D3: ");
+    for (int j = 0; j < distance_3_data.size(); j ++) {
+      Serial.print(distance_3_data[j]);
+    }
+    Serial.println("");
+    Serial.print("D4: ");
+    for (int j = 0; j < distance_4_data.size(); j ++) {
+      Serial.print(distance_4_data[j]);
+    }
+    Serial.println("");
 
     // resets averages
     float average_1 = 0;
@@ -299,6 +343,8 @@ void loop()
       }
       float average_1 = sum / distance_1_data.size();
       averages.push_back(average_1);
+    } else{
+      averages.push_back(0);
     }
     if (distance_2_data.size() > 0) {
       float sum = 0;
@@ -307,6 +353,8 @@ void loop()
       }
       float average_2 = sum / distance_2_data.size();
       averages.push_back(average_2);
+    } else {
+      averages.push_back(0);
     }
     if (distance_3_data.size() > 0) {
       float sum = 0;
@@ -315,6 +363,8 @@ void loop()
       }
       float average_3 = sum / distance_3_data.size();
       averages.push_back(average_3);
+    } else {
+      averages.push_back(0);
     }
     if (distance_4_data.size() > 0) {
       float sum = 0;
@@ -323,6 +373,8 @@ void loop()
       }
       float average_4 = sum / distance_4_data.size();
       averages.push_back(average_4);
+    } else {
+      averages.push_back(0);
     }
 
     // convert vector into Json array
