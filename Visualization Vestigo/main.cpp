@@ -46,7 +46,7 @@ std::vector<float> previous_UWB_position{ 0, 0, 0 };
 std::vector<float> UWB_x_storage;
 std::vector<float> UWB_y_storage;
 int strike_count;
-float radius_limit;
+float radius_limit = 0.1;
 
 // Function to get dimensions of room from user input
 double* getDimensions()
@@ -263,8 +263,13 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY)
         return;
     }
     else if (UWB_x_storage.size() == 30) {
+        std::cout << "RESET IMU" << std::endl;
+        std::cout << "OLD IMU LOCATION: " << imuX << ", " << imuY << std::endl;
+
         imuX = UWB_mean_x;
         imuY = UWB_mean_y;
+
+        std::cout << "NEW IMU LOCATION: " << imuX << ", " << imuY << std::endl;
 
         UWB_mean_x = 0;
         UWB_mean_y = 0;
@@ -662,6 +667,8 @@ int main()
         // update position (m)
         imuX += (cos(rtheta) * vy + cos(rtheta - PI / 2) * vx) * cos(rpitch) * dt;
         imuY += (sin(rtheta) * vy + sin(rtheta - PI / 2) * vx) * cos(rpitch) * dt;
+
+        IMUcalibration(x_location, y_location, imuX, imuY);
 
         //std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
         //std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
