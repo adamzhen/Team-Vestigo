@@ -567,17 +567,18 @@ int main()
         float angle1 = 90 - roll; // tilt up = positive, tilt down = negative
         float angle2 = -pitch; // right = positive, left = negative
 
-        float room_orientation = 150; // compass direction of positive x-axis of the room
+        float room_orientation = 235; // compass direction of positive x-axis of the room
         float theta = room_orientation - compass;
         if (theta < 0) {
             theta += 360;
         }
         float rtheta = theta * PI / 180; // convert from 
+        float rpitch = angle2 * PI / 180;
 
-        std::cout << "  Compass: " << compass << std::endl;
-        std::cout << "  Angle 1: " << angle1 << std::endl;
-        std::cout << "  Angle 2: " << angle2 << std::endl;
-        std::cout << "  dt: " << dt << std::endl;
+        //std::cout << "  Compass: " << compass << std::endl;
+        //std::cout << "  Angle 1: " << angle1 << std::endl;
+        //std::cout << "  Angle 2: " << angle2 << std::endl;
+        //std::cout << "  dt: " << dt << std::endl;
 
         // calculating gravity components (mg)
         float gx = 1000 * sin(pitch * PI / 180);
@@ -595,12 +596,12 @@ int main()
         vz += az * dt;
 
         // update position (m)
-        imuX += (cos(rtheta) * vy + cos(rtheta - PI / 2) * vx) * dt;
-        imuY += (sin(rtheta) * vy + sin(rtheta - PI / 2) * vx) * dt;
+        imuX += (cos(rtheta) * vy + cos(rtheta - PI / 2) * vx) * cos(rpitch) * dt;
+        imuY += (sin(rtheta) * vy + sin(rtheta - PI / 2) * vx) * cos(rpitch) * dt;
 
-        std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
-        std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
-        std::cout << "  X: " << imuX << "  Y: " << imuY << std::endl;
+        //std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
+        //std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
+        //std::cout << "  X: " << imuX << "  Y: " << imuY << std::endl;
 
         /***************/
         /***** EKF *****/
@@ -639,6 +640,7 @@ int main()
 
         // System model
         x.theta() = theta * PI / 180;
+        x.pitch() = rpitch;
         x = sys.f(x, u);
 
         // Predict state for current time-step using the filters
@@ -647,23 +649,21 @@ int main()
         auto x_ukf = ukf.predict(sys, u);
 
         // Position measurement
-        {
-            // We can measure the position every 10th step
-            PositionMeasurement position = pm.h(x); // pm.h(x)
+        // We can measure the position every 10th step
+        PositionMeasurement position = pm.h(x); // pm.h(x)
 
-            // Update EKF
-            x_ekf = ekf.update(pm, position);
+        // Update EKF
+        x_ekf = ekf.update(pm, position);
 
-            // Update UKF
-            x_ukf = ukf.update(pm, position);
-        }
+        // Update UKF
+        x_ukf = ukf.update(pm, position);
 
         // Print to stdout as csv format
-        std::cout << x.x() << "," << x.y() << "," << x.theta() << " | "
-            << x_pred.x() << "," << x_pred.y() << "," << x_pred.theta() << " | "
-            << x_ekf.x() << "," << x_ekf.y() << "," << x_ekf.theta() << " | "
-            << x_ukf.x() << "," << x_ukf.y() << "," << x_ukf.theta()
-            << std::endl;
+        //std::cout << x.x() << "," << x.y() << "," << x.theta() << " | "
+        //    << x_pred.x() << "," << x_pred.y() << "," << x_pred.theta() << " | "
+        //    << x_ekf.x() << "," << x_ekf.y() << "," << x_ekf.theta() << " | "
+        //    << x_ukf.x() << "," << x_ukf.y() << "," << x_ukf.theta()
+        //    << std::endl;
 
         // Write location data to file
         outFile << "" << x_location << ", " << y_location << ", " << theta << ", " << vx << ", " << vy << ", " << x.x() << ", " << x.y() << std::endl;
@@ -676,8 +676,8 @@ int main()
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        x_location = x.x();
-        y_location = x.y();
+        //x_location = x.x();
+        //y_location = x.y();
 
         // Convert the object position from meters to pixels
         int x_location_pixel = static_cast<int>(x_location * screen_scale);

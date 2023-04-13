@@ -17,10 +17,10 @@ namespace KalmanExamples
          * @param T Numeric scalar type
          */
         template<typename T>
-        class State : public Kalman::Vector<T, 3>
+        class State : public Kalman::Vector<T, 4>
         {
         public:
-            KALMAN_VECTOR(State, T, 3)
+            KALMAN_VECTOR(State, T, 4)
 
                 //! X-position
                 static constexpr size_t X = 0;
@@ -28,14 +28,18 @@ namespace KalmanExamples
             static constexpr size_t Y = 1;
             //! Orientation
             static constexpr size_t THETA = 2;
+            //! PITCH
+            static constexpr size_t PITCH = 3;
 
             T x()       const { return (*this)[X]; }
             T y()       const { return (*this)[Y]; }
             T theta()   const { return (*this)[THETA]; }
+            T pitch()   const { return (*this)[PITCH]; }
 
             T& x() { return (*this)[X]; }
             T& y() { return (*this)[Y]; }
             T& theta() { return (*this)[THETA]; }
+            T& pitch() { return (*this)[PITCH]; }
         };
 
         /**
@@ -112,8 +116,8 @@ namespace KalmanExamples
 
                 double PI = M_PI;
                 // Switching velocity from IMU to reference coordinate system, then calculating x and y displacements
-                x_.x() = x.x() + (std::cos(x.theta()) * u.vy() + std::cos(x.theta() - PI / 2) * u.vx()) * u.dt();
-                x_.y() = x.y() + (std::sin(x.theta()) * u.vy() + std::sin(x.theta() - PI / 2) * u.vx()) * u.dt();
+                x_.x() = x.x() + (std::cos(x.theta()) * u.vy() + std::cos(x.theta() - PI / 2) * u.vx()) * std::cos(x.pitch()) * u.dt();
+                x_.y() = x.y() + (std::sin(x.theta()) * u.vy() + std::sin(x.theta() - PI / 2) * u.vx()) * std::cos(x.pitch()) * u.dt();
 
                 // Return transitioned state vector
                 return x_;
