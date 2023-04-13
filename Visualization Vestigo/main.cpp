@@ -3,6 +3,7 @@
 #include <string>
 #include <cstring>
 #include <ws2tcpip.h>
+#include <cmath>
 
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
@@ -42,6 +43,10 @@ using std::endl;
 // Definitions
 const double inch_to_meter = 0.0254;
 std::vector<float> previous_UWB_position{ 0, 0, 0 };
+std::vector<float> UWB_x_storage;
+std::vector<float> UWB_y_storage;
+int strike_count;
+float radius_limit;
 
 // Function to get dimensions of room from user input
 double* getDimensions()
@@ -223,8 +228,67 @@ std::vector<float> dataProcessing(std::string str)
     return data;
 }
 
-// Kalman Filter
+// Average of a vector
+float calculate_average(std::vector<float> vector)
+{
+    float sum = 0.0;
+    for (int i = 0; i < vector.size(); i++) {
+        sum += vector[i];
+    }
+    return sum / vector.size();
+}
 
+// Stationary IMU calibration
+void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY)
+{
+    float UWB_mean_x;
+    float UWB_mean_y;
+
+    // checks for exit conditions
+    if (strike_count == 3) {
+        UWB_mean_x = 0;
+        UWB_mean_y = 0;
+        UWB_x_storage.clear();
+        UWB_y_storage.clear();
+
+        return;
+    }
+    else if (UWB_x_storage.size() == 0) {
+        UWB_mean_x = UWB_x;
+        UWB_mean_x = UWB_y;
+
+        UWB_x_storage.push_back(UWB_x);
+        UWB_y_storage.push_back(UWB_y);
+
+        return;
+    }
+    else if (UWB_x_storage.size() == 30) {
+        imuX = UWB_mean_x;
+        imuY = UWB_mean_y;
+
+        UWB_mean_x = 0;
+        UWB_mean_y = 0;
+        UWB_x_storage.clear();
+        UWB_y_storage.clear();
+
+        return;
+    }
+
+    float distance = sqrt(pow((UWB_x - UWB_mean_x), 2) + pow((UWB_y - UWB_mean_y), 2));
+
+    if (distance > radius_limit) {
+        strike_count += 1;
+
+        return;
+    }
+
+    UWB_x_storage.push_back(UWB_x);
+    UWB_y_storage.push_back(UWB_y);
+
+    UWB_mean_x = calculate_average(UWB_x_storage);
+    UWB_mean_y = calculate_average(UWB_y_storage);
+
+}
 
 
 // main code
@@ -695,7 +759,7 @@ int main()
         int y_side_right = y_location_pixel + length * sin(theta * PI / 180 + PI / 4);
 
         // Draw the object
-        SDL_Rect object_rect = { x_location_pixel - (8 / 2), y_location_pixel - (8 / 2), 8, 8};
+        SDL_Rect object_rect = { x_location_pixel - (8 / 2), y_location_pixel - (8 / 2), 8, 8 };
         SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
         SDL_RenderFillRect(renderer, &object_rect);
 
