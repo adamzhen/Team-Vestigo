@@ -60,7 +60,7 @@ const char *ssid;
 const char *password;
 const char *host;  
 
-const int network = 1; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
+const int network = 0; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
 const int port = 1235;
 
 void setup()
@@ -82,8 +82,8 @@ const char *Aiden_laptop_LAN = "192.168.8.219";
     // host = Evan_laptop;
     // host = Adam_laptop;
     // host = Aiden_PC;
-    // host = Adam_laptop; 
-    host = Aiden_laptop_LAN;
+    host = Adam_laptop; 
+    // host = Aiden_laptop_LAN;
   } 
   else if (network == 1){
     ssid = "UMAT_WiFi";

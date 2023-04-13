@@ -556,6 +556,8 @@ int main()
         /***** IMU *****/
         /***************/
 
+        double PI = M_PI;
+
         // calculating orientation
         float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
         float compass = zerodir - yaw;
@@ -565,11 +567,18 @@ int main()
         float angle1 = 90 - roll; // tilt up = positive, tilt down = negative
         float angle2 = -pitch; // right = positive, left = negative
 
+        float room_orientation = 150; // compass direction of positive x-axis of the room
+        float theta = room_orientation - compass;
+        if (theta < 0) {
+            theta += 360;
+        }
+        float rtheta = theta * PI / 180; // convert from 
+
         std::cout << "  Compass: " << compass << std::endl;
         std::cout << "  Angle 1: " << angle1 << std::endl;
         std::cout << "  Angle 2: " << angle2 << std::endl;
+        std::cout << "  dt: " << dt << std::endl;
 
-        double PI = M_PI;
         // calculating gravity components (mg)
         float gx = 1000 * sin(pitch * PI / 180);
         float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
@@ -586,12 +595,12 @@ int main()
         vz += az * dt;
 
         // update position (m)
-        //imuX += vx * dt;
-        //imuY += vy * dt;
-        //imuZ += vz * dt;
+        imuX += (cos(rtheta) * vy + cos(rtheta - PI / 2) * vx) * dt;
+        imuY += (sin(rtheta) * vy + sin(rtheta - PI / 2) * vx) * dt;
 
         std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
         std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
+        std::cout << "  X: " << imuX << "  Y: " << imuY << std::endl;
 
         /***************/
         /***** EKF *****/
@@ -629,11 +638,6 @@ int main()
         u.dt() = dt;
 
         // System model
-        float room_orientation = 150; // compass direction of positive x-axis of the room
-        float theta = room_orientation - compass;
-        if (theta < 0) {
-            theta += 360;
-        }
         x.theta() = theta * PI / 180;
         x = sys.f(x, u);
 
@@ -661,11 +665,8 @@ int main()
             << x_ukf.x() << "," << x_ukf.y() << "," << x_ukf.theta()
             << std::endl;
 
-        float imuX = x.x();
-        float imuY = x.y();
-
         // Write location data to file
-        outFile << "" << x_location << ", " << y_location << ", " << theta << ", " << vx << ", " << vy << std::endl;
+        outFile << "" << x_location << ", " << y_location << ", " << theta << ", " << vx << ", " << vy << ", " << x.x() << ", " << x.y() << std::endl;
 
         /***************/
         /***** Vis *****/
@@ -675,6 +676,9 @@ int main()
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
+        x_location = x.x();
+        y_location = x.y();
+
         // Convert the object position from meters to pixels
         int x_location_pixel = static_cast<int>(x_location * screen_scale);
         int y_location_pixel = static_cast<int>(y_location * screen_scale);
@@ -682,22 +686,22 @@ int main()
         //int imuy_location_pixel = static_cast<int>(imuY * screen_scale);
 
         // Calculate line for orientation, currently assuming that North is in the positive x direction
-        int length = 50;
-        int x_top = x_location_pixel + length * cos(compass * PI / 180);
-        int y_top = y_location_pixel + length * sin(compass * PI / 180);
-        int x_side_left = x_location_pixel + length * cos(compass * PI / 180 - PI / 2);
-        int y_side_left = y_location_pixel + length * sin(compass * PI / 180 - PI / 2);
-        int x_side_right = x_location_pixel + length * cos(compass * PI / 180 + PI / 2);
-        int y_side_right = y_location_pixel + length * sin(compass * PI / 180 + PI / 2);
+        int length = 75;
+        int x_top = x_location_pixel + length * cos(theta * PI / 180);
+        int y_top = y_location_pixel + length * sin(theta * PI / 180);
+        int x_side_left = x_location_pixel + length * cos(theta * PI / 180 - PI / 4);
+        int y_side_left = y_location_pixel + length * sin(theta * PI / 180 - PI / 4);
+        int x_side_right = x_location_pixel + length * cos(theta * PI / 180 + PI / 4);
+        int y_side_right = y_location_pixel + length * sin(theta * PI / 180 + PI / 4);
 
         // Draw the object
-        SDL_Rect object_rect = { x_location_pixel - object_width / 2, y_location_pixel - object_height / 2, x_location_pixel + object_width / 2, y_location_pixel + object_height / 2 };
+        SDL_Rect object_rect = { x_location_pixel - (8 / 2), y_location_pixel - (8 / 2), 8, 8};
         SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
         SDL_RenderFillRect(renderer, &object_rect);
 
         // Draw line for orientation
-        SDL_RenderDrawLine(renderer, x_location_pixel - object_width / 2, y_location_pixel - object_height / 2, x_side_left, y_side_left);
-        SDL_RenderDrawLine(renderer, x_location_pixel + object_width / 2, y_location_pixel - object_height / 2, x_side_right, y_side_right);
+        SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x_side_left, y_side_left);
+        SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x_side_right, y_side_right);
         SDL_RenderDrawLine(renderer, x_side_left, y_side_left, x_side_right, y_side_right);
 
         //// Draw IMU position
