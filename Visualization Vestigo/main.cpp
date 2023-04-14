@@ -50,7 +50,7 @@ float UWB_mean_y;
 float UWB_x_back;
 float UWB_y_back;
 int strike_count;
-float radius_limit = 0.5;
+float radius_limit = 0.25;
 
 // Function to get dimensions of room from user input
 double* getDimensions()
@@ -273,7 +273,7 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY, float& i
 
         return;
     }
-    else if (UWB_x_storage.size() == 8) {
+    else if (UWB_x_storage.size() == 10) {
         std::cout << "RESET RESET RESET IMU RESET RESET RESET" << std::endl;
         std::cout << "OLD IMU LOCATION: " << imuX << ", " << imuY << std::endl;
 
@@ -300,7 +300,7 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY, float& i
 
 
     if (distance > radius_limit) {
-        std::cout << "OUT OF BOUNDS" << std::endl;
+        /* std::cout << "OUT OF BOUNDS" << std::endl;*/
         strike_count += 1;
 
         UWB_x_back = UWB_x;
@@ -633,7 +633,7 @@ int main()
 
             /********TRILATERATION********/
 
-            std::cout << "TRILATERATION ATTEMPT" << std::endl;
+            /*std::cout << "TRILATERATION ATTEMPT" << std::endl;*/
 
             if (distance_1 == 0) {
                 Eigen::Vector3d prime = trilateration(distance_4, distance_2, distance_3, point_4, point_2, point_3);
