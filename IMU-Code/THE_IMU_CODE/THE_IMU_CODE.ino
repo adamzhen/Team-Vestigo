@@ -326,7 +326,7 @@ void loop()
 
 #else
       if (ERROR){ // if quaternions cannot add to 1
-        //SERIAL_PORT.println(ERROR);
+        SERIAL_PORT.println(ERROR);
 #ifdef DEBUG
         SERIAL_PORT.print(F("~ Error: ["));
         SERIAL_PORT.print(ERROR);
@@ -417,7 +417,7 @@ void loop()
     //SERIAL_PORT.println();
       
 #ifdef PRINT
-    bool formatted = false;
+    bool formatted = true;
     if (formatted){
       SERIAL_PORT.print(F("Roll:"));
       SERIAL_PORT.print(roll, 1);
@@ -425,12 +425,7 @@ void loop()
       SERIAL_PORT.print(pitch, 1);
       SERIAL_PORT.print(F(" Yaw:"));
       SERIAL_PORT.println(yaw, 1);
-      // SERIAL_PORT.print(F(" Compass:"));
-      // SERIAL_PORT.println(compass, 1);
-      // SERIAL_PORT.print(F(" Angle 1:"));
-      // SERIAL_PORT.println(angle1, 1);
-      // SERIAL_PORT.print(F(" Angle 2:"));
-      // SERIAL_PORT.println(angle2, 1);
+
     } else {
       char sep = ',';
       SERIAL_PORT.print(roll, 1);

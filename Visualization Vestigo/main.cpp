@@ -273,7 +273,7 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY, float& i
 
         return;
     }
-    else if (UWB_x_storage.size() == 10) {
+    else if (UWB_x_storage.size() == 8) {
         std::cout << "RESET RESET RESET IMU RESET RESET RESET" << std::endl;
         std::cout << "OLD IMU LOCATION: " << imuX << ", " << imuY << std::endl;
 
@@ -669,7 +669,7 @@ int main()
         }
 
         // writes the location data to the console
-        std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;
+        /*std::cout << "x: " << x_location << ", y: " << y_location << ", z: " << z_location << std::endl;*/
 
         // Handle events (such as window close)
         SDL_Event event;
@@ -702,7 +702,7 @@ int main()
         float angle1 = 90 - roll; // tilt up = positive, tilt down = negative
         float angle2 = -pitch; // right = positive, left = negative
 
-        float room_orientation = 235; // compass direction of positive x-axis of the room
+        float room_orientation = 150; // compass direction of positive x-axis of the room
         float theta = room_orientation - compass;
         if (theta < 0) {
             theta += 360;
@@ -710,10 +710,10 @@ int main()
         float rtheta = theta * PI / 180; // convert from 
         float rpitch = angle2 * PI / 180;
 
-        //std::cout << "  Compass: " << compass << std::endl;
-        //std::cout << "  Angle 1: " << angle1 << std::endl;
-        //std::cout << "  Angle 2: " << angle2 << std::endl;
-        //std::cout << "  dt: " << dt << std::endl;
+        /*std::cout << "  Compass: " << compass << std::endl;
+        std::cout << "  Angle 1: " << angle1 << std::endl;
+        std::cout << "  Angle 2: " << angle2 << std::endl;
+        std::cout << "  dt: " << dt << std::endl;*/
 
         // calculating gravity components (mg)
         float gx = 1000 * sin(pitch * PI / 180);
@@ -721,9 +721,9 @@ int main()
         float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
 
         // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
-        float ax = (rawAx - gx) / 9810;
-        float ay = -(rawAz - gz) / 9810;
-        float az = (rawAy - gy) / 9810;
+        float ax = (rawAx - gx) / 9807;
+        float ay = -(rawAz - gz) / 9807;
+        float az = (rawAy - gy) / 9807;
 
         // update velocity (m/s)
         vx += ax * dt;
@@ -736,9 +736,9 @@ int main()
 
         IMUcalibration(x_location, y_location, imuX, imuY, vx, vy, vz);
 
-        //std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
-        //std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
-        //std::cout << "  X: " << imuX << "  Y: " << imuY << std::endl;
+        std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
+        std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
+        std::cout << "  X: " << imuX << "  Y: " << imuY << std::endl;
 
         /***************/
         /***** EKF *****/
@@ -803,7 +803,7 @@ int main()
         //    << std::endl;
 
         // Write location data to file
-        outFile << "" << x_location << ", " << y_location << ", " << theta << ", " << vx << ", " << vy << ", " << x.x() << ", " << x.y() << std::endl;
+        outFile << "" << x_location << ", " << y_location << ", " << theta << ", " << ax << ", " << ay << ", " << az << ", " << x.x() << ", " << x.y() << std::endl;
 
         /***************/
         /***** Vis *****/
@@ -819,8 +819,8 @@ int main()
         // Convert the object position from meters to pixels
         int x_location_pixel = static_cast<int>(x_location * screen_scale);
         int y_location_pixel = static_cast<int>(y_location * screen_scale);
-        //int imux_location_pixel = static_cast<int>(imuX * screen_scale);
-        //int imuy_location_pixel = static_cast<int>(imuY * screen_scale);
+        int imux_location_pixel = static_cast<int>(imuX * screen_scale);
+        int imuy_location_pixel = static_cast<int>(imuY * screen_scale);
 
         // Calculate line for orientation, currently assuming that North is in the positive x direction
         int length = 75;
@@ -841,15 +841,13 @@ int main()
         SDL_RenderDrawLine(renderer, x_location_pixel, y_location_pixel, x_side_right, y_side_right);
         SDL_RenderDrawLine(renderer, x_side_left, y_side_left, x_side_right, y_side_right);
 
-        //// Draw IMU position
-        //SDL_Rect object_rect2 = { imux_location_pixel, imuy_location_pixel, 7, 7 };
-        //SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-        //SDL_RenderFillRect(renderer, &object_rect2);
+        // Draw IMU position
+        SDL_Rect object_rect2 = { imux_location_pixel, imuy_location_pixel, 7, 7 };
+        SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+        SDL_RenderFillRect(renderer, &object_rect2);
 
         // Presents the rendereer to the screen
         SDL_RenderPresent(renderer);
-
-
 
     }
 
