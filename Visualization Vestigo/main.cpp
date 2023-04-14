@@ -273,17 +273,13 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY, float& i
 
         return;
     }
-    else if (UWB_x_storage.size() == 8) {
-        std::cout << "RESET RESET RESET IMU RESET RESET RESET" << std::endl;
-        std::cout << "OLD IMU LOCATION: " << imuX << ", " << imuY << std::endl;
+    else if (UWB_x_storage.size() == 6) {
 
         imuX = UWB_mean_x;
         imuY = UWB_mean_y;
         imuXv = 0;
         imuYv = 0;
         imuZv = 0;
-
-        std::cout << "NEW IMU LOCATION: " << imuX << ", " << imuY << std::endl;
 
         UWB_mean_x = 0;
         UWB_mean_y = 0;
@@ -699,31 +695,30 @@ int main()
         if (compass < 0) {
             compass += 360;
         }
-        float angle1 = 90 - roll; // tilt up = positive, tilt down = negative
-        float angle2 = -pitch; // right = positive, left = negative
 
         float room_orientation = 150; // compass direction of positive x-axis of the room
-        float theta = room_orientation - compass;
+        float theta = room_orientation - compass - 120;
         if (theta < 0) {
             theta += 360;
         }
-        float rtheta = theta * PI / 180; // convert from 
-        float rpitch = angle2 * PI / 180;
 
-        /*std::cout << "  Compass: " << compass << std::endl;
-        std::cout << "  Angle 1: " << angle1 << std::endl;
-        std::cout << "  Angle 2: " << angle2 << std::endl;
-        std::cout << "  dt: " << dt << std::endl;*/
+        float rtheta = theta * PI / 180;
+        float rpitch = pitch * PI / 180;
+        float rroll = roll * PI / 180;
 
         // calculating gravity components (mg)
-        float gx = 1000 * sin(pitch * PI / 180);
-        float gy = 1000 * cos(pitch * PI / 180) * sin(roll * PI / 180);
-        float gz = 1000 * cos(pitch * PI / 180) * cos(roll * PI / 180);
+        float gx = -1000 * sin(rpitch);
+        float gy = 1000 * cos(rpitch) * sin(rroll);
+        float gz = 1000 * cos(rpitch) * cos(rroll);
 
         // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
-        float ax = (rawAx - gx) / 9807;
-        float ay = -(rawAz - gz) / 9807;
-        float az = (rawAy - gy) / 9807;
+        float mod = 1000;
+        float ax = ((rawAx - gx) / mod);
+        float ay = ((rawAy - gy) / mod);
+        float az = ((rawAz - gz) / mod);
+        std::cout << "RAW AX: " << rawAx << ", RAW GX: " << gx << ", CAL AX" << ax << std::endl;
+        std::cout << "RAW AY: " << rawAy << ", RAW GY: " << gy << ", CAL AY" << ay << std::endl;
+        std::cout << "RAW AZ: " << rawAz << ", RAW GZ: " << gz << ", CAL AZ" << az << std::endl;
 
         // update velocity (m/s)
         vx += ax * dt;
@@ -736,9 +731,9 @@ int main()
 
         IMUcalibration(x_location, y_location, imuX, imuY, vx, vy, vz);
 
-        std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
+        /*std::cout << "  Ax: " << ax << "  Ay: " << ay << "  Az: " << az << std::endl;
         std::cout << "  Vx: " << vx << "  Vy: " << vy << "  Vz: " << vz << std::endl;
-        std::cout << "  X: " << imuX << "  Y: " << imuY << std::endl;
+        std::cout << "  X: " << imuX << "  Y: " << imuY << std::endl;*/
 
         /***************/
         /***** EKF *****/

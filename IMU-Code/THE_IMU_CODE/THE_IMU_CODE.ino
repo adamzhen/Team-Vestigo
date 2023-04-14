@@ -417,7 +417,7 @@ void loop()
     //SERIAL_PORT.println();
       
 #ifdef PRINT
-    bool formatted = true;
+    bool formatted = false;
     if (formatted){
       SERIAL_PORT.print(F("Roll:"));
       SERIAL_PORT.print(roll, 1);
@@ -428,12 +428,6 @@ void loop()
 
     } else {
       char sep = ',';
-      SERIAL_PORT.print(roll, 1);
-      SERIAL_PORT.print(sep);
-      SERIAL_PORT.print(pitch, 1);
-      SERIAL_PORT.print(sep);
-      SERIAL_PORT.print(yaw, 1);   
-      SERIAL_PORT.print(sep);
       SERIAL_PORT.print(gx, 2);
       SERIAL_PORT.print(sep);
       SERIAL_PORT.print(gy, 2);
