@@ -713,9 +713,9 @@ int main()
 
         // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
         float mod = 1000;
-        float ax = ((rawAx - gx) / mod);
-        float ay = ((rawAy - gy) / mod);
-        float az = ((rawAz - gz) / mod);
+        float ax = ((rawAx - gx) * 9.80665 / mod);
+        float ay = ((rawAy - gy) * 9.80665 / mod);
+        float az = ((rawAz - gz) * 9.80665 / mod);
         std::cout << "RAW AX: " << rawAx << ", RAW GX: " << gx << ", CAL AX" << ax << std::endl;
         std::cout << "RAW AY: " << rawAy << ", RAW GY: " << gy << ", CAL AY" << ay << std::endl;
         std::cout << "RAW AZ: " << rawAz << ", RAW GZ: " << gz << ", CAL AZ" << az << std::endl;
