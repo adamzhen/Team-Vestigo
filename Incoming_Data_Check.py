@@ -6,6 +6,7 @@ import sympy as sp
 def trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3):
     x, y, z = sp.symbols('x y z')
 
+    print("trilateration")
     # Define the equations for the three spheres
     eq1 = (x - point_1[0]) ** 2 + (y - point_1[1]) ** 2 + (z - point_1[2]) ** 2 - distance_1 ** 2
     eq2 = (x - point_2[0]) ** 2 + (y - point_2[1]) ** 2 + (z - point_2[2]) ** 2 - distance_2 ** 2
@@ -13,6 +14,7 @@ def trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3)
 
     # Solve the system of equations for the intersection of the three spheres
     solution = sp.solve((eq1, eq2, eq3), (x, y, z))
+    print("solution")
 
     # define lists
     solution_1 = [0, 0, 0]
@@ -21,6 +23,7 @@ def trilateration(distance_1, distance_2, distance_3, point_1, point_2, point_3)
     # average solution in xyz
     solution_1[0], solution_1[1], solution_1[2] = solution[0]
     solution_2[0], solution_2[1], solution_2[2] = solution[1]
+
     return [(solution_1[0] + solution_2[0]) / 2, (solution_1[1] + solution_2[1]) / 2, (solution_1[2] + solution_2[2]) / 2]
 
 
@@ -44,10 +47,11 @@ def quadlateration(distance_with_centers):
 
 
 # Centers with distances
-center_1 = [0, 0, 0, 0]
-center_2 = [1.71, 0, 0, 0]
-center_3 = [-0.75, 2.74, 0, 0]
-center_4 = [0.935, 2.79, 0, 0]
+center_1 = [0.1016, 1.0688, 0.3048, 0]
+center_2 = [1.0287, 0.0508, 0.3048, 0]
+center_3 = [2.7178, 1.3208, 0.6604, 0]
+center_4 = [1.524, 3.0734, 0.1778, 0]
+
 
 # create an empty figure and axis object
 fig, ax = plt.subplots()
@@ -65,11 +69,14 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind((UDP_IP_ADDRESS, UDP_PORT_NO))
 
 while True:
+    print("running")
     data, addr = server_socket.recvfrom(1024)
+    print("data received")
 
     # Decode the bytes object into a string
     binary_str = data.decode()
     binary_str_list = list(binary_str)
+    print("data decode")
 
     # remove unnecessary characters
     data_list = []
@@ -85,8 +92,7 @@ while True:
     for item in distance_list_string:
         distance_list.append(float(item))
 
-    # prints out incoming data
-    print(f'Distances: {distance_list}')
+    print(f'Distance List: {distance_list}')
 
     center_1[3] = distance_list[0]
     center_2[3] = distance_list[1]
@@ -97,15 +103,4 @@ while True:
 
     x, y, z = quadlateration(distance_with_centers)
 
-    # update the x-axis limits based on the length of data
-    ax.set_xlim([0, 8])
-
-    # clear the axis object before redrawing the graph
-    ax.clear()
-
-    # plot the data on the graph
-    ax.scatter([0, 1.71, -0.75, 0.935], [0, 0, 2.74, 2.79])
-    ax.scatter(x, y)
-
-    # display the graph
-    plt.draw()
+    print(x, y, z)
