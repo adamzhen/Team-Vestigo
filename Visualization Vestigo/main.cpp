@@ -74,6 +74,36 @@ double* getDimensions()
     return result;
 }
 
+// Remove gravity from accelerometer
+Eigen::Vector3d calculateAccelerationWithGravity(double roll, double pitch, double yaw, Eigen::Vector3d accelerometerReading, double gravityMagnitude)
+{
+    // Convert roll, pitch, and yaw angles to radians
+    double rollRad = roll * M_PI / 180.0;
+    double pitchRad = pitch * M_PI / 180.0;
+    double yawRad = yaw * M_PI / 180.0;
+
+    // Compute rotation matrix from body frame to world frame
+    Eigen::Matrix3d R;
+    R << std::cos(pitchRad) * std::cos(yawRad),
+        std::cos(rollRad)* std::sin(yawRad) + std::sin(rollRad) * std::sin(pitchRad) * std::cos(yawRad),
+        -std::sin(rollRad) * std::sin(yawRad) + std::cos(rollRad) * std::sin(pitchRad) * std::cos(yawRad),
+        -std::cos(pitchRad) * std::sin(yawRad),
+        std::cos(rollRad)* std::cos(yawRad) - std::sin(rollRad) * std::sin(pitchRad) * std::sin(yawRad),
+        std::sin(rollRad)* std::cos(yawRad) + std::cos(rollRad) * std::sin(pitchRad) * std::sin(yawRad),
+        std::sin(pitchRad),
+        -std::sin(rollRad) * std::cos(pitchRad),
+        std::cos(rollRad)* std::cos(pitchRad);
+
+    // Compute gravity vector in world frame
+    Eigen::Vector3d gravity(0.0, 0.0, -gravityMagnitude);
+    Eigen::Vector3d gravityWorld = R.transpose() * gravity;
+
+    // Compute acceleration vector in world frame
+    Eigen::Vector3d accelerationWorld = accelerometerReading + gravityWorld;
+
+    return accelerationWorld;
+}
+
 // Function to get anchor locations within room from user input
 std::vector<Eigen::Vector3d> getAnchors()
 {
@@ -316,6 +346,8 @@ void IMUcalibration(float UWB_x, float UWB_y, float& imuX, float& imuY, float& i
 
 }
 
+// 
+
 
 // main code
 int main()
@@ -339,8 +371,8 @@ int main()
     double z_location = 0;
 
     // Defines position and velocity variables
-    float imuX = 0;
-    float imuY = 0;
+    float imuX = 2;
+    float imuY = 2;
     float imuZ = 0;
     float vx = 0;
     float vy = 0;
@@ -593,7 +625,7 @@ int main()
         std::string str_2(buffer, recvLen_2);
         IMU_data = dataProcessing(str_2);
         roll = IMU_data[0]; // degrees
-        pitch = IMU_data[1]; // degrees
+        pitch = -IMU_data[1]; // degrees
         yaw = IMU_data[2]; // degrees
         rawAx = IMU_data[3]; // mg
         rawAy = IMU_data[4]; // mg
@@ -687,6 +719,8 @@ int main()
         /***** IMU *****/
         /***************/
 
+
+
         double PI = M_PI;
 
         // calculating orientation
@@ -696,11 +730,17 @@ int main()
             compass += 360;
         }
 
-        float room_orientation = 150; // compass direction of positive x-axis of the room
-        float theta = room_orientation - compass - 120;
+        float room_orientation = 0; // compass direction of positive x-axis of the room
+        float theta = room_orientation - compass;
         if (theta < 0) {
             theta += 360;
         }
+
+        Eigen::Vector3d acceleration_inputs(rawAx, rawAy, rawAz);
+
+        // GPT Gravity removal
+        Eigen::Vector3d gpt_accel = calculateAccelerationWithGravity(roll, pitch, theta, acceleration_inputs, 9.79318);
+
 
         float rtheta = theta * PI / 180;
         float rpitch = pitch * PI / 180;
@@ -708,17 +748,24 @@ int main()
 
         // calculating gravity components (mg)
         float gx = -1000 * sin(rpitch);
-        float gy = 1000 * cos(rpitch) * sin(rroll);
+        float gy = 1000 * sin(rroll) * cos(rpitch);
         float gz = 1000 * cos(rpitch) * cos(rroll);
 
         // calculating acceleration without gravity, converting from mg to m/s^2, & switching coordinate system
         float mod = 1000;
-        float ax = ((rawAx - gx) * 9.80665 / mod);
-        float ay = ((rawAy - gy) * 9.80665 / mod);
-        float az = ((rawAz - gz) * 9.80665 / mod);
-        std::cout << "RAW AX: " << rawAx << ", RAW GX: " << gx << ", CAL AX" << ax << std::endl;
-        std::cout << "RAW AY: " << rawAy << ", RAW GY: " << gy << ", CAL AY" << ay << std::endl;
-        std::cout << "RAW AZ: " << rawAz << ", RAW GZ: " << gz << ", CAL AZ" << az << std::endl;
+        float ax = ((rawAx - gx) * 9.79318 / mod);
+        // - 0.096 * sin(rpitch);
+        float ay = ((rawAy - gy) * 9.79318 / mod);
+        // + 0.096 * sin(rroll);
+        float az = ((rawAz - gz) * 9.79318 / mod);
+        std::cout << "Update:" << std::endl;
+        std::cout << "" << std::endl;
+        std::cout << "Theta: " << theta << " Pitch: " << pitch << " Roll: " << roll << std::endl;
+        std::cout << "" << std::endl;
+        std::cout << "RAW AX: " << rawAx << ", GPT AX: " << gx << ", CAL AX: " << ax << std::endl;
+        std::cout << "RAW AY: " << rawAy << ", GPT AY: " << gy << ", CAL AY: " << ay << std::endl;
+        std::cout << "RAW AZ: " << rawAz << ", GPT AZ: " << gz << ", CAL AZ: " << az << std::endl;
+        std::cout << "" << std::endl;
 
         // update velocity (m/s)
         vx += ax * dt;
@@ -798,7 +845,7 @@ int main()
         //    << std::endl;
 
         // Write location data to file
-        outFile << "" << x_location << ", " << y_location << ", " << theta << ", " << ax << ", " << ay << ", " << az << ", " << x.x() << ", " << x.y() << std::endl;
+        outFile << "" << theta << ", " << pitch << ", " << roll << ", " << ax << ", " << ay << ", " << az << ", " << rawAx << ", " << rawAy << ", " << rawAz << ", " << gpt_accel[0] << ", " << gpt_accel[1] << ", " << gpt_accel[2] << ", " << dt << std::endl;
 
         /***************/
         /***** Vis *****/
