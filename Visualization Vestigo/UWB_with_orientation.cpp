@@ -19,6 +19,9 @@
 #undef main
 #include <fstream>
 #include <vector>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 
 
 using std::cout;
@@ -204,10 +207,6 @@ std::vector<float> dataProcessing(std::string str)
             end = str.find("]", start);
         }
     }
-    /*for (int i = 0; i < data.size(); i++) {
-        std::cout << data[i] << ", ";
-    }
-    std::cout << std::endl;*/
 
     return data;
 }
@@ -243,7 +242,6 @@ int main()
     float UWB_x = 0;
     float UWB_y = 0;
     float UWB_z = 0;
-
 
     /********* Room *********
      ******** Config *******/
@@ -454,6 +452,24 @@ int main()
     bool quit = false;
     while (!quit) {
 
+        /******** Time ********
+        ******** Data ********/
+
+        // get the current timestamp
+        auto now = std::chrono::system_clock::now();
+
+        // convert the timestamp to a time_t object
+        std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
+
+        // set the desired timezone
+        std::tm timeinfo;
+        localtime_s(&timeinfo, &timestamp);
+
+        int hours = timeinfo.tm_hour;
+        int minutes = timeinfo.tm_min;
+        int seconds = timeinfo.tm_sec;
+
+
         // reads incoming string into data
         std::vector<float> UWB_data;
         std::vector<float> IMU_data;
@@ -465,6 +481,7 @@ int main()
         float pitch = 0;
         float yaw = 0;
         float dt = 0;
+
 
         // pulls UWB data from first port
         recvLen_1 = recvfrom(sock_1, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr_1, &clientAddrLen_1);
@@ -555,7 +572,7 @@ int main()
         }
 
         // writes the location data to the console
-        std::cout << "x: " << UWB_x << ", y: " << UWB_y << ", z: " << UWB_z << std::endl;
+        std::cout << "x: " << UWB_x << ", y: " << UWB_y << ", z: " << UWB_z << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
 
         // Handle events (such as window close)
         SDL_Event event;
@@ -577,8 +594,6 @@ int main()
         /***** IMU *****/
         /***************/
 
-
-
         double PI = M_PI;
 
         // calculating orientation
@@ -596,12 +611,13 @@ int main()
 
         float rtheta = theta * PI / 180;
 
-        // Write location data to file
-        outFile << UWB_x << ", " << ", " << UWB_y << ", " << theta << ", " << dt << std::endl;
 
         /***************/
         /***** Vis *****/
         /***************/
+
+        // Write location data to file
+        outFile << UWB_x << ", " << UWB_y << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
 
         // Clear the screen
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
