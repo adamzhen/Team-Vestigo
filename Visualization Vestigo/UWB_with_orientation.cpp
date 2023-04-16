@@ -88,7 +88,7 @@ std::vector<Eigen::Vector3d> getAnchors()
 }
 
 // Function to read dimensions from a text file
-void readDimensions(std::string filename, float& length, float& width, std::vector<Eigen::Vector3d>& anchor_positions)
+void readDimensions(std::string filename, double& length, double& width, std::vector<Eigen::Vector3d>& anchor_positions)
 {
     std::ifstream inputFile;
     inputFile.open(filename);
@@ -236,8 +236,8 @@ int main()
     Eigen::Vector3d point_4;
 
     // Room Dimensions
-    float length;
-    float width;
+    double length;
+    double width;
 
     // Defines variables for location coordinates
     float UWB_x = 0;
@@ -597,7 +597,7 @@ int main()
         float rtheta = theta * PI / 180;
 
         // Write location data to file
-        outFile << UWB_x << ", " << ", " << UWB_y << ", "  << theta << ", " << dt << std::endl;
+        outFile << UWB_x << ", " << ", " << UWB_y << ", " << theta << ", " << dt << std::endl;
 
         /***************/
         /***** Vis *****/
