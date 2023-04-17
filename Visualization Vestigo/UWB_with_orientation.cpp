@@ -334,13 +334,13 @@ int main()
     std::cout << "  Point 4: " << point_4.transpose() << std::endl;
 
     // IMU Orientation Startup Delay
-    std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
+    /*std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
     int i = 30;
     while (i != 0) {
         std::cout << i << " seconds" << std::endl;
         i -= 5;
         Sleep(5000);
-    }
+    }*/
 
     /***** Tracking File ****
      ******** Startup *******/
@@ -603,8 +603,8 @@ int main()
             compass += 360;
         }
 
-        float room_orientation = 0; // compass direction of positive x-axis of the room
-        float theta = room_orientation - compass;
+        float room_orientation = 20; // compass direction of positive x-axis of the room
+        float theta = compass - room_orientation;
         if (theta < 0) {
             theta += 360;
         }
