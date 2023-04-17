@@ -1,0 +1,387 @@
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QMessageBox
+import pygame
+import math
+import time
+import random
+import turtle
+from math import sqrt
+from colorama import Fore
+all_x = []
+all_y = []
+x_plots = []
+y_plots = []
+actual_x = []
+actual_y = []
+time = []
+degrees = []
+hours = []
+minute = []
+second = []
+plot_time = []
+multiplier = 1
+points = 50
+index = 0
+plot_num = 1
+rolling_average_num = 50
+time_interval = 120
+f = open("Tracked_Location.txt","r")
+
+for lines in f:
+    line = lines.split(", ")
+    all_x.append(float(line[0]))
+    all_y.append(float(line[1]))
+    degrees.append(float(line[2]))
+    hours.append(int(line[3]))
+    minute.append(int(line[4]))
+    str = line[5]
+    second.append(int(str[0:2]))
+class MainWindow(QMainWindow):
+    def checkTime(self,num1, num2):
+        return num1 < num2
+    def sameSpot(self,x_bef,y_bef,x_aft,y_aft):
+        dis1 = math.sqrt((x_bef-x_aft)**2+(y_bef-y_aft)**2)
+        return dis1 < 0.05
+    def ModifyData(self,all_x,all_y,h,m,s, multiplier):
+        global actual_x
+        global actual_y
+        global x_plots
+        global y_plots
+        global time
+        global time_interval
+        global plot_num
+        global plot_time
+        initial = 0
+        final = 0
+        plot_num = 1
+        x_bef = (all_x[0]) * multiplier
+        y_bef = (all_y[0]) * multiplier
+        time.append(0)
+        strike = 0
+        counter = 0
+        for i in range(len(all_x)):
+            seperator = (h[i]*3600+m[i]*60+s[i]-(h[0]*3600+m[0]*60+s[0]))
+            if(seperator <= time_interval * plot_num):
+                if (self.sameSpot(x_bef,y_bef,all_x[i],all_y[i])):
+                    final += 1
+                    continue
+                strike += 1
+                final += 1
+                if strike == 3:
+                    x_bef = all_x[i]
+                    y_bef = all_y[i]
+                    actual_x.append(x_bef*multiplier)
+                    actual_y.append(y_bef*multiplier)
+                    elapsed_time = h[final]*3600+m[final]*60+s[final]-h[initial]*3600-m[initial]*60-s[initial]
+                    time.append(elapsed_time)
+                    strike = 0
+                    initial = final
+                    counter += 1
+            else:
+                plot_time.append(time)
+                x_plots.append(actual_x)
+                y_plots.append(actual_y)
+                time = []
+                actual_x = []
+                actual_y = []
+                plot_num += 1
+    def TopThree(self,x,y,time, plot_num):
+        global first
+        global second
+        global third
+        first = time[plot_num][0]
+        second = time[plot_num][0]
+        third = time[plot_num][0]
+        for index in range(len(time[plot_num+1])):
+            current = time[plot_num+1][index]
+            if current > first:
+                second = first
+                first = current
+            elif current > second:
+                third = second
+                second = current
+            elif current > third:
+                third = current
+    def FancyPlot(self, x, y, time, plot_num):
+        global first
+        global second
+        global third
+        plt.plot(x[plot_num+1], y[plot_num+1], "r*")
+        plt.title(f"{time_interval * (plot_num+1)}s  to  {time_interval * (plot_num + 2)}s")
+        #self.TopThree(x,y,time,plot_num)
+        # for i in time[plot_num+1]:
+        #     if i == first:
+        #         print("lit")
+        #         index = time[plot_num].index(i)
+        #         print(index)
+        #         plt.plot(x[plot_num][index], y[plot_num][index], marker="o",markersize=100, markeredgecolor='red', markerfacecolor='green')
+        #     if i == second:
+        #         index = time[plot_num].index(i)
+        #         plt.plot(x[plot_num][index], y[plot_num][index], marker="o", markersize=100, markeredgecolor='red',markerfacecolor='green')
+        #     if i == third:
+        #         index = time[plot_num].index(i)
+        #         plt.plot(x[plot_num][index], y[plot_num][index], marker="o", markersize=100, markeredgecolor='red',markerfacecolor='green')
+        plt.show()
+    def FancyTurtle(self, x, y,time, plot_num):
+        global degrees
+        for index in range(len(x[plot_num-1])):
+            try:
+                t.penup()
+                t.color('green')  # Set the turtle's color to yellow
+                t.goto(x[plot_num-1][index],y[plot_num-1][index])
+                t.pendown()
+                t.goto(x[plot_num-1][index+1],y[plot_num-1][index+1])
+                #pygame.draw.line(canvas,"green", (x[plot_num][index], y[plot_num][index]), (x[plot_num][index+1],y[plot_num][index+1]),3)
+                #pygame.display.update()
+                #time.sleep(1)
+            except:
+                break
+
+    def __init__(self):
+        global plot_num
+        super().__init__()
+        global all_x
+        global all_y
+        global hours
+        global minute
+        global second
+        global multiplier
+        self.ModifyData(all_x, all_y, hours, minute, second, multiplier)
+        self.setWindowTitle("Welcome to the visualization studio!")
+        self.setGeometry(100, 100, 500, 500)
+        plot_num = 0
+        f.close()
+        self.button = QPushButton("Path Taken", self)
+        self.button.move(200, 200)
+        self.button.clicked.connect(self.plot_turtle)
+        self.button = QPushButton("Plot Graph", self)
+        self.button.move(200,150)
+        self.button.clicked.connect(self.plot_graph)
+        self.button = QPushButton("Summary", self)
+        self.button.move(200,250)
+        self.button.clicked.connect(self.Summary)
+
+    def plot_turtle(self):
+        global t
+        global screen
+        t = turtle.Turtle()
+        screen = turtle.Screen()
+        screen.setworldcoordinates(0, 0, 5.1562, 4.064)
+        global degrees
+        global plot_num
+        global index
+        global plot_time
+        global time
+        global x_plots
+        global y_plots
+        highlight_color = (255, 0, 0)
+        self.FancyTurtle(x_plots,y_plots,time, plot_num)
+        #plt.plot(x_plots[plot_num], y_plots[plot_num], "r*")
+        #plt.title("Position Data"+ str(plot_num+1))
+        #plt.grid()
+        #plt.axis([0, 20, 0, 20])
+        #plt.show()
+        while True:
+            msg = QMessageBox.question(self, "Position Data" ,"Do you want to change the position data you are looking at?", QMessageBox.Yes | QMessageBox.Abort)
+            if msg == QMessageBox.Yes:
+                msg2 = QMessageBox.question(self, "Transition", "Do you want to go forward in time?",QMessageBox.Yes | QMessageBox.No)
+                if msg2 == QMessageBox.Yes:
+                    if self.checkTime(plot_num, 5):
+                        plot_num += 1
+                        t.clear()
+                        self.FancyTurtle(x_plots,y_plots,time, plot_num)
+                    else:
+                        plot_num = 0
+                        t.clear()
+                        self.FancyTurtle(x_plots, y_plots,time, plot_num)
+
+                elif msg2 == QMessageBox.No:
+                    if plot_num != 0:
+                        plot_num -= 1
+                        t.clear()
+                        self.FancyTurtle(x_plots,y_plots, time, plot_num)
+
+                    else:
+                        QMessageBox.information(self, "Sorry!","You cannot go backwards! This was the first position data sheet!")
+                        break
+            elif msg == QMessageBox.Abort:
+                break
+
+
+    def plot_graph(self):
+        global plot_num
+        global index
+        global plot_time
+        global x_plots
+        global y_plots
+        highlight_color = (255, 0, 0)
+        plt.axis([0,5,0,5])
+        self.FancyPlot(x_plots,y_plots,plot_time, plot_num-1)
+        while True:
+            msg = QMessageBox.question(self, "Position Data" ,"Do you want to change the position data you are looking at?", QMessageBox.Yes | QMessageBox.Abort)
+            if msg == QMessageBox.Yes:
+                msg2 = QMessageBox.question(self, "Transition", "Do you want to go forward in time?",QMessageBox.Yes | QMessageBox.No)
+                if msg2 == QMessageBox.Yes:
+                    if self.checkTime(plot_num, 5):
+                        plot_num += 1
+                        plt.close()
+                        self.FancyPlot(x_plots,y_plots,time, plot_num-1)
+                    else:
+                        plot_num = 0
+                        plt.close()
+                        self.FancyPlot(x_plots,y_plots,time, plot_num-1)
+
+                elif msg2 == QMessageBox.No:
+                    if plot_num != 0:
+                        plot_num -= 1
+                        plt.close()
+                        self.FancyPlot(x_plots, y_plots, time, plot_num - 1)
+
+                    else:
+                        QMessageBox.information(self, "Sorry!","You cannot go backwards! This was the first position data sheet!")
+                        break
+            elif msg == QMessageBox.Abort:
+                break
+    def Summary(self):
+        x1 = []
+        y1 = []
+        degree1 = []
+        x2 = []
+        y2 = []
+        degree2 = []
+        # Vestigo Summary Screen
+        ##this is just getting format i want in txt file
+        lines = [
+            "5.78383204,9.32324320394,84.42\n",
+            "0,6,12.1\n",
+            "6,1,35.5\n",
+            "8,8,8.53\n",
+            "2.234343232,3.324231,123.214213121223\n",
+            "9.2343223,5.23432,12.675\n",
+            "0,0,0.434"
+        ]
+
+        person2lines = ["3.83204,2.324320394,8.442\n",
+                        "3.232,4.231,12.214213121223\n",
+                        "2.343223,7.23432,12.123\n",
+                        "8,8,8.53\n",
+                        "2.234343232,3.324231,123.214213121223\n",
+                        "9.2343223,5.23432,12.675\n",
+                        "0,0,0.434"
+                        ]
+        # Open a new file for writing
+        with open("collecteddata.txt", "w") as f:
+            # Write each line to the file
+            for line in lines:
+                f.write(line)
+        # reads the data from the txt file and turns it into a massive list
+        with open("collecteddata.txt", "r") as data:
+            # read each line and get it in a list
+            all_lines = data.readlines()
+        # this reads the massive list and turns it into list of lists
+        linessplit = []
+        for eachline in all_lines:
+            linessplit.append(eachline.split(','))
+        for i in linessplit:
+            print(i[0])
+            x1.append(float(i[0]))
+            y1.append(float(i[1]))
+            str = i[2]
+            print('ok')
+            degree1.append(float(str[0:3]))
+        print(degree1[0])
+        # defines points by their quadrant
+        q1 = 0
+        q2 = 0
+        q3 = 0
+        q4 = 0
+        halfway = 4
+        totalpoints = 0
+
+        for everyline in linessplit:
+            if float(everyline[0]) > halfway:
+                if float(everyline[1]) > halfway:
+                    q1 += 1
+                else:
+                    q4 += 1
+            else:
+                if float(everyline[1]) > halfway:
+                    q2 += 1
+                else:
+                    q3 += 1
+            totalpoints += 1
+        #####now do the same thing for the fake data
+        # Open a new file for writing
+        with open("collecteddata2.txt", "w") as f2:
+            # Write each line to the file
+            for line2 in person2lines:
+                f2.write(line2)
+
+        # read the file
+        with open("collecteddata2.txt", "r") as data2:
+            # read each line and get it in a list
+            all_lines2 = data2.readlines()
+
+        # gets list of lists for data
+        linessplit2 = []
+        for eachline2 in all_lines2:
+            linessplit2.append(eachline2.split(','))
+        # defines points by their quadrant
+        q12 = 0
+        q22 = 0
+        q32 = 0
+        q42 = 0
+        halfway = 4
+
+        for everyline2 in linessplit2:
+            if float(everyline2[0]) > halfway:
+                if float(everyline2[1]) > halfway:
+                    q12 += 1
+                else:
+                    q42 += 1
+            else:
+                if float(everyline2[1]) > 4:
+                    q22 += 1
+                else:
+                    q32 += 1
+
+        together = 0
+        togetherdistance = 1
+        # get the amount of together time
+        for i in range(len(all_lines)):
+            if sqrt((float(linessplit2[i][1]) - float(linessplit[i][1])) ** 2 + (
+                    float(linessplit2[i][0]) - float(linessplit[i][0])) ** 2) <= togetherdistance:
+                together += 1
+
+                # summary
+
+        # what percent in each quadrant
+        q1percent = q1 / totalpoints
+        q2percent = q2 / totalpoints
+        q3percent = q3 / totalpoints
+        q4percent = q4 / totalpoints
+
+        labels = ["Quadrant 1", "Quadrant 2", "Quadrant 3", "Quadrant 4"]
+        sizes = [q1percent, q2percent, q3percent, q4percent]
+        colors = ['red', 'white', 'wheat', 'grey']
+
+        plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, textprops={'color': "black"})
+
+        plt.show()
+
+        # what percent close to the other person
+        togetherpercent = together / totalpoints
+
+        print(
+            f'The subjects spent {togetherpercent * 100:.2f} percent of their time within {togetherdistance} m of each other.')
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
+
+turtle.done()
