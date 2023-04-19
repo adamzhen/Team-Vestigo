@@ -30,6 +30,10 @@
 #include <vector>
 #include <math.h>
 #include <WiFi.h>
+#include <Wire.h> // Needed for I2C
+
+#include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h> // Click here to get the library: http://librarymanager/All#SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library
+SFE_MAX1704X lipo(MAX1704X_MAX17048); // Allow access to all the 17048 features
 
 //#define USE_SPI       // Uncomment this to use SPI
 
@@ -47,7 +51,8 @@
 
 //#define DEBUG // used for debugging
 #define TRANSMIT
-#define PRINT
+//#define PRINT
+#define FUELGAUGE
 
 #ifdef USE_SPI
 ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
@@ -60,7 +65,7 @@ const char *ssid;
 const char *password;
 const char *host;  
 
-const int network = 0; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
+const int network = 1; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
 const int port = 1235;
 
 void setup()
@@ -249,6 +254,15 @@ const char *Aiden_laptop_LAN = "192.168.8.219";
     SERIAL_PORT.println(elapsedCalibration/1000);     
     elapsedCalibration += 1000;
   }
+#ifdef FUELGAUGE
+  // Set up the MAX17048 LiPo fuel gauge:
+  if (lipo.begin() == false) // Connect to the MAX17048 using the default wire port
+  {
+    Serial.println(F("MAX17048 not detected. Please check wiring. Freezing."));
+    while (1)
+      ;
+  }
+#endif
 }
 
 float roll = 0;
@@ -326,8 +340,8 @@ void loop()
 
 #else
       if (ERROR){ // if quaternions cannot add to 1
-        SERIAL_PORT.println(ERROR);
 #ifdef DEBUG
+        SERIAL_PORT.println(ERROR);
         SERIAL_PORT.print(F("~ Error: ["));
         SERIAL_PORT.print(ERROR);
         SERIAL_PORT.print(F("] -> "));        
@@ -399,18 +413,18 @@ void loop()
     // float gyrZ = sensor->gyrZ();
 
     // calculating gravity components
-    float gx = -1000 * sin(pitch * PI/180);      
-    float gy = 1000 * cos(pitch * PI/180) * sin(roll * PI/180);  
-    float gz = 1000 * cos(pitch * PI/180) * cos(roll * PI/180);
+    // float gx = -1000 * sin(pitch * PI/180);      
+    // float gy = 1000 * cos(pitch * PI/180) * sin(roll * PI/180);  
+    // float gz = 1000 * cos(pitch * PI/180) * cos(roll * PI/180);
 
     // calculating orientation
-    float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
-    float compass = zerodir - yaw;
-    if (compass < 0){
-      compass += 360;
-    }
-    float angle1 = 90-roll; // tilt up = positive, tilt down = negative
-    float angle2 = -pitch; // right = positive, left = negative
+    // float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
+    // float compass = zerodir - yaw;
+    // if (compass < 0){
+    //   compass += 360;
+    // }
+    // float angle1 = 90-roll; // tilt up = positive, tilt down = negative
+    // float angle2 = -pitch; // right = positive, left = negative
 
     //SERIAL_PORT.printf("%f, %f, %f, %f, %f, %f", roll, pitch, yaw, accX-gx, accY-gy, accZ-gz);
     //SERIAL_PORT.printf("%f, %f, %f, %f, %f, %f, %f, %f, %f", roll, pitch, yaw, gx, gy, gz, accX, accY, accZ);
@@ -425,20 +439,26 @@ void loop()
       SERIAL_PORT.print(pitch, 1);
       SERIAL_PORT.print(F(" Yaw:"));
       SERIAL_PORT.println(yaw, 1);
+      SERIAL_PORT.print(F("Ax:"));
+      // SERIAL_PORT.print(accX-gx, 1);
+      // SERIAL_PORT.print(F(" Ay:"));
+      // SERIAL_PORT.print(accY-gy, 1);
+      // SERIAL_PORT.print(F(" Az:"));
+      // SERIAL_PORT.println(accZ-gz, 1);
 
     } else {
       char sep = ',';
-      SERIAL_PORT.print(gx, 2);
+      SERIAL_PORT.print(roll, 2);
       SERIAL_PORT.print(sep);
-      SERIAL_PORT.print(gy, 2);
+      SERIAL_PORT.print(pitch, 2);
       SERIAL_PORT.print(sep);
-      SERIAL_PORT.print(gz, 2);
+      SERIAL_PORT.print(yaw, 2);
       SERIAL_PORT.print(sep);
-      SERIAL_PORT.print(accX, 2);
-      SERIAL_PORT.print(sep);
-      SERIAL_PORT.print(accY, 2);
-      SERIAL_PORT.print(sep);
-      SERIAL_PORT.println(accZ, 2);
+      // SERIAL_PORT.print(accX-gx, 2);
+      // SERIAL_PORT.print(sep);
+      // SERIAL_PORT.print(accY-gy, 2);
+      // SERIAL_PORT.print(sep);
+      // SERIAL_PORT.println(accZ-gz, 2);
     }
     // //SERIAL_PORT.print(", Mag (uT): Mx: ");
     // // SERIAL_PORT.printf("%c Mx:", sep);
@@ -508,9 +528,25 @@ void loop()
 
   dt = micros() - startTime;
   //Serial.println(dt); // print the elapsed time in milliseconds
+#ifdef FUELGAUGE
+    // Print the variables:
+  Serial.print("Voltage: ");
+  Serial.print(lipo.getVoltage());  // Print the battery voltage
+  Serial.print("V");
+
+  Serial.print(" Percentage: ");
+  Serial.print(lipo.getSOC(), 2); // Print the battery state of charge with 2 decimal places
+  Serial.print("%");
+
+  Serial.print(" Change Rate: ");
+  Serial.print(lipo.getChangeRate(), 2); // Print the battery change rate with 2 decimal places
+  Serial.print("%/hr");
+
+  Serial.println();
+#endif
 }
 
-// initializeDMP is a weak function. Let's overwrite it so we can increase the sample rate
+// // initializeDMP is a weak function. Let's overwrite it so we can increase the sample rate
 // ICM_20948_Status_e ICM_20948::initializeDMP(void)
 // {
 //   // The ICM-20948 is awake and ready but hasn't been configured. Let's step through the configuration
@@ -564,7 +600,7 @@ void loop()
 //   // Since both gyro and accel are running, setting this register should have no effect. But it does. Maybe because the Gyro and Accel are placed in Low Power Mode (cycled)?
 //   // You can see by monitoring the Aux I2C pins that the next three lines reduce the bus traffic (magnetometer reads) from 1125Hz to the chosen rate: 68.75Hz in this case.
 //   result = setBank(3); if (result > worstResult) worstResult = result; // Select Bank 3
-//   uint8_t mstODRconfig = 0x04; // Set the ODR configuration to 1100/2^4 = 68.75Hz
+//   uint8_t mstODRconfig = 0x02; // Set the ODR configuration to 1100/2^2 = 275Hz *CHANGED
 //   result = write(AGB3_REG_I2C_MST_ODR_CONFIG, &mstODRconfig, 1); if (result > worstResult) worstResult = result; // Write one byte to the I2C_MST_ODR_CONFIG register  
 
 //   // Configure clock source through PWR_MGMT_1
@@ -743,7 +779,7 @@ void loop()
 
 //   // Enable DMP interrupt
 //   // This would be the most efficient way of getting the DMP data, instead of polling the FIFO
-//   //result = intEnableDMP(true); if (result > worstResult) worstResult = result;
+//   result = intEnableDMP(true); if (result > worstResult) worstResult = result;
 
 //   return worstResult;
 // }
