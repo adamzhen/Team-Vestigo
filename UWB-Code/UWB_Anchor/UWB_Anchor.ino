@@ -54,11 +54,11 @@ static uint64_t resp_tx_ts;
    temperature. These values can be calibrated prior to taking reference measurements. See NOTE 5 below. */
 extern dwt_txconfig_t txconfig_options;
 
-/******************************************
-************ TRANSMISTTER MODE ************
-******************************************/
+/**********************************************
+************ TWR TRANSMISTTER MODE ************
+**********************************************/
 
-void transmitter_mode(int key, int amount_data_out, double& tof)
+void twr_transmitter_mode(int key, int amount_data_out, double& tof)
 {
   /* Frame sequence number, incremented after each transmission. */
   uint8_t frame_seq_nb = 0;
@@ -154,6 +154,12 @@ void transmitter_mode(int key, int amount_data_out, double& tof)
           rtd_resp = resp_tx_ts - poll_rx_ts;
 
           tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
+          String string_clock = String(clockOffsetRatio, 40);
+
+          Serial.print("Clock ");
+          Serial.print(key);
+          Serial.print(": ");
+          Serial.println(string_clock);
         }
       }
     }
@@ -167,11 +173,11 @@ void transmitter_mode(int key, int amount_data_out, double& tof)
   
 }
 
-/**************************************
-************ RECEIVER MODE ************
-**************************************/
+/******************************************
+************ TWR RECEIVER MODE ************
+******************************************/
  
-void receiver_mode(int key, int amount_data_out)
+void twr_receiver_mode(int key, int amount_data_out)
 {
   uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
   uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -273,6 +279,7 @@ void receiver_mode(int key, int amount_data_out)
     frame_seq_nb++;
   }
 }
+
 
 /**************************************
 ************ PROGRAM SETUP ************
