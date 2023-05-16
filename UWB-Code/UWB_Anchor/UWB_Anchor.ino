@@ -55,10 +55,10 @@ static uint64_t resp_tx_ts;
 extern dwt_txconfig_t txconfig_options;
 
 /******************************************
-************ TRANSMISSION MODE ************
+************ TRANSMISTTER MODE ************
 ******************************************/
 
-void transmit(int key, int amount_data_out, double& tof)
+void transmitter_mode(int key, int amount_data_out, double& tof)
 {
   /* Frame sequence number, incremented after each transmission. */
   uint8_t frame_seq_nb = 0;
@@ -67,9 +67,6 @@ void transmit(int key, int amount_data_out, double& tof)
   * Its size is adjusted to longest frame that this example code is supposed to handle. */
   int RX_BUF_LEN = 20;
   uint8_t rx_buffer[RX_BUF_LEN];
-
-  /* Ranging Delay */
-  int RNG_DELAY_MS = 1;
 
   /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
   #ifdef RPI_BUILD
@@ -117,59 +114,55 @@ void transmit(int key, int amount_data_out, double& tof)
     /* Increment frame sequence number after transmission of the poll message (modulo 256). */
     frame_seq_nb++;
 
-    if (!(status_reg & SYS_STATUS_RXFCG_BIT_MASK))
+    if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
+    {
+      uint32_t frame_len;
+
+      /* Clear good RX frame event in the DW IC status register. */
+      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+
+      /* A frame has been received, read it into the local buffer. */
+      frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
+
+      if (frame_len <= sizeof(rx_buffer))
+      {
+        dwt_readrxdata(rx_buffer, frame_len, 0);
+
+        /* Check that the frame is the expected response from the companion "SS TWR responder" example.
+        * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+        rx_buffer[ALL_MSG_SN_IDX] = 0;
+
+        if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
+        {
+          uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
+          int32_t rtd_init, rtd_resp;
+          float clockOffsetRatio ;
+
+          /* Retrieve poll transmission and response reception timestamps. See NOTE 9 below. */
+          poll_tx_ts = dwt_readtxtimestamplo32();
+          resp_rx_ts = dwt_readrxtimestamplo32();
+
+          /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
+          clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1<<26);
+
+          /* Get timestamps embedded in response message. */
+          resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
+          resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
+
+          /* Compute time of flight and distance, using clock offset ratio to correct for differing local and remote clock rates */
+          rtd_init = resp_rx_ts - poll_tx_ts;
+          rtd_resp = resp_tx_ts - poll_rx_ts;
+
+          tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
+        }
+      }
+    }
+    else
     {
       /* Clear RX error/timeout events in the DW IC status register. */
       dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
-    } 
-  
-    uint32_t frame_len;
-
-    /* Clear good RX frame event in the DW IC status register. */
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
-
-    /* A frame has been received, read it into the local buffer. */
-    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
-
-    if (frame_len > sizeof(rx_buffer))
-    {
-      continue;
-    }
-    
-    dwt_readrxdata(rx_buffer, frame_len, 0);
-
-    /* Check that the frame is the expected response from the companion "SS TWR responder" example.
-    * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-    rx_buffer[ALL_MSG_SN_IDX] = 0;
-
-    if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) != 0)
-    {
-      continue;
     }
 
-    uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
-    uint32_t rtd_init, rtd_resp;
-    float clockOffsetRatio ;
-
-    /* Retrieve poll transmission and response reception timestamps. See NOTE 9 below. */
-    poll_tx_ts = dwt_readtxtimestamplo32();
-    resp_rx_ts = dwt_readrxtimestamplo32();
-
-    /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
-    clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1<<26);
-
-    /* Get timestamps embedded in response message. */
-    resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
-    resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
-
-    /* Compute time of flight and distance, using clock offset ratio to correct for differing local and remote clock rates */
-    rtd_init = resp_rx_ts - poll_tx_ts;
-    rtd_resp = resp_tx_ts - poll_rx_ts;
-
-    tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
-
-    /* Execute a delay between ranging exchanges. */
-    Sleep(RNG_DELAY_MS);
   }
   
 }

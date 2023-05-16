@@ -1,6 +1,6 @@
 #include "dw3000.h"
 
-#define APP_NAME "SS TWR INIT v1.0"
+#define APP_NAME "UWB Tag"
 
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
@@ -35,88 +35,281 @@ int key = 0;
 // counter
 int counter = 0;
 
-
-// connection pins
-const uint8_t PIN_RST = 27; // reset pin
-const uint8_t PIN_IRQ = 34; // irq pin
-const uint8_t PIN_SS = 4; // spi select pin
-
-/* Default communication configuration. We use default non-STS DW mode. */
-static dwt_config_t config = {
-        5,               /* Channel number. */
-        DWT_PLEN_128,    /* Preamble length. Used in TX only. */
-        DWT_PAC8,        /* Preamble acquisition chunk size. Used in RX only. */
-        9,               /* TX preamble code. Used in TX only. */
-        9,               /* RX preamble code. Used in RX only. */
-        1,               /* 0 to use standard 8 symbol SFD, 1 to use non-standard 8 symbol, 2 for non-standard 16 symbol SFD and 3 for 4z 8 symbol SDF type */
-        DWT_BR_6M8,      /* Data rate. */
-        DWT_PHRMODE_STD, /* PHY header mode. */
-        DWT_PHRRATE_STD, /* PHY header rate. */
-        (129 + 8 - 8),   /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
-        DWT_STS_MODE_OFF, /* STS disabled */
-        DWT_STS_LEN_64,/* STS length see allowed values in Enum dwt_sts_lengths_e */
-        DWT_PDOA_M0      /* PDOA mode off */
-};
-
-/* Inter-ranging delay period, in milliseconds. */
-#define RNG_DELAY_MS 1
-
-/* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
-#define TX_ANT_DLY 16385
-#define RX_ANT_DLY 16385
-
-/* Frames used in the ranging process. See NOTE 3 below. */
-
-/* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
-#define ALL_MSG_COMMON_LEN 10
-/* Indexes to access some of the fields in the frames defined above. */
-#define ALL_MSG_SN_IDX 2
-#define RESP_MSG_POLL_RX_TS_IDX 10
-#define RESP_MSG_RESP_TX_TS_IDX 14
-#define RESP_MSG_TS_LEN 4
-/* Frame sequence number, incremented after each transmission. */
-static uint8_t frame_seq_nb = 0;
-
-/* Buffer to store received response message.
- * Its size is adjusted to longest frame that this example code is supposed to handle. */
-#define RX_BUF_LEN 20
-static uint8_t rx_buffer[RX_BUF_LEN];
-
-/* Hold copy of status register state here for reference so that it can be examined at a debug breakpoint. */
-static uint32_t status_reg = 0;
-
-/* Delay between frames, in UWB microseconds. See NOTE 1 below. */
-#ifdef RPI_BUILD
-#define POLL_TX_TO_RESP_RX_DLY_UUS 240
-#endif //RPI_BUILD
-#ifdef STM32F429xx
-#define POLL_TX_TO_RESP_RX_DLY_UUS 240
-#endif //STM32F429xx
-#ifdef NRF52840_XXAA
-#define POLL_TX_TO_RESP_RX_DLY_UUS 240
-#endif //NRF52840_XXAA
-/* Receive response timeout. See NOTE 5 below. */
-#ifdef RPI_BUILD
-#define RESP_RX_TIMEOUT_UUS 270
-#endif //RPI_BUILD
-#ifdef STM32F429xx
-#define RESP_RX_TIMEOUT_UUS 210
-#endif //STM32F429xx
-#ifdef NRF52840_XXAA
-#define RESP_RX_TIMEOUT_UUS 400
-#endif //NRF52840_XXAA
-
-#define POLL_TX_TO_RESP_RX_DLY_UUS 240
-#define RESP_RX_TIMEOUT_UUS 400
-
-
 /* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
 static double tof;
 static double distance;
 
+/*******************************************
+************ GEN CONFIG OPTIONS ************
+*******************************************/
+ 
+// connection pins
+const uint8_t PIN_RST = 27; // reset pin
+const uint8_t PIN_IRQ = 34; // irq pin
+const uint8_t PIN_SS = 4; // spi select pin
+ 
+/* Default communication configuration. We use default non-STS DW mode. */
+static dwt_config_t config = {
+  5,               /* Channel number. */
+  DWT_PLEN_128,    /* Preamble length. Used in TX only. */
+  DWT_PAC8,        /* Preamble acquisition chunk size. Used in RX only. */
+  9,               /* TX preamble code. Used in TX only. */
+  9,               /* RX preamble code. Used in RX only. */
+  1,               /* 0 to use standard 8 symbol SFD, 1 to use non-standard 8 symbol, 2 for non-standard 16 symbol SFD and 3 for 4z 8 symbol SDF type */
+  DWT_BR_6M8,      /* Data rate. */
+  DWT_PHRMODE_STD, /* PHY header mode. */
+  DWT_PHRRATE_STD, /* PHY header rate. */
+  (129 + 8 - 8),   /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
+  DWT_STS_MODE_OFF, /* STS disabled */
+  DWT_STS_LEN_64,/* STS length see allowed values in Enum dwt_sts_lengths_e */
+  DWT_PDOA_M0      /* PDOA mode off */
+};
+
+/* Ranging Delay */
+#define RNG_DELAY_MS 1
+ 
+/* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
+#define TX_ANT_DLY 16385
+#define RX_ANT_DLY 16385
+ 
+/* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
+#define ALL_MSG_COMMON_LEN 10
+/* Index to access some of the fields in the frames involved in the process. */
+#define ALL_MSG_SN_IDX 2
+#define RESP_MSG_POLL_RX_TS_IDX 10
+#define RESP_MSG_RESP_TX_TS_IDX 14
+#define RESP_MSG_TS_LEN 4
+ 
+/* Hold copy of status register state here for reference so that it can be examined at a debug breakpoint. */
+static uint32_t status_reg = 0;
+
+/* Timestamps of frames transmission/reception. */
+static uint64_t poll_rx_ts;
+static uint64_t resp_tx_ts;
+ 
 /* Values for the PG_DELAY and TX_POWER registers reflect the bandwidth and power of the spectrum at the current
- * temperature. These values can be calibrated prior to taking reference measurements. See NOTE 2 below. */
+   temperature. These values can be calibrated prior to taking reference measurements. See NOTE 5 below. */
 extern dwt_txconfig_t txconfig_options;
+
+/******************************************
+************ TRANSMISTTER MODE ************
+******************************************/
+
+void transmitter_mode(int key, int amount_data_out, double& tof)
+{
+  /* Frame sequence number, incremented after each transmission. */
+  uint8_t frame_seq_nb = 0;
+
+  /* Buffer to store received response message.
+  * Its size is adjusted to longest frame that this example code is supposed to handle. */
+  int RX_BUF_LEN = 20;
+  uint8_t rx_buffer[RX_BUF_LEN];
+
+  /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
+  #ifdef RPI_BUILD
+  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
+  #endif //RPI_BUILD
+  #ifdef STM32F429xx
+  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
+  #endif //STM32F429xx
+  #ifdef NRF52840_XXAA
+  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
+  #endif //NRF52840_XXAA
+  /* Receive response timeout. See NOTE 5 below. */
+  #ifdef RPI_BUILD
+  #define RESP_RX_TIMEOUT_UUS 270
+  #endif //RPI_BUILD
+  #ifdef STM32F429xx
+  #define RESP_RX_TIMEOUT_UUS 210
+  #endif //STM32F429xx
+  #ifdef NRF52840_XXAA
+  #define RESP_RX_TIMEOUT_UUS 400
+  #endif //NRF52840_XXAA
+  
+  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
+  #define RESP_RX_TIMEOUT_UUS 400
+
+  for (int i = 0; i < amount_data_out; i++) 
+  {
+    uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
+    uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    /* Write frame data to DW IC and prepare transmission. See NOTE 7 below. */
+    tx_poll_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
+    dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
+    dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
+
+    /* Start transmission, indicating that a response is expected so that reception is enabled automatically after the frame is sent and the delay
+     * set by dwt_setrxaftertxdelay() has elapsed. */
+    dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+
+    /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 8 below. */
+    while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
+    { };
+
+    /* Increment frame sequence number after transmission of the poll message (modulo 256). */
+    frame_seq_nb++;
+
+    if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
+    {
+      uint32_t frame_len;
+
+      /* Clear good RX frame event in the DW IC status register. */
+      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+
+      /* A frame has been received, read it into the local buffer. */
+      frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
+
+      if (frame_len <= sizeof(rx_buffer))
+      {
+        dwt_readrxdata(rx_buffer, frame_len, 0);
+
+        /* Check that the frame is the expected response from the companion "SS TWR responder" example.
+        * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+        rx_buffer[ALL_MSG_SN_IDX] = 0;
+
+        if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
+        {
+          uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
+          int32_t rtd_init, rtd_resp;
+          float clockOffsetRatio ;
+
+          /* Retrieve poll transmission and response reception timestamps. See NOTE 9 below. */
+          poll_tx_ts = dwt_readtxtimestamplo32();
+          resp_rx_ts = dwt_readrxtimestamplo32();
+
+          /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
+          clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1<<26);
+
+          /* Get timestamps embedded in response message. */
+          resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
+          resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
+
+          /* Compute time of flight and distance, using clock offset ratio to correct for differing local and remote clock rates */
+          rtd_init = resp_rx_ts - poll_tx_ts;
+          rtd_resp = resp_tx_ts - poll_rx_ts;
+
+          tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
+        }
+      }
+    }
+    else
+    {
+      /* Clear RX error/timeout events in the DW IC status register. */
+      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
+    }
+
+  }
+  
+}
+
+/**************************************
+************ RECEIVER MODE ************
+**************************************/
+ 
+void receiver_mode(int key, int amount_data_out)
+{
+  uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
+  uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+  /* Frame sequence number, incremented after each transmission. */
+  uint8_t frame_seq_nb = 0;
+
+  /* Buffer to store received messages.
+   Its size is adjusted to longest frame that this example code is supposed to handle. */
+  int RX_BUF_LEN = 12; //Must be less than FRAME_LEN_MAX_EX
+  uint8_t rx_buffer[RX_BUF_LEN];
+  /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
+  #ifdef RPI_BUILD
+  #define POLL_RX_TO_RESP_TX_DLY_UUS 550
+  #endif //RPI_BUILD
+  #ifdef STM32F429xx
+  #define POLL_RX_TO_RESP_TX_DLY_UUS 450
+  #endif //STM32F429xx
+  #ifdef NRF52840_XXAA
+  #define POLL_RX_TO_RESP_TX_DLY_UUS 650
+  #endif //NRF52840_XXAA
+ 
+  #define POLL_RX_TO_RESP_TX_DLY_UUS 450
+
+  for (int i = 0; i < amount_data_out; i++) 
+  {
+    /* Activate reception immediately. */
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
+  
+    /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
+    while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
+    { };
+  
+    if (!(status_reg & SYS_STATUS_RXFCG_BIT_MASK))
+    {
+      /* Clear RX error events in the DW IC status register. */
+      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+    }
+
+    uint32_t frame_len;
+  
+    /* Clear good RX frame event in the DW IC status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+  
+    /* A frame has been received, read it into the local buffer. */
+    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
+    if (frame_len > sizeof(rx_buffer))
+    {
+      continue;
+    }
+    
+    dwt_readrxdata(rx_buffer, frame_len, 0);
+  
+    /* Check that the frame is a poll sent by "SS TWR initiator" example.
+    As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+    rx_buffer[ALL_MSG_SN_IDX] = 0;
+    if (memcmp(rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) != 0)
+    {
+      continue;
+    }
+      
+    uint32_t resp_tx_time;
+    int ret;
+  
+    /* Retrieve poll reception timestamp. */
+    poll_rx_ts = get_rx_timestamp_u64();
+  
+    /* Compute response message transmission time. See NOTE 7 below. */
+    resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
+    dwt_setdelayedtrxtime(resp_tx_time);
+  
+    /* Response TX timestamp is the transmission time we programmed plus the antenna delay. */
+    resp_tx_ts = (((uint64_t)(resp_tx_time & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
+  
+    /* Write all timestamps in the final message. See NOTE 8 below. */
+    resp_msg_set_ts(&tx_resp_msg[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
+    resp_msg_set_ts(&tx_resp_msg[RESP_MSG_RESP_TX_TS_IDX], resp_tx_ts);
+  
+    /* Write and send the response message. See NOTE 9 below. */
+    tx_resp_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
+    dwt_writetxdata(sizeof(tx_resp_msg), tx_resp_msg, 0); /* Zero offset in TX buffer. */
+    dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
+    ret = dwt_starttx(DWT_START_TX_DELAYED);
+  
+    /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 10 below. */
+    if (ret != DWT_SUCCESS)
+    {
+      continue;
+    }
+    
+    /* Poll DW IC until TX frame sent event set. See NOTE 6 below. */
+    while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK))
+    { };
+  
+    /* Clear TXFRS event. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
+  
+    /* Increment frame sequence number after transmission of the poll message (modulo 256). */
+    frame_seq_nb++;
+  }
+}
 
 void setup() 
 {
@@ -184,241 +377,203 @@ void setup()
 void loop() 
 {
 
-        // Distance reset
-        float distance = 0;
+  // Distance reset
+  float distance = 0;
+  double tof = 0;
         
-        // Cycles between 4 keys
-        key %= 4;
-        key++;       
+  // Cycles between 4 keys
+  key %= 4;
+  key++;
 
-        uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
-        uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  transmitter_mode(key, 1, tof);                  
+  distance = tof * SPEED_OF_LIGHT;
 
+  delay(1);
 
-        /* Write frame data to DW IC and prepare transmission. See NOTE 7 below. */
-        tx_poll_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
-        dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
-        dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
-        dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
-
-        /* Start transmission, indicating that a response is expected so that reception is enabled automatically after the frame is sent and the delay
-         * set by dwt_setrxaftertxdelay() has elapsed. */
-        dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-
-        /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 8 below. */
-        while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-        { };
-
-        /* Increment frame sequence number after transmission of the poll message (modulo 256). */
-        frame_seq_nb++;
-
-        if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
-        {
-
-            uint32_t frame_len;
-
-            /* Clear good RX frame event in the DW IC status register. */
-            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
-
-            /* A frame has been received, read it into the local buffer. */
-            frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
-
-            if (frame_len <= sizeof(rx_buffer))
-            {
-                dwt_readrxdata(rx_buffer, frame_len, 0);
-
-                /* Check that the frame is the expected response from the companion "SS TWR responder" example.
-                 * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-                rx_buffer[ALL_MSG_SN_IDX] = 0;
-
-                if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
-                {
-                    uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
-                    int32_t rtd_init, rtd_resp;
-                    float clockOffsetRatio ;
-
-                    /* Retrieve poll transmission and response reception timestamps. See NOTE 9 below. */
-                    poll_tx_ts = dwt_readtxtimestamplo32();
-                    resp_rx_ts = dwt_readrxtimestamplo32();
-
-                    /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
-                    clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1<<26);
-
-                    /* Get timestamps embedded in response message. */
-                    resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
-                    resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
-
-                    /* Compute time of flight and distance, using clock offset ratio to correct for differing local and remote clock rates */
-                    rtd_init = resp_rx_ts - poll_tx_ts;
-                    rtd_resp = resp_tx_ts - poll_rx_ts;
-
-                    tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
-                    distance = tof * SPEED_OF_LIGHT;
-
-                    /* Display computed distance on LCD. */
-                    test_run_info((unsigned char *)dist_str);
-                }
-            }
-        }
-        else
-        {
-            /* Clear RX error/timeout events in the DW IC status register. */
-            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
-        }
-
-        /* Execute a delay between ranging exchanges. */
-        Sleep(RNG_DELAY_MS);
-
-  if (distance != 0) {
+  if (distance != 0) 
+  {
 
     // Cyclyes between 1 and 20
     counter %= 20;
     counter++;
 
-  // appends data to appropriate array
-  if (key == 1) {
-    distance_1_data.push_back(distance);
-  }
-  if (key == 2) {
-    distance_2_data.push_back(distance);
-  }
-  if (key == 3) {
-    distance_3_data.push_back(distance);
-  }
-  if (key == 4) {
+    // appends data to appropriate array
+    if (key == 1) 
+    {
+      distance_1_data.push_back(distance);
+    }
+    if (key == 2) 
+    {
+      distance_2_data.push_back(distance);
+    }
+    if (key == 3) 
+    {
+      distance_3_data.push_back(distance);
+    }
+    if (key == 4) 
+    {
     distance_4_data.push_back(distance);
-  }
-
-  int distance_counter = 0;
-
-  if (distance_1_data.size() > 5) {
-    distance_counter += 1;
-  }
-  if (distance_2_data.size() > 5) {
-    distance_counter += 1;
-  }
-  if (distance_3_data.size() > 5) {
-    distance_counter += 1;
-  }
-  if (distance_4_data.size() > 5) {
-    distance_counter += 1;
-  }
-
-  // checks if there is enough data to send
-  if (distance_counter >= 3) 
-  {
-
-    Serial.print("D1: ");
-    for (int j = 0; j < distance_1_data.size(); j ++) {
-      Serial.print(distance_1_data[j]);
     }
-    Serial.println("");
-    Serial.print("D2: ");
-    for (int j = 0; j < distance_2_data.size(); j ++) {
-      Serial.print(distance_2_data[j]);
-    }
-    Serial.println("");
-    Serial.print("D3: ");
-    for (int j = 0; j < distance_3_data.size(); j ++) {
-      Serial.print(distance_3_data[j]);
-    }
-    Serial.println("");
-    Serial.print("D4: ");
-    for (int j = 0; j < distance_4_data.size(); j ++) {
-      Serial.print(distance_4_data[j]);
-    }
-    Serial.println("");
 
-    // resets averages
-    float average_1 = 0;
-    float average_2 = 0;
-    float average_3 = 0;
-    float average_4 = 3;
+    int distance_counter = 0;
 
-    // find average of each distance list
-    if (distance_1_data.size() > 0) {
-      float sum = 0;
-      for (float d : distance_1_data) {
-      sum += d;
+    if (distance_1_data.size() > 2) 
+    {
+      distance_counter += 1;
+    }
+    if (distance_2_data.size() > 2) 
+    {
+      distance_counter += 1;
+    }
+    if (distance_3_data.size() > 2) 
+    {
+      distance_counter += 1;
+    }
+    if (distance_4_data.size() > 2) 
+    {
+      distance_counter += 1;
+    }
+
+    // checks if there is enough data to send
+    if (distance_counter >= 3) 
+    {
+
+      Serial.print("D1: ");
+      for (int j = 0; j < distance_1_data.size(); j ++) 
+      {
+        Serial.print(distance_1_data[j]);
+        Serial.print(", ");
       }
-      float average_1 = sum / distance_1_data.size();
-      averages.push_back(average_1);
-    } else{
-      averages.push_back(0);
-    }
-    if (distance_2_data.size() > 0) {
-      float sum = 0;
-      for (float d : distance_2_data) {
-      sum += d;
+      Serial.println("");
+      Serial.print("D2: ");
+      for (int j = 0; j < distance_2_data.size(); j ++) 
+      {
+        Serial.print(distance_2_data[j]);
+        Serial.print(", ");
       }
-      float average_2 = sum / distance_2_data.size();
-      averages.push_back(average_2);
-    } else {
-      averages.push_back(0);
-    }
-    if (distance_3_data.size() > 0) {
-      float sum = 0;
-      for (float d : distance_3_data) {
-      sum += d;
+      Serial.println("");
+      Serial.print("D3: ");
+      for (int j = 0; j < distance_3_data.size(); j ++) 
+      {
+        Serial.print(distance_3_data[j]);
+        Serial.print(", ");
       }
-      float average_3 = sum / distance_3_data.size();
-      averages.push_back(average_3);
-    } else {
-      averages.push_back(0);
-    }
-    if (distance_4_data.size() > 0) {
-      float sum = 0;
-      for (float d : distance_4_data) {
-      sum += d;
+      Serial.println("");
+      Serial.print("D4: ");
+      for (int j = 0; j < distance_4_data.size(); j ++) 
+      {
+        Serial.print(distance_4_data[j]);
+        Serial.print(", ");
       }
-      float average_4 = sum / distance_4_data.size();
-      averages.push_back(average_4);
-    } else {
-      averages.push_back(0);
-    }
+      Serial.println("");
 
-    // convert vector into Json array
-    const size_t capacity = JSON_ARRAY_SIZE(4);
-    DynamicJsonDocument doc(capacity);
-    JsonArray averaged_points = doc.to<JsonArray>();
-    for (int i = 0; i < averages.size(); i++){
-      Serial.print("Added Point: ");
-      Serial.println(averages[i]);
-      averaged_points.add(averages[i]);
-    }
+      // resets averages
+      float average_1 = 0;
+      float average_2 = 0;
+      float average_3 = 0;
+      float average_4 = 3;
 
-    // convert the Json array to a string
-    String jsonString;
-    serializeJson(doc, jsonString);
+      // find average of each distance list
+      if (distance_1_data.size() > 0) 
+      {
+        float sum = 0;
+        for (float d : distance_1_data) 
+        {
+          sum += d;
+        }
+        float average_1 = sum / distance_1_data.size();
+        averages.push_back(average_1);
+      } 
+      else 
+      {
+        averages.push_back(0);
+      }
+      if (distance_2_data.size() > 0) 
+      {
+        float sum = 0;
+        for (float d : distance_2_data) 
+        {
+          sum += d;
+        }
+        float average_2 = sum / distance_2_data.size();
+        averages.push_back(average_2);
+      } 
+      else 
+      {
+        averages.push_back(0);
+      }
+      if (distance_3_data.size() > 0) 
+      {
+        float sum = 0;
+        for (float d : distance_3_data) 
+        {
+          sum += d;
+        }
+        float average_3 = sum / distance_3_data.size();
+        averages.push_back(average_3);
+      } 
+      else 
+      {
+        averages.push_back(0);
+      }
+      if (distance_4_data.size() > 0) 
+      {
+        float sum = 0;
+        for (float d : distance_4_data) 
+        {
+          sum += d;
+        }
+        float average_4 = sum / distance_4_data.size();
+        averages.push_back(average_4);
+      } 
+      else 
+      {
+        averages.push_back(0);
+      }
 
-    // Create a UDP connection to the laptop
-    WiFiUDP udp;
-    udp.begin(port);
-    IPAddress ip;
-    if (WiFi.hostByName(host, ip)) {
-      // Send the Json data over the socket connection
-      udp.beginPacket(ip, port);
-      udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
-      udp.endPacket();
-      Serial.println("Json data sent");
-    } else {
-      Serial.println("Unable to resolve hostname");
-    }
+      // convert vector into Json array
+      const size_t capacity = JSON_ARRAY_SIZE(4);
+      DynamicJsonDocument doc(capacity);
+      JsonArray averaged_points = doc.to<JsonArray>();
+      for (int i = 0; i < averages.size(); i++)
+      {
+        Serial.print("Added Point: ");
+        Serial.println(averages[i]);
+        averaged_points.add(averages[i]);
+      }
 
-    
-    distance_1_data.clear();
-    distance_2_data.clear();
-    distance_3_data.clear();
-    distance_4_data.clear();
+      // convert the Json array to a string
+      String jsonString;
+      serializeJson(doc, jsonString);
 
-    averages.clear();
+      // Create a UDP connection to the laptop
+      WiFiUDP udp;
+      udp.begin(port);
+      IPAddress ip;
+      if (WiFi.hostByName(host, ip)) 
+      {
+        // Send the Json data over the socket connection
+        udp.beginPacket(ip, port);
+        udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
+        udp.endPacket();
+        Serial.println("Json data sent");
+      } 
+      else 
+      {
+        Serial.println("Unable to resolve hostname");
+      }
+
+      
+      distance_1_data.clear();
+      distance_2_data.clear();
+      distance_3_data.clear();
+      distance_4_data.clear();
+
+      averages.clear();
 
     }  
   }
 }
-
-
-
 
 
 /*****************************************************************************************************************************************************
