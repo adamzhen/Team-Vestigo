@@ -69,27 +69,9 @@ void twr_transmitter_mode(int key, int amount_data_out, double& tof)
   uint8_t rx_buffer[RX_BUF_LEN];
 
   /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
-  #ifdef RPI_BUILD
   #define POLL_TX_TO_RESP_RX_DLY_UUS 240
-  #endif //RPI_BUILD
-  #ifdef STM32F429xx
-  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
-  #endif //STM32F429xx
-  #ifdef NRF52840_XXAA
-  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
-  #endif //NRF52840_XXAA
+
   /* Receive response timeout. See NOTE 5 below. */
-  #ifdef RPI_BUILD
-  #define RESP_RX_TIMEOUT_UUS 270
-  #endif //RPI_BUILD
-  #ifdef STM32F429xx
-  #define RESP_RX_TIMEOUT_UUS 210
-  #endif //STM32F429xx
-  #ifdef NRF52840_XXAA
-  #define RESP_RX_TIMEOUT_UUS 400
-  #endif //NRF52840_XXAA
-  
-  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
   #define RESP_RX_TIMEOUT_UUS 400
 
   for (int i = 0; i < amount_data_out; i++) 
@@ -154,12 +136,6 @@ void twr_transmitter_mode(int key, int amount_data_out, double& tof)
           rtd_resp = resp_tx_ts - poll_rx_ts;
 
           tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
-          String string_clock = String(clockOffsetRatio, 40);
-
-          Serial.print("Clock ");
-          Serial.print(key);
-          Serial.print(": ");
-          Serial.println(string_clock);
         }
       }
     }
@@ -189,17 +165,8 @@ void twr_receiver_mode(int key, int amount_data_out)
    Its size is adjusted to longest frame that this example code is supposed to handle. */
   int RX_BUF_LEN = 12; //Must be less than FRAME_LEN_MAX_EX
   uint8_t rx_buffer[RX_BUF_LEN];
+
   /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
-  #ifdef RPI_BUILD
-  #define POLL_RX_TO_RESP_TX_DLY_UUS 550
-  #endif //RPI_BUILD
-  #ifdef STM32F429xx
-  #define POLL_RX_TO_RESP_TX_DLY_UUS 450
-  #endif //STM32F429xx
-  #ifdef NRF52840_XXAA
-  #define POLL_RX_TO_RESP_TX_DLY_UUS 650
-  #endif //NRF52840_XXAA
- 
   #define POLL_RX_TO_RESP_TX_DLY_UUS 450
 
   for (int i = 0; i < amount_data_out; i++) 
@@ -280,6 +247,33 @@ void twr_receiver_mode(int key, int amount_data_out)
   }
 }
 
+/**********************************************
+************ TDOA TRANSMITTER MODE ************
+**********************************************/
+
+void tdoa_transmitter_mode() 
+{
+  /* Frame sequence number, incremented after each transmission. */
+  uint8_t frame_seq_nb = 0;
+
+  /* Buffer to store received response message.
+  * Its size is adjusted to longest frame that this example code is supposed to handle. */
+  int RX_BUF_LEN = 20;
+  uint8_t rx_buffer[RX_BUF_LEN];
+
+  /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
+  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
+  #define RESP_RX_TIMEOUT_UUS 400
+}
+
+/*******************************************
+************ TDOA RECEIVER MODE ************
+*******************************************/
+
+// void tdoa_receiver_mode() 
+// {
+//   continue;
+// }
 
 /**************************************
 ************ PROGRAM SETUP ************
