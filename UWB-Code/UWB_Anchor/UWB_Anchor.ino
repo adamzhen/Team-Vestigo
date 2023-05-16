@@ -337,5 +337,5 @@ void setup()
  
 void loop() 
 {
-  receiver_mode(1, 1);
+  twr_receiver_mode(1, 1);
 }
