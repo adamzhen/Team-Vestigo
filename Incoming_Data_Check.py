@@ -47,10 +47,10 @@ def quadlateration(distance_with_centers):
 
 
 # Centers with distances
-center_1 = [0.1016, 1.0688, 0.3048, 0]
-center_2 = [1.0287, 0.0508, 0.3048, 0]
-center_3 = [2.7178, 1.3208, 0.6604, 0]
-center_4 = [1.524, 3.0734, 0.1778, 0]
+center_1 = [0, 0, 1.422, 0]
+center_2 = [5.816, 0, 1.422, 0]
+center_3 = [5.816, 6.248, 1.422, 0]
+center_4 = [0, 6.248, 1.422, 0]
 
 
 # create an empty figure and axis object
