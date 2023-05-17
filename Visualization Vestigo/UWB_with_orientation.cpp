@@ -541,6 +541,8 @@ int main()
 
             /********TRILATERATION********/
 
+            std::cout << "TRILATERATION ATTEMPT WARNING" << std::endl;
+
             if (distance_1 == 0) {
                 Eigen::Vector3d prime = trilateration(distance_4, distance_2, distance_3, point_4, point_2, point_3);
 
@@ -603,7 +605,7 @@ int main()
             compass += 360;
         }
 
-        float room_orientation = 20; // compass direction of positive x-axis of the room
+        float room_orientation = 130; // compass direction of positive x-axis of the room
         float theta = compass - room_orientation;
         if (theta < 0) {
             theta += 360;
