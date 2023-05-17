@@ -35,17 +35,24 @@ std::vector<float> previous_UWB_position{ 0, 0, 0 };
 // Function to solve
 double equation(double xt, double yt, double zt, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double ct1, double ct2, double ct3) {
     double term1 = sqrt(pow(xt - x1, 2) + pow(yt - y1, 2) + pow(zt - z1, 2));
+    std::cout << "Term1: " << term1 << std::endl;
     double term2 = sqrt(pow(xt - x2, 2) + pow(yt - y2, 2) + pow(zt - z2, 2));
+    std::cout << "Term2: " << term2 << std::endl;
     double term3 = sqrt(pow(xt - x3, 2) + pow(yt - y3, 2) + pow(zt - z3, 2));
+    std::cout << "Term3: " << term3 << std::endl;
     return term1 - term2 - (term2 - term3) - ct1 + ct2 - ct2 + ct3;
 }
 
 // Derivative of the equation with respect to xt
 double equationDerivative(double xt, double yt, double zt, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double ct1, double ct2, double ct3) {
     double term1 = sqrt(pow(xt - x1, 2) + pow(yt - y1, 2) + pow(zt - z1, 2));
+    std::cout << "Term1 derivative: " << term1 << std::endl;
     double term2 = sqrt(pow(xt - x2, 2) + pow(yt - y2, 2) + pow(zt - z2, 2));
+    std::cout << "Term2 derivative: " << term2 << std::endl;
     double term3 = sqrt(pow(xt - x3, 2) + pow(yt - y3, 2) + pow(zt - z3, 2));
+    std::cout << "Term3 derivative: " << term3 << std::endl;
     double derivative = (xt - x1) / term1 - (xt - x2) / term2 - (xt - x2) / term2 + (xt - x3) / term3;
+    std::cout << "Derivative: " << derivative << std::endl;
     return derivative;
 }
 
@@ -53,20 +60,25 @@ double equationDerivative(double xt, double yt, double zt, double x1, double y1,
 double solveEquation(double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double ct1, double ct2, double ct3) {
     double xt = 0.0; // Initial guess for xt
     double epsilon = 1e-6; // Error tolerance
-    int maxIterations = 100; // Maximum number of iterations
+    int maxIterations = 1000; // Maximum number of iterations
     for (int i = 0; i < maxIterations; ++i) {
         double f = equation(xt, y1, z1, x1, y1, z1, x2, y2, z2, x3, y3, z3, ct1, ct2, ct3);
+        std::cout << "F: " << f << std::endl;
         double fPrime = equationDerivative(xt, y1, z1, x1, y1, z1, x2, y2, z2, x3, y3, z3, ct1, ct2, ct3);
+        std::cout << "fPrime: " << fPrime << std::endl;
 
         // Update xt using Newton-Raphson iteration
         xt = xt - f / fPrime;
+        std::cout << "xt Update: " << xt << std::endl;
 
         // Check for convergence
         if (fabs(f) < epsilon) {
+            std::cout << "Converged" << std::endl;
             return xt;
         }
     }
     // Return the result after maximum iterations
+    std::cout << "Non-Converged " << std::endl;
     return xt;
 }
 
