@@ -55,9 +55,18 @@ struct Vector3D {
 
 
 struct ResidualsFunctor {
+    using InputType = double;
+    using ValueType = double;
+    using JacobianType = Eigen::MatrixXd;
+
+    enum {
+        InputsAtCompileTime = Eigen::Dynamic,
+        ValuesAtCompileTime = Eigen::Dynamic
+    };
+
     ResidualsFunctor(const std::vector<Vector3D>& points,
         const std::vector<double>& times, double c)
-        : points(points), times(times), c(c) {}
+        : points(points), times(times), c(c), m_inputs(3), m_values(points.size()) {}
 
     int operator()(const Eigen::VectorXd& params, Eigen::VectorXd& fvec) const {
         for (size_t i = 0; i < points.size(); i++) {
@@ -67,29 +76,13 @@ struct ResidualsFunctor {
         return 0;
     }
 
-    int df(const Eigen::VectorXd& x, Eigen::MatrixXd& fjac) const {
-        // Estimate Jacobian
-        fjac.setZero();
-        for (int i = 0; i < values(); i++) {
-            for (int j = 0; j < x.size(); j++) {
-                Eigen::VectorXd xPlus(x);
-                xPlus[j] += std::sqrt(Eigen::NumTraits<double>::epsilon());
-                Eigen::VectorXd fvec(values());
-                (*this)(x, fvec);
-                Eigen::VectorXd fvecPlus(values());
-                (*this)(xPlus, fvecPlus);
-                fjac.col(j) = (fvecPlus - fvec) / std::sqrt(Eigen::NumTraits<double>::epsilon());
-            }
-        }
-        return 0;
-    }
-
-    int inputs() const { return 3; } // number of unknowns (x, y, z)
-    int values() const { return points.size(); } // number of equations
+    int inputs() const { return m_inputs; }
+    int values() const { return m_values; }
 
     const std::vector<Vector3D>& points;
     const std::vector<double>& times;
     const double c;
+    int m_inputs, m_values;
 };
 
 
@@ -608,7 +601,7 @@ int main()
 
             // Output the optimal parameters
             std::cout << "The coordinates of the unknown point are: (" << x[0] << ", " << x[1] << ", " << x[2] << ")\n";
-      
+
         }
 
         // writes the location data to the console
