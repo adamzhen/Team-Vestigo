@@ -8,6 +8,7 @@
 #include <math.h>
 #include <WiFi.h>
 
+// IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
 const char *Evan_laptop = "192.168.8.162";
 const char *Adam_laptop = "192.168.8.203";
@@ -96,7 +97,7 @@ extern dwt_txconfig_t txconfig_options;
 ************ TWR TRANSMISTTER MODE ************
 **********************************************/
 
-void twr_transmitter_mode(int key, int amount_data_out, double& tof)
+void twr_transmitter_mode(int key, double& tof)
 {
   /* Frame sequence number, incremented after each transmission. */
   uint8_t frame_seq_nb = 0;
@@ -112,77 +113,73 @@ void twr_transmitter_mode(int key, int amount_data_out, double& tof)
   /* Receive response timeout. See NOTE 5 below. */
   #define RESP_RX_TIMEOUT_UUS 400
 
-  for (int i = 0; i < amount_data_out; i++) 
+  uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
+  uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+  /* Write frame data to DW IC and prepare transmission. See NOTE 7 below. */
+  tx_poll_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
+  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
+  dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
+
+  /* Start transmission, indicating that a response is expected so that reception is enabled automatically after the frame is sent and the delay
+  * set by dwt_setrxaftertxdelay() has elapsed. */
+  dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+
+  /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 8 below. */
+  while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
+  { };
+
+  /* Increment frame sequence number after transmission of the poll message (modulo 256). */
+  frame_seq_nb++;
+
+  if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
   {
-    uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
-    uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint32_t frame_len;
 
-    /* Write frame data to DW IC and prepare transmission. See NOTE 7 below. */
-    tx_poll_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
-    dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
-    dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
+    /* Clear good RX frame event in the DW IC status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
 
-    /* Start transmission, indicating that a response is expected so that reception is enabled automatically after the frame is sent and the delay
-     * set by dwt_setrxaftertxdelay() has elapsed. */
-    dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+    /* A frame has been received, read it into the local buffer. */
+    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
 
-    /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 8 below. */
-    while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-    { };
-
-    /* Increment frame sequence number after transmission of the poll message (modulo 256). */
-    frame_seq_nb++;
-
-    if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
+    if (frame_len <= sizeof(rx_buffer))
     {
-      uint32_t frame_len;
+      dwt_readrxdata(rx_buffer, frame_len, 0);
 
-      /* Clear good RX frame event in the DW IC status register. */
-      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+      /* Check that the frame is the expected response from the companion "SS TWR responder" example.
+      * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+      rx_buffer[ALL_MSG_SN_IDX] = 0;
 
-      /* A frame has been received, read it into the local buffer. */
-      frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
-
-      if (frame_len <= sizeof(rx_buffer))
+      if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
       {
-        dwt_readrxdata(rx_buffer, frame_len, 0);
+        uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
+        int32_t rtd_init, rtd_resp;
+        float clockOffsetRatio ;
 
-        /* Check that the frame is the expected response from the companion "SS TWR responder" example.
-        * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-        rx_buffer[ALL_MSG_SN_IDX] = 0;
+        /* Retrieve poll transmission and response reception timestamps. See NOTE 9 below. */
+        poll_tx_ts = dwt_readtxtimestamplo32();
+        resp_rx_ts = dwt_readrxtimestamplo32();
 
-        if (memcmp(rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
-        {
-          uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
-          int32_t rtd_init, rtd_resp;
-          float clockOffsetRatio ;
+        /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
+        clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1<<26);
 
-          /* Retrieve poll transmission and response reception timestamps. See NOTE 9 below. */
-          poll_tx_ts = dwt_readtxtimestamplo32();
-          resp_rx_ts = dwt_readrxtimestamplo32();
+        /* Get timestamps embedded in response message. */
+        resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
+        resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
 
-          /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
-          clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1<<26);
+        /* Compute time of flight and distance, using clock offset ratio to correct for differing local and remote clock rates */
+        rtd_init = resp_rx_ts - poll_tx_ts;
+        rtd_resp = resp_tx_ts - poll_rx_ts;
 
-          /* Get timestamps embedded in response message. */
-          resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
-          resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
-
-          /* Compute time of flight and distance, using clock offset ratio to correct for differing local and remote clock rates */
-          rtd_init = resp_rx_ts - poll_tx_ts;
-          rtd_resp = resp_tx_ts - poll_rx_ts;
-
-          tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
-        }
+        tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
       }
     }
-    else
-    {
-      /* Clear RX error/timeout events in the DW IC status register. */
-      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
-    }
-
+  }
+  else
+  {
+    /* Clear RX error/timeout events in the DW IC status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
   }
   
 }
@@ -191,7 +188,7 @@ void twr_transmitter_mode(int key, int amount_data_out, double& tof)
 ************ TWR RECEIVER MODE ************
 ******************************************/
  
-void twr_receiver_mode(int key, int amount_data_out)
+void twr_receiver_mode(int key)
 {
   uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
   uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -207,114 +204,86 @@ void twr_receiver_mode(int key, int amount_data_out)
   /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
   #define POLL_RX_TO_RESP_TX_DLY_UUS 450
 
-  for (int i = 0; i < amount_data_out; i++) 
+  /* Activate reception immediately. */
+  dwt_rxenable(DWT_START_RX_IMMEDIATE);
+  
+  /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
+  while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
+  { };
+  
+  if (!(status_reg & SYS_STATUS_RXFCG_BIT_MASK))
   {
-    /* Activate reception immediately. */
-    dwt_rxenable(DWT_START_RX_IMMEDIATE);
-  
-    /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
-    while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
-    { };
-  
-    if (!(status_reg & SYS_STATUS_RXFCG_BIT_MASK))
-    {
-      /* Clear RX error events in the DW IC status register. */
-      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
-    }
-
-    uint32_t frame_len;
-  
-    /* Clear good RX frame event in the DW IC status register. */
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
-  
-    /* A frame has been received, read it into the local buffer. */
-    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
-    if (frame_len > sizeof(rx_buffer))
-    {
-      continue;
-    }
-    
-    dwt_readrxdata(rx_buffer, frame_len, 0);
-  
-    /* Check that the frame is a poll sent by "SS TWR initiator" example.
-    As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-    rx_buffer[ALL_MSG_SN_IDX] = 0;
-    if (memcmp(rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) != 0)
-    {
-      continue;
-    }
-      
-    uint32_t resp_tx_time;
-    int ret;
-  
-    /* Retrieve poll reception timestamp. */
-    poll_rx_ts = get_rx_timestamp_u64();
-  
-    /* Compute response message transmission time. See NOTE 7 below. */
-    resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
-    dwt_setdelayedtrxtime(resp_tx_time);
-  
-    /* Response TX timestamp is the transmission time we programmed plus the antenna delay. */
-    resp_tx_ts = (((uint64_t)(resp_tx_time & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
-  
-    /* Write all timestamps in the final message. See NOTE 8 below. */
-    resp_msg_set_ts(&tx_resp_msg[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
-    resp_msg_set_ts(&tx_resp_msg[RESP_MSG_RESP_TX_TS_IDX], resp_tx_ts);
-  
-    /* Write and send the response message. See NOTE 9 below. */
-    tx_resp_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
-    dwt_writetxdata(sizeof(tx_resp_msg), tx_resp_msg, 0); /* Zero offset in TX buffer. */
-    dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
-    ret = dwt_starttx(DWT_START_TX_DELAYED);
-  
-    /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 10 below. */
-    if (ret != DWT_SUCCESS)
-    {
-      continue;
-    }
-    
-    /* Poll DW IC until TX frame sent event set. See NOTE 6 below. */
-    while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK))
-    { };
-  
-    /* Clear TXFRS event. */
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
-  
-    /* Increment frame sequence number after transmission of the poll message (modulo 256). */
-    frame_seq_nb++;
+    /* Clear RX error events in the DW IC status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
   }
+
+  uint32_t frame_len;
+  
+  /* Clear good RX frame event in the DW IC status register. */
+  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+  
+  /* A frame has been received, read it into the local buffer. */
+  frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
+  if (frame_len > sizeof(rx_buffer))
+  {
+    continue;
+  }
+    
+  dwt_readrxdata(rx_buffer, frame_len, 0);
+  
+  /* Check that the frame is a poll sent by "SS TWR initiator" example.
+  As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+  rx_buffer[ALL_MSG_SN_IDX] = 0;
+  if (memcmp(rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) != 0)
+  {
+    continue;
+  }
+      
+  uint32_t resp_tx_time;
+  int ret;
+  
+  /* Retrieve poll reception timestamp. */
+  poll_rx_ts = get_rx_timestamp_u64();
+  
+  /* Compute response message transmission time. See NOTE 7 below. */
+  resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
+  dwt_setdelayedtrxtime(resp_tx_time);
+  
+  /* Response TX timestamp is the transmission time we programmed plus the antenna delay. */
+  resp_tx_ts = (((uint64_t)(resp_tx_time & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
+  
+  /* Write all timestamps in the final message. See NOTE 8 below. */
+  resp_msg_set_ts(&tx_resp_msg[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
+  resp_msg_set_ts(&tx_resp_msg[RESP_MSG_RESP_TX_TS_IDX], resp_tx_ts);
+  
+  /* Write and send the response message. See NOTE 9 below. */
+  tx_resp_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
+  dwt_writetxdata(sizeof(tx_resp_msg), tx_resp_msg, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
+  ret = dwt_starttx(DWT_START_TX_DELAYED);
+  
+  /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 10 below. */
+  if (ret != DWT_SUCCESS)
+  {
+    continue;
+  }
+    
+  /* Poll DW IC until TX frame sent event set. See NOTE 6 below. */
+  while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK))
+  { };
+  
+  /* Clear TXFRS event. */
+  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
+  
+  /* Increment frame sequence number after transmission of the poll message (modulo 256). */
+  frame_seq_nb++;
 }
-
-/**********************************************
-************ TDOA TRANSMITTER MODE ************
-**********************************************/
-
-void tdoa_transmitter_mode() 
-{
-  /* Frame sequence number, incremented after each transmission. */
-  uint8_t frame_seq_nb = 0;
-
-  /* Buffer to store received response message.
-  * Its size is adjusted to longest frame that this example code is supposed to handle. */
-  int RX_BUF_LEN = 20;
-  uint8_t rx_buffer[RX_BUF_LEN];
-
-  /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
-  #define POLL_TX_TO_RESP_RX_DLY_UUS 240
-  #define RESP_RX_TIMEOUT_UUS 400
-}
-
-/*******************************************
-************ TDOA RECEIVER MODE ************
-*******************************************/
-
-// void tdoa_receiver_mode() 
-// {
-//   continue;
-// }
 
 void setup() 
 {
+  Serial.begin(115200);
+
+  // WiFi Connection
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
@@ -373,12 +342,10 @@ void setup()
      * Note, in real low power applications the LEDs should not be used. */
     dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
 
-    Serial.begin(115200);
 }
 
 void loop() 
 {
-
   // Distance reset
   float distance = 0;
   double tof = 0;
@@ -390,7 +357,7 @@ void loop()
   twr_transmitter_mode(key, 1, tof);                  
   distance = tof * SPEED_OF_LIGHT;
 
-  delay(1);
+  delayMicroseconds(750);
 
   if (distance != 0) 
   {
@@ -419,25 +386,44 @@ void loop()
 
     int distance_counter = 0;
 
-    if (distance_1_data.size() > 2) 
+    if (distance_1_data.size() > 1) 
     {
       distance_counter += 1;
     }
-    if (distance_2_data.size() > 2) 
+    if (distance_2_data.size() > 1) 
     {
       distance_counter += 1;
     }
-    if (distance_3_data.size() > 2) 
+    if (distance_3_data.size() > 1) 
     {
       distance_counter += 1;
     }
-    if (distance_4_data.size() > 2) 
+    if (distance_4_data.size() > 1) 
     {
       distance_counter += 1;
     }
 
+    int good_distance_counter = 0;
+
+    if (distance_1_data.size() > 4) 
+    {
+      good_distance_counter += 1;
+    }
+    if (distance_2_data.size() > 4) 
+    {
+      good_distance_counter += 1;
+    }
+    if (distance_3_data.size() > 4) 
+    {
+      good_distance_counter += 1;
+    }
+    if (distance_4_data.size() > 4) 
+    {
+      good_distance_counter += 1;
+    }
+
     // checks if there is enough data to send
-    if (distance_counter >= 3) 
+    if (distance_counter >= 4 || good_distance_counter >= 3) 
     {
       // resets averages
       float average_1 = 0;
