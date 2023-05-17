@@ -4,6 +4,7 @@
 #include <cstring>
 #include <ws2tcpip.h>
 #include <cmath>
+#include <algorithm>
 
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
@@ -32,55 +33,73 @@ using std::endl;
 const float inch_to_meter = 0.0254;
 std::vector<float> previous_UWB_position{ 0, 0, 0 };
 
-// Function to solve
-double equation(double xt, double yt, double zt, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double ct1, double ct2, double ct3) {
-    double term1 = sqrt(pow(xt - x1, 2) + pow(yt - y1, 2) + pow(zt - z1, 2));
-    std::cout << "Term1: " << term1 << std::endl;
-    double term2 = sqrt(pow(xt - x2, 2) + pow(yt - y2, 2) + pow(zt - z2, 2));
-    std::cout << "Term2: " << term2 << std::endl;
-    double term3 = sqrt(pow(xt - x3, 2) + pow(yt - y3, 2) + pow(zt - z3, 2));
-    std::cout << "Term3: " << term3 << std::endl;
-    return term1 - term2 - (term2 - term3) - ct1 + ct2 - ct2 + ct3;
-}
 
-// Derivative of the equation with respect to xt
-double equationDerivative(double xt, double yt, double zt, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double ct1, double ct2, double ct3) {
-    double term1 = sqrt(pow(xt - x1, 2) + pow(yt - y1, 2) + pow(zt - z1, 2));
-    std::cout << "Term1 derivative: " << term1 << std::endl;
-    double term2 = sqrt(pow(xt - x2, 2) + pow(yt - y2, 2) + pow(zt - z2, 2));
-    std::cout << "Term2 derivative: " << term2 << std::endl;
-    double term3 = sqrt(pow(xt - x3, 2) + pow(yt - y3, 2) + pow(zt - z3, 2));
-    std::cout << "Term3 derivative: " << term3 << std::endl;
-    double derivative = (xt - x1) / term1 - (xt - x2) / term2 - (xt - x2) / term2 + (xt - x3) / term3;
-    std::cout << "Derivative: " << derivative << std::endl;
-    return derivative;
-}
+// Vector structure for simplicity
+struct Vector3D {
+    double x, y, z;
 
-// Newton-Raphson method to find the root
-double solveEquation(double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3, double ct1, double ct2, double ct3) {
-    double xt = 0.0; // Initial guess for xt
-    double epsilon = 1e-6; // Error tolerance
-    int maxIterations = 1000; // Maximum number of iterations
-    for (int i = 0; i < maxIterations; ++i) {
-        double f = equation(xt, y1, z1, x1, y1, z1, x2, y2, z2, x3, y3, z3, ct1, ct2, ct3);
-        std::cout << "F: " << f << std::endl;
-        double fPrime = equationDerivative(xt, y1, z1, x1, y1, z1, x2, y2, z2, x3, y3, z3, ct1, ct2, ct3);
-        std::cout << "fPrime: " << fPrime << std::endl;
-
-        // Update xt using Newton-Raphson iteration
-        xt = xt - f / fPrime;
-        std::cout << "xt Update: " << xt << std::endl;
-
-        // Check for convergence
-        if (fabs(f) < epsilon) {
-            std::cout << "Converged" << std::endl;
-            return xt;
-        }
+    Vector3D operator-(const Vector3D& other) const {
+        return { x - other.x, y - other.y, z - other.z };
     }
-    // Return the result after maximum iterations
-    std::cout << "Non-Converged " << std::endl;
-    return xt;
+
+    double norm() const {
+        return std::sqrt(x * x + y * y + z * z);
+    }
+};
+
+
+// Max solver
+double max_of_three(double a, double b, double c) {
+    double max_val = a;
+    if (b > max_val) max_val = b;
+    if (c > max_val) max_val = c;
+    return max_val;
 }
+
+// GPT is GOD
+double solve(Vector3D p1, Vector3D p2, Vector3D p3, Vector3D p4,
+    double t1, double t2, double t3, double t4,
+    double c, Vector3D& solution) {
+    // We start from an initial guess (we'll use the centroid of the points)
+    Vector3D pt = { (p1.x + p2.x + p3.x + p4.x) / 4,
+                   (p1.y + p2.y + p3.y + p4.y) / 4,
+                   (p1.z + p2.z + p3.z + p4.z) / 4 };
+
+    // Newton's method parameters
+    const double epsilon = 1e-6;
+    const int max_iter = 100;
+
+    for (int i = 0; i < max_iter; i++) {
+        // Calculate distances from pt to p1, p2, p3, p4
+        double d1 = (pt - p1).norm();
+        double d2 = (pt - p2).norm();
+        double d3 = (pt - p3).norm();
+        double d4 = (pt - p4).norm();
+
+        // Calculate the function values
+        double f1 = d1 - d2 - c * (t1 - t2);
+        double f2 = d1 - d3 - c * (t1 - t3);
+        double f3 = d1 - d4 - c * (t1 - t4);
+
+        // If the absolute values of f1, f2, f3 are small enough, stop
+        if (std::abs(f1) < epsilon && std::abs(f2) < epsilon && std::abs(f3) < epsilon) {
+            solution = pt;
+            double max_error = max_of_three(std::abs(f1), std::abs(f2), std::abs(f3));
+            return max_error;
+        }
+
+        // Otherwise, update pt using a step (this is a very naive step)
+        double step_size = 0.01;
+        pt.x -= step_size * (f1 + f2 + f3) / 3;
+        pt.y -= step_size * (f1 + f2 + f3) / 3;
+        pt.z -= step_size * (f1 + f2 + f3) / 3;
+    }
+
+    // If we get here, the method did not converge
+    std::cout << "Did not converge after " << max_iter << " iterations\n";
+    return std::numeric_limits<double>::infinity();
+}
+
 
 // Function to get dimensions of room from user input
 float* getDimensions()
@@ -573,12 +592,27 @@ int main()
         }
         else if (distance_1 != 0 and distance_2 != 0 and distance_3 != 0 and distance_4 != 0) 
         {
-            double ct1 = distance_1 - distance_2;
-            double ct2 = distance_2 - distance_3;
-            double ct3 = distance_3 - distance_1;
-            double solution = solveEquation(point_1[0], point_1[1], point_1[2], point_2[0], point_2[1], point_2[2], point_3[0], point_3[1], point_3[2], ct1, ct2, ct3);
-            std::cout << "Solution: " << solution << std::endl;
+            // Define your points and times here
+            Vector3D p1 = { point_1[0], point_1[1], point_1[2]};
+            Vector3D p2 = { point_2[0], point_2[1], point_2[2]};
+            Vector3D p3 = { point_3[0], point_3[1], point_3[2]};
+            Vector3D p4 = { point_4[0], point_4[1], point_4[2]};
+            double c = 299702547; // speed of light
+            double t1 = distance_1 / c;
+            double t2 = distance_2 / c;
+            double t3 = distance_3 / c;
+            double t4 = distance_4 / c;
+            
 
+            // Solution
+            Vector3D pt;
+
+            // Solve
+            double error = solve(p1, p2, p3, p4, t1, t2, t3, t4, c, pt);
+
+            // Output
+            std::cout << "Solution: " << pt.x << ", " << pt.y << ", " << pt.z << "\n";
+            std::cout << "Error: " << error << "\n";
         }
 
         // writes the location data to the console
