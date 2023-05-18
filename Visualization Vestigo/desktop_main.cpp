@@ -40,33 +40,24 @@ std::vector<float> previous_UWB_position{ 0, 0, 0 };
 *********************************/
 
 
-Eigen::Vector3d computePosition(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, double dt12, double dt13, double dt14, double c) {
-    Eigen::Vector3d pos = p1;
-    Eigen::Vector3d F;
-    Eigen::Matrix3d J;
+Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances)
+{
+    size_t size = points.size();
 
-    for (int i = 0; i < 100; ++i) {
-        Eigen::Vector3d d12 = pos - p2;
-        Eigen::Vector3d d13 = pos - p3;
-        Eigen::Vector3d d14 = pos - p4;
+    Eigen::MatrixXd A(size, 3);
+    Eigen::VectorXd B(size);
 
-        F << d12.norm() - c * dt12,
-            d13.norm() - c * dt13,
-            d14.norm() - c * dt14;
-
-        J << d12.normalized().transpose(),
-            d13.normalized().transpose(),
-            d14.normalized().transpose();
-
-        Eigen::Vector3d delta = J.colPivHouseholderQr().solve(-F);
-
-        if (delta.norm() < 1e-6)
-            break;
-
-        pos += delta;
+    for (size_t i = 0; i < size; ++i)
+    {
+        A(i, 0) = 2.0 * points[i](0);
+        A(i, 1) = 2.0 * points[i](1);
+        A(i, 2) = 2.0 * points[i](2);
+        B(i) = distances[i] * distances[i] - points[i].dot(points[i]);
     }
 
-    return pos;
+    Eigen::Vector3d result = A.colPivHouseholderQr().solve(B);
+
+    return result;
 }
 
 
@@ -562,21 +553,27 @@ int main()
         }
         else if (distance_1 != 0 and distance_2 != 0 and distance_3 != 0 and distance_4 != 0) 
         {
-            // Define your points and times here
-            double c = 299702547; // speed of light
-            Eigen::Vector3d p1(point_1[0], point_1[1], point_1[2]);
-            Eigen::Vector3d p2(point_2[0], point_2[1], point_2[2]);
-            Eigen::Vector3d p3(point_3[0], point_3[1], point_3[2]);
-            Eigen::Vector3d p4(point_4[0], point_4[1], point_4[2]);
-            double t_1 = distance_1 / c;
-            double dt12 = distance_2 / c - t_1;
-            double dt13 = distance_3 / c - t_1;
-            double dt14 = distance_4 / c - t_1;
+            // Define the anchor points
+            std::vector<Eigen::Vector3d> points = {
+                Eigen::Vector3d(point_1[0], point_1[1], point_1[2]),
+                Eigen::Vector3d(point_2[0], point_2[1], point_2[2]),
+                Eigen::Vector3d(point_3[0], point_3[1], point_3[2]),
+                Eigen::Vector3d(point_4[0], point_4[1], point_4[2])
+            };
 
-            Eigen::Vector3d pos = computePosition(p1, p2, p3, p4, dt12, dt13, dt14, c);
+            // Define the distances
+            std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4 };
 
-            std::cout << "Estimated position: " << pos.transpose() << std::endl;
-            
+            Eigen::Vector3d result = multilateration(points, distances);
+
+            UWB_x = result[0];
+            UWB_y = result[1];
+            UWB_z = result[2];
+
+        } 
+        else 
+        {
+            continue;
         }
 
         // writes the location data to the console
