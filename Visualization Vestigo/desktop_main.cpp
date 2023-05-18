@@ -34,9 +34,9 @@ using std::endl;
 const float inch_to_meter = 0.0254;
 Eigen::Vector3d previous_UWB_position(0.0, 0.0, 0.0);
 
-/*********************************
-*********** GPT IS GOD ***********
-*********************************/
+/***********************************
+*********** LM Algorithm ***********
+***********************************/
 
 
 // Function to compute the residuals
@@ -232,39 +232,6 @@ void drawTag(SDL_Renderer* renderer, float x, float y)
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     SDL_Rect rect = { (int)x, (int)y, 10, 10 };
     SDL_RenderFillRect(renderer, &rect);
-}
-
-// calculates the primes points of intersection
-Eigen::Vector3d trilateration(float distance_1, float distance_2, float distance_3, Eigen::Vector3d point_1, Eigen::Vector3d point_2, Eigen::Vector3d point_3)
-{
-
-    // renames the anchor locations
-    Eigen::Vector3d p1 = point_1;
-    Eigen::Vector3d p2 = point_2;
-    Eigen::Vector3d p3 = point_3;
-
-    // renames the distances
-    float d1 = distance_1;
-    float d2 = distance_2;
-    float d3 = distance_3;
-
-    // defines locations and distances into matrices
-    Eigen::MatrixXd A(3, 3);
-    Eigen::VectorXd B(3);
-
-    // performs matrix calculations to determine prime point
-    A << 2 * (p2(0) - p1(0)), 2 * (p2(1) - p1(1)), 2 * (p2(2) - p1(2)),
-        2 * (p3(0) - p1(0)), 2 * (p3(1) - p1(1)), 2 * (p3(2) - p1(2)),
-        2 * (p3(0) - p2(0)), 2 * (p3(1) - p2(1)), 2 * (p3(2) - p2(2));
-
-    B << d1 * d1 - d2 * d2 - p1(0) * p1(0) + p2(0) * p2(0) - p1(1) * p1(1) + p2(1) * p2(1) - p1(2) * p1(2) + p2(2) * p2(2),
-        d1* d1 - d3 * d3 - p1(0) * p1(0) + p3(0) * p3(0) - p1(1) * p1(1) + p3(1) * p3(1) - p1(2) * p1(2) + p3(2) * p3(2),
-        d2* d2 - d3 * d3 - p2(0) * p2(0) + p3(0) * p3(0) - p2(1) * p2(1) + p3(1) * p3(1) - p2(2) * p2(2) + p3(2) * p3(2);
-
-    Eigen::Vector3d x = A.colPivHouseholderQr().solve(B);
-
-    // returns prime point
-    return x;
 }
 
 // Incoming Data Processing
