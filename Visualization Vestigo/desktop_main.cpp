@@ -33,7 +33,7 @@ using std::endl;
 
 // Definitions
 const float inch_to_meter = 0.0254;
-std::vector<float> previous_UWB_position{ 0, 0, 0 };
+Eigen::Vector3d previous_UWB_position(0.0, 0.0, 0.0);
 
 /*********************************
 *********** GPT IS GOD ***********
@@ -592,6 +592,7 @@ int main()
         if (recvLen_1 <= 0) {
             UWB_x = previous_UWB_position[0];
             UWB_y = previous_UWB_position[1];
+            UWB_z = previous_UWB_position[2];
         }
         else if (distance_1 != 0 and distance_2 != 0 and distance_3 != 0 and distance_4 != 0) 
         {
@@ -606,8 +607,17 @@ int main()
             // Define the distances
             std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4 };
 
-            // Call multilateration function
-            Eigen::Vector3d result = multilateration(points, distances);
+            // Call the multilateration function
+            Eigen::Vector3d result;
+            try {
+                result = multilateration(points, distances);
+                // Update the previous position
+                previous_UWB_position = result;
+            }
+            catch (std::exception& e) {
+                // Use the previous position if a unique solution is not found
+                result = previous_UWB_position;
+            }
 
             UWB_x = result[0];
             UWB_y = result[1];
@@ -633,9 +643,10 @@ int main()
         }
 
         // Storing current position
-        if (UWB_x - previous_UWB_position[0] != 0) {
+        if (UWB_x - previous_UWB_position[0] != 0 || UWB_y - previous_UWB_position[1] != 0 || UWB_z - previous_UWB_position[2] != 0) {
             previous_UWB_position[0] = UWB_x;
             previous_UWB_position[1] = UWB_y;
+            previous_UWB_position[2] = UWB_z;
         }
 
         /***************/
