@@ -54,15 +54,10 @@ Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, con
 }
 
 // Levenberg-Marquardt algorithm for trilateration
-Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances)
+Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances, const Eigen::Vector3d& initial_guess)
 {
-    // Initial estimate (centroid of the points)
-    Eigen::Vector3d estimate = Eigen::Vector3d::Zero();
-    for (const auto& point : points)
-    {
-        estimate += point;
-    }
-    estimate /= points.size();
+    // Use the initial guess
+    Eigen::Vector3d estimate = initial_guess;
 
     // Levenberg-Marquardt parameters
     double lambda = 0.001;
@@ -622,14 +617,11 @@ int main()
             // Call the multilateration function
             Eigen::Vector3d result;
             try {
-                std::cout << "Attempted Multilateration" << std::endl;
-                result = multilateration(points, distances);
-                std::cout << "Found Position" << std::endl;
+                result = multilateration(points, distances, previous_UWB_position);
                 // Update the previous position
                 previous_UWB_position = result;
             }
             catch (std::exception& e) {
-                std::cout << "Failed Multilateration" << std::endl;
                 // Use the previous position if a unique solution is not found
                 result = previous_UWB_position;
             }
