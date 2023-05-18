@@ -40,28 +40,68 @@ std::vector<float> previous_UWB_position{ 0, 0, 0 };
 *********************************/
 
 
-Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances)
+// Function to compute the residuals
+Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances, const Eigen::Vector3d& estimate)
 {
     size_t size = points.size();
-
-    Eigen::MatrixXd D(size, 4);
-    Eigen::VectorXd d(size);
+    Eigen::VectorXd residuals(size);
 
     for (size_t i = 0; i < size; ++i)
     {
-        D(i, 0) = 2.0 * points[i](0);
-        D(i, 1) = 2.0 * points[i](1);
-        D(i, 2) = 2.0 * points[i](2);
-        D(i, 3) = -2.0 * distances[i];
-        d(i) = points[i].dot(points[i]) - distances[i] * distances[i];
+        residuals(i) = (estimate - points[i]).norm() - distances[i];
     }
 
-    Eigen::VectorXd X = (D.transpose() * D).ldlt().solve(D.transpose() * d);
-    Eigen::Vector3d result(X(0), X(1), X(2));
-
-    return result;
+    return residuals;
 }
 
+// Levenberg-Marquardt algorithm for trilateration
+Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances)
+{
+    // Initial estimate (centroid of the points)
+    Eigen::Vector3d estimate = Eigen::Vector3d::Zero();
+    for (const auto& point : points)
+    {
+        estimate += point;
+    }
+    estimate /= points.size();
+
+    // Levenberg-Marquardt parameters
+    double lambda = 0.001;
+    double updateNorm;
+    do
+    {
+        Eigen::VectorXd residuals = computeResiduals(points, distances, estimate);
+
+        // Compute the Jacobian matrix
+        Eigen::MatrixXd J(residuals.size(), 3);
+        for (size_t i = 0; i < points.size(); ++i)
+        {
+            Eigen::Vector3d diff = estimate - points[i];
+            double dist = diff.norm();
+            J.row(i) = diff / dist;
+        }
+
+        // Levenberg-Marquardt update
+        Eigen::MatrixXd A = J.transpose() * J;
+        A.diagonal() += lambda * A.diagonal();
+        Eigen::VectorXd g = J.transpose() * residuals;
+        Eigen::VectorXd delta = A.ldlt().solve(-g);
+        estimate += delta;
+        updateNorm = delta.norm();
+
+        // Update lambda
+        if (computeResiduals(points, distances, estimate).squaredNorm() < residuals.squaredNorm())
+        {
+            lambda /= 10;
+        }
+        else
+        {
+            lambda *= 10;
+        }
+    } while (updateNorm > 1e-6);
+
+    return estimate;
+}
 
 
 // Function to get dimensions of room from user input
@@ -566,6 +606,7 @@ int main()
             // Define the distances
             std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4 };
 
+            // Call multilateration function
             Eigen::Vector3d result = multilateration(points, distances);
 
             UWB_x = result[0];
