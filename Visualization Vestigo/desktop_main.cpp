@@ -7,7 +7,6 @@
 #include <ws2tcpip.h>
 #include <cmath>
 #include <algorithm>
-
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
@@ -45,10 +44,12 @@ Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, con
 {
     size_t size = points.size();
     Eigen::VectorXd residuals(size);
+    std::cout << "Residuals Vector" << std::endl;
 
     for (size_t i = 0; i < size; ++i)
     {
         residuals(i) = (estimate - points[i]).norm() - distances[i];
+        std::cout << "Modify Residuals" << std::endl;
     }
 
     return residuals;
@@ -57,13 +58,17 @@ Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, con
 // Levenberg-Marquardt algorithm for trilateration
 Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances)
 {
+    std::cout << "Initial Estimates" << std::endl;
     // Initial estimate (centroid of the points)
     Eigen::Vector3d estimate = Eigen::Vector3d::Zero();
+    std::cout << "Zero vector" << std::endl;
     for (const auto& point : points)
     {
         estimate += point;
+        std::cout << "Add Points to Estimates" << std::endl;
     }
     estimate /= points.size();
+    std::cout << "Estimates Divided by Point Size" << std::endl;
 
     // Levenberg-Marquardt parameters
     double lambda = 0.001;
@@ -71,34 +76,46 @@ Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, cons
     do
     {
         Eigen::VectorXd residuals = computeResiduals(points, distances, estimate);
+        std::cout << "Compute Residuals Function" << std::endl;
 
         // Compute the Jacobian matrix
         Eigen::MatrixXd J(residuals.size(), 3);
+        std::cout << "Create Jacobian Matrix" << std::endl;
         for (size_t i = 0; i < points.size(); ++i)
         {
             Eigen::Vector3d diff = estimate - points[i];
             double dist = diff.norm();
             J.row(i) = diff / dist;
+            std::cout << "Fill Out Jacobian Matrix" << std::endl;
         }
 
         // Levenberg-Marquardt update
         Eigen::MatrixXd A = J.transpose() * J;
+        std::cout << "Compute A" << std::endl;
         A.diagonal() += lambda * A.diagonal();
+        std::cout << "Diagonalize A" << std::endl;
         Eigen::VectorXd g = J.transpose() * residuals;
+        std::cout << "Compute G" << std::endl;
         Eigen::VectorXd delta = A.ldlt().solve(-g);
+        std::cout << "Compute Delta" << std::endl;
         estimate += delta;
+        std::cout << "Add Delta to Estimate" << std::endl;
         updateNorm = delta.norm();
+        std::cout << "Update Normalization" << std::endl;
 
         // Update lambda
         if (computeResiduals(points, distances, estimate).squaredNorm() < residuals.squaredNorm())
         {
             lambda /= 10;
+            std::cout << "Divide Lambda" << std::endl;
         }
         else
         {
             lambda *= 10;
+            std::cout << "Multiply Lambda" << std::endl;
         }
     } while (updateNorm > 1e-6);
+    std::cout << "Return Estimate Below Tolerance" << std::endl;
 
     return estimate;
 }
@@ -590,12 +607,14 @@ int main()
 
         // checks if UWB received data this pass
         if (recvLen_1 <= 0) {
+            std::cout << "No Data Received" << std::endl;
             UWB_x = previous_UWB_position[0];
             UWB_y = previous_UWB_position[1];
             UWB_z = previous_UWB_position[2];
         }
         else if (distance_1 != 0 and distance_2 != 0 and distance_3 != 0 and distance_4 != 0) 
         {
+            std::cout << "All Distances" << std::endl;
             // Define the anchor points
             std::vector<Eigen::Vector3d> points = {
                 Eigen::Vector3d(point_1[0], point_1[1], point_1[2]),
@@ -610,11 +629,14 @@ int main()
             // Call the multilateration function
             Eigen::Vector3d result;
             try {
+                std::cout << "Attempted Multilateration" << std::endl;
                 result = multilateration(points, distances);
+                std::cout << "Found Position" << std::endl;
                 // Update the previous position
                 previous_UWB_position = result;
             }
             catch (std::exception& e) {
+                std::cout << "Failed Multilateration" << std::endl;
                 // Use the previous position if a unique solution is not found
                 result = previous_UWB_position;
             }
@@ -626,6 +648,7 @@ int main()
         } 
         else 
         {
+            std::cout << "Missing Information" << std::endl;
             continue;
         }
 
