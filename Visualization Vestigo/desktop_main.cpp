@@ -44,12 +44,10 @@ Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, con
 {
     size_t size = points.size();
     Eigen::VectorXd residuals(size);
-    std::cout << "Residuals Vector" << std::endl;
 
     for (size_t i = 0; i < size; ++i)
     {
         residuals(i) = (estimate - points[i]).norm() - distances[i];
-        std::cout << "Modify Residuals" << std::endl;
     }
 
     return residuals;
@@ -58,64 +56,59 @@ Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, con
 // Levenberg-Marquardt algorithm for trilateration
 Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances)
 {
-    std::cout << "Initial Estimates" << std::endl;
     // Initial estimate (centroid of the points)
     Eigen::Vector3d estimate = Eigen::Vector3d::Zero();
-    std::cout << "Zero vector" << std::endl;
     for (const auto& point : points)
     {
         estimate += point;
-        std::cout << "Add Points to Estimates" << std::endl;
     }
     estimate /= points.size();
-    std::cout << "Estimates Divided by Point Size" << std::endl;
 
     // Levenberg-Marquardt parameters
     double lambda = 0.001;
     double updateNorm;
+    int maxIterations = 1000;  // Maximum number of iterations
+    int iterations = 0;  // Current iteration count
+
     do
     {
         Eigen::VectorXd residuals = computeResiduals(points, distances, estimate);
-        std::cout << "Compute Residuals Function" << std::endl;
 
         // Compute the Jacobian matrix
         Eigen::MatrixXd J(residuals.size(), 3);
-        std::cout << "Create Jacobian Matrix" << std::endl;
         for (size_t i = 0; i < points.size(); ++i)
         {
             Eigen::Vector3d diff = estimate - points[i];
             double dist = diff.norm();
             J.row(i) = diff / dist;
-            std::cout << "Fill Out Jacobian Matrix" << std::endl;
         }
 
         // Levenberg-Marquardt update
         Eigen::MatrixXd A = J.transpose() * J;
-        std::cout << "Compute A" << std::endl;
         A.diagonal() += lambda * A.diagonal();
-        std::cout << "Diagonalize A" << std::endl;
         Eigen::VectorXd g = J.transpose() * residuals;
-        std::cout << "Compute G" << std::endl;
         Eigen::VectorXd delta = A.ldlt().solve(-g);
-        std::cout << "Compute Delta" << std::endl;
         estimate += delta;
-        std::cout << "Add Delta to Estimate" << std::endl;
         updateNorm = delta.norm();
-        std::cout << "Update Normalization" << std::endl;
 
         // Update lambda
         if (computeResiduals(points, distances, estimate).squaredNorm() < residuals.squaredNorm())
         {
             lambda /= 10;
-            std::cout << "Divide Lambda" << std::endl;
         }
         else
         {
             lambda *= 10;
-            std::cout << "Multiply Lambda" << std::endl;
         }
-    } while (updateNorm > 1e-6);
-    std::cout << "Return Estimate Below Tolerance" << std::endl;
+
+        // Increment the iteration count
+        iterations++;
+    } while (updateNorm > 1e-6 && iterations < maxIterations);
+
+    if (iterations == maxIterations)
+    {
+        throw std::runtime_error("Levenberg-Marquardt algorithm did not converge");
+    }
 
     return estimate;
 }
