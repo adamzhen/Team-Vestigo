@@ -40,50 +40,34 @@ std::vector<float> previous_UWB_position{ 0, 0, 0 };
 *********************************/
 
 
-// Vector structure for simplicity
-struct Vector3D {
-    double x, y, z;
+Eigen::Vector3d computePosition(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3, const Eigen::Vector3d& p4, double dt12, double dt13, double dt14, double c) {
+    Eigen::Vector3d pos = p1;
+    Eigen::Vector3d F;
+    Eigen::Matrix3d J;
 
-    Vector3D operator-(const Vector3D& other) const {
-        return { x - other.x, y - other.y, z - other.z };
+    for (int i = 0; i < 100; ++i) {
+        Eigen::Vector3d d12 = pos - p2;
+        Eigen::Vector3d d13 = pos - p3;
+        Eigen::Vector3d d14 = pos - p4;
+
+        F << d12.norm() - c * dt12,
+            d13.norm() - c * dt13,
+            d14.norm() - c * dt14;
+
+        J << d12.normalized().transpose(),
+            d13.normalized().transpose(),
+            d14.normalized().transpose();
+
+        Eigen::Vector3d delta = J.colPivHouseholderQr().solve(-F);
+
+        if (delta.norm() < 1e-6)
+            break;
+
+        pos += delta;
     }
 
-    double norm() const {
-        return std::sqrt(x * x + y * y + z * z);
-    }
-};
-
-
-struct ResidualsFunctor {
-    using InputType = double;
-    using ValueType = double;
-    using JacobianType = Eigen::MatrixXd;
-
-    enum {
-        InputsAtCompileTime = Eigen::Dynamic,
-        ValuesAtCompileTime = Eigen::Dynamic
-    };
-
-    ResidualsFunctor(const std::vector<Vector3D>& points,
-        const std::vector<double>& times, double c)
-        : points(points), times(times), c(c), m_inputs(3), m_values(points.size()) {}
-
-    int operator()(const Eigen::VectorXd& params, Eigen::VectorXd& fvec) const {
-        for (size_t i = 0; i < points.size(); i++) {
-            double d = ((Vector3D{ params[0], params[1], params[2] } - points[i]).norm() - c * times[i]);
-            fvec[i] = d;
-        }
-        return 0;
-    }
-
-    int inputs() const { return m_inputs; }
-    int values() const { return m_values; }
-
-    const std::vector<Vector3D>& points;
-    const std::vector<double>& times;
-    const double c;
-    int m_inputs, m_values;
-};
+    return pos;
+}
 
 
 
@@ -580,28 +564,19 @@ int main()
         {
             // Define your points and times here
             double c = 299702547; // speed of light
-            std::vector<Vector3D> points = { { point_1[0], point_1[1], point_1[2]}, { point_2[0], point_2[1], point_2[2] }, { point_3[0], point_3[1], point_3[2]}, { point_4[0], point_4[1], point_4[2]} };
-            std::vector<double> times = { distance_1 / c, distance_2 / c, distance_3 / c, distance_4 / c };
+            Eigen::Vector3d p1(point_1[0], point_1[1], point_1[2]);
+            Eigen::Vector3d p2(point_2[0], point_2[1], point_2[2]);
+            Eigen::Vector3d p3(point_3[0], point_3[1], point_3[2]);
+            Eigen::Vector3d p4(point_4[0], point_4[1], point_4[2]);
+            double t_1 = distance_1 / c;
+            double dt12 = distance_2 / c - t_1;
+            double dt13 = distance_3 / c - t_1;
+            double dt14 = distance_4 / c - t_1;
+
+            Eigen::Vector3d pos = computePosition(p1, p2, p3, p4, dt12, dt13, dt14, c);
+
+            std::cout << "Estimated position: " << pos.transpose() << std::endl;
             
-            // Create an instance of the functor with the known data
-            ResidualsFunctor functor(points, times, c);
-
-            // Now create an instance of NumericalDiff to handle the differentiation:
-            Eigen::NumericalDiff<ResidualsFunctor> numDiff(functor);
-
-            // And create an instance of Levenberg-Marquardt:
-            Eigen::LevenbergMarquardt<Eigen::NumericalDiff<ResidualsFunctor>, double> lm(numDiff);
-
-            // Starting point
-            Eigen::VectorXd x(3);
-            x[0] = 0; x[1] = 0; x[2] = 0; // initial guess
-
-            // Perform the optimization
-            int ret = lm.minimize(x);
-
-            // Output the optimal parameters
-            std::cout << "The coordinates of the unknown point are: (" << x[0] << ", " << x[1] << ", " << x[2] << ")\n";
-
         }
 
         // writes the location data to the console
