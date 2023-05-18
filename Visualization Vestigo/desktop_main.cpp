@@ -44,18 +44,20 @@ Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, cons
 {
     size_t size = points.size();
 
-    Eigen::MatrixXd A(size, 3);
-    Eigen::VectorXd B(size);
+    Eigen::MatrixXd D(size, 4);
+    Eigen::VectorXd d(size);
 
     for (size_t i = 0; i < size; ++i)
     {
-        A(i, 0) = 2.0 * points[i](0);
-        A(i, 1) = 2.0 * points[i](1);
-        A(i, 2) = 2.0 * points[i](2);
-        B(i) = distances[i] * distances[i] - points[i].dot(points[i]);
+        D(i, 0) = 2.0 * points[i](0);
+        D(i, 1) = 2.0 * points[i](1);
+        D(i, 2) = 2.0 * points[i](2);
+        D(i, 3) = -2.0 * distances[i];
+        d(i) = points[i].dot(points[i]) - distances[i] * distances[i];
     }
 
-    Eigen::Vector3d result = A.colPivHouseholderQr().solve(B);
+    Eigen::VectorXd X = (D.transpose() * D).ldlt().solve(D.transpose() * d);
+    Eigen::Vector3d result(X(0), X(1), X(2));
 
     return result;
 }
