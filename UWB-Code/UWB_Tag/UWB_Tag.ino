@@ -507,6 +507,12 @@ void loop()
         float average_4 = 0;
         float average_5 = 0;
         float average_6 = 0;
+        float average_1 = 0;
+        float average_2 = 0;
+        float average_3 = 0;
+        float average_4 = 0;
+        float average_5 = 0;
+        float average_6 = 0;
 
         // find average of each distance list
         if (distance_1_data.size() > 0) 
