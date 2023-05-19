@@ -83,18 +83,22 @@ Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, cons
         A.diagonal() += lambda * A.diagonal();
         Eigen::VectorXd g = J.transpose() * residuals;
         Eigen::VectorXd delta = A.ldlt().solve(-g);
-        estimate += delta;
-        updateNorm = delta.norm();
 
-        // Update lambda
-        if (computeResiduals(points, distances, estimate).squaredNorm() < residuals.squaredNorm())
+        // Check if the cost function has decreased
+        Eigen::Vector3d new_estimate = estimate + delta;
+        if (computeResiduals(points, distances, new_estimate).squaredNorm() < residuals.squaredNorm())
         {
+            // If the cost function has decreased, accept the new estimate and decrease lambda
+            estimate = new_estimate;
             lambda /= 10;
         }
         else
         {
+            // If the cost function has increased, reject the new estimate and increase lambda
             lambda *= 10;
         }
+
+        updateNorm = delta.norm();
 
         // Increment the iteration count
         iterations++;
