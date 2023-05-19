@@ -37,7 +37,7 @@ Eigen::Vector3d previous_UWB_position(0.0, 0.0, 0.0);
 
 
 // Function to compute the residuals
-Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances, const Eigen::Vector3d& estimate)
+Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, const std::vector<float>& distances, const Eigen::Vector3d& estimate)
 {
     size_t size = points.size();
     Eigen::VectorXd residuals(size);
@@ -51,7 +51,7 @@ Eigen::VectorXd computeResiduals(const std::vector<Eigen::Vector3d>& points, con
 }
 
 // Levenberg-Marquardt algorithm for trilateration
-Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<double>& distances, const Eigen::Vector3d& initial_guess)
+Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, const std::vector<float>& distances, const Eigen::Vector3d& initial_guess)
 {
     // Use the initial guess
     Eigen::Vector3d estimate = initial_guess;
@@ -614,12 +614,8 @@ int main()
         // reads incoming string into data
         std::vector<float> UWB_data;
         std::vector<float> IMU_data;
-        float distance_1;
-        float distance_2;
-        float distance_3;
-        float distance_4;
-        float distance_5;
-        float distance_6;
+        std::vector<float> distances;
+
         float roll = 0;
         float pitch = 0;
         float yaw = 0;
@@ -632,13 +628,7 @@ int main()
         // checks if data is received on port
         if (recvLen_1 > 0) {
             std::string str_1(buffer, recvLen_1);
-            UWB_data = dataProcessing(str_1);
-            distance_1 = UWB_data[0];
-            distance_2 = UWB_data[1];
-            distance_3 = UWB_data[2];
-            distance_4 = UWB_data[3];
-            distance_5 = UWB_data[4];
-            distance_6 = UWB_data[5];
+            distances = dataProcessing(str_1);
         }
 
 
@@ -674,16 +664,13 @@ int main()
             std::cout << "All Distances" << std::endl;
             // Define the anchor points
             std::vector<Eigen::Vector3d> points = {
-                Eigen::Vector3d(point_1[0], point_1[1], point_1[2]),
-                Eigen::Vector3d(point_2[0], point_2[1], point_2[2]),
-                Eigen::Vector3d(point_3[0], point_3[1], point_3[2]),
-                Eigen::Vector3d(point_4[0], point_4[1], point_4[2]),
-                Eigen::Vector3d(point_5[0], point_5[1], point_5[2]),
-                Eigen::Vector3d(point_6[0], point_6[1], point_6[2])
+                Eigen::Vector3d(point_1), Eigen::Vector3d(point_2), Eigen::Vector3d(point_3),
+                Eigen::Vector3d(point_4), Eigen::Vector3d(point_5), Eigen::Vector3d(point_6),
+                Eigen::Vector3d(point_7), Eigen::Vector3d(point_8), Eigen::Vector3d(point_9),
+                Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
             };
 
-            // Define the distances
-            std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4, distance_5, distance_6 };
+
 
             // Call the multilateration function
             Eigen::Vector3d result;
