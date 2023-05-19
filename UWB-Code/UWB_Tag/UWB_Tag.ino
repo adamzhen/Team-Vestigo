@@ -1,4 +1,4 @@
-#include "dw3000.h"
+#include <dw3000.h>
 
 #define APP_NAME "UWB Tag"
 
@@ -7,6 +7,7 @@
 #include <vector>
 #include <math.h>
 #include <WiFi.h>
+#include <algorithm>
 
 // IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
@@ -28,14 +29,19 @@ std::vector<float> distance_1_data;
 std::vector<float> distance_2_data;
 std::vector<float> distance_3_data;
 std::vector<float> distance_4_data;
+std::vector<float> distance_5_data;
+std::vector<float> distance_6_data;
+std::vector<float> distance_7_data;
+std::vector<float> distance_8_data;
+std::vector<float> distance_9_data;
+std::vector<float> distance_10_data;
+std::vector<float> distance_11_data;
+std::vector<float> distance_12_data;
+std::vector<std::pair<int, int>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
-// key
-int key = 0;
 
-// counter
-int counter = 0;
 
 /* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
 static double tof;
@@ -326,22 +332,35 @@ void setup()
     while (1) ;
   }
 
-    /* Configure the TX spectrum parameters (power, PG delay and PG count) */
-    dwt_configuretxrf(&txconfig_options);
+  /* Configure the TX spectrum parameters (power, PG delay and PG count) */
+  dwt_configuretxrf(&txconfig_options);
 
-    /* Apply default antenna delay value. See NOTE 2 below. */
-    dwt_setrxantennadelay(RX_ANT_DLY);
-    dwt_settxantennadelay(TX_ANT_DLY);
+  /* Apply default antenna delay value. See NOTE 2 below. */
+  dwt_setrxantennadelay(RX_ANT_DLY);
+  dwt_settxantennadelay(TX_ANT_DLY);
 
-    /* Set expected response's delay and timeout. See NOTE 1 and 5 below.
-     * As this example only handles one incoming frame with always the same delay and timeout, those values can be set here once for all. */
-    dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
-    dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS);
+  /* Set expected response's delay and timeout. See NOTE 1 and 5 below.
+  * As this example only handles one incoming frame with always the same delay and timeout, those values can be set here once for all. */
+  dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
+  dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS);
 
-    /* Next can enable TX/RX states output on GPIOs 5 and 6 to help debug, and also TX/RX LEDs
-     * Note, in real low power applications the LEDs should not be used. */
-    dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
+  /* Next can enable TX/RX states output on GPIOs 5 and 6 to help debug, and also TX/RX LEDs
+  * Note, in real low power applications the LEDs should not be used. */
+  dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
 
+  keys.push_back(std::make_pair(1, distance_1_data.size()));
+  keys.push_back(std::make_pair(2, distance_2_data.size()));
+  keys.push_back(std::make_pair(3, distance_3_data.size()));
+  keys.push_back(std::make_pair(4, distance_4_data.size()));
+  keys.push_back(std::make_pair(5, distance_5_data.size()));
+  keys.push_back(std::make_pair(6, distance_6_data.size()));
+  keys.push_back(std::make_pair(7, distance_7_data.size()));
+  keys.push_back(std::make_pair(8, distance_8_data.size()));
+  keys.push_back(std::make_pair(9, distance_9_data.size()));
+  keys.push_back(std::make_pair(10, distance_10_data.size()));
+  keys.push_back(std::make_pair(11, distance_11_data.size()));
+  keys.push_back(std::make_pair(12, distance_12_data.size()));
+  
 }
 
 void loop() 
@@ -350,183 +369,363 @@ void loop()
   float distance = 0;
   double tof = 0;
         
-  // Cycles between 4 keys
-  key %= 4;
-  key++;
+  // Update Key Order
+  keys[0].second = distance_1_data.size();
+  keys[1].second = distance_2_data.size();
+  keys[2].second = distance_3_data.size();
+  keys[3].second = distance_4_data.size();
+  keys[4].second = distance_5_data.size();
+  keys[5].second = distance_6_data.size();
+  keys[6].second = distance_7_data.size();
+  keys[7].second = distance_8_data.size();
+  keys[8].second = distance_9_data.size();
+  keys[9].second = distance_10_data.size();
+  keys[10].second = distance_11_data.size();
+  keys[11].second = distance_12_data.size();
 
-  twr_transmitter_mode(key, 1, tof);                  
-  distance = tof * SPEED_OF_LIGHT;
+  std::sort(keys.begin(), keys.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+    return a.second > b.second;
+  });
 
-  delayMicroseconds(750);
+  for (const auto& key : keys) {
+    twr_transmitter_mode(key, 1, tof);                  
+    distance = tof * SPEED_OF_LIGHT;
 
-  if (distance != 0) 
-  {
+    delayMicroseconds(750);
 
-    // Cyclyes between 1 and 20
-    counter %= 20;
-    counter++;
-
-    // appends data to appropriate array
-    if (key == 1) 
+    if (distance != 0) 
     {
-      distance_1_data.push_back(distance);
-    }
-    if (key == 2) 
-    {
-      distance_2_data.push_back(distance);
-    }
-    if (key == 3) 
-    {
-      distance_3_data.push_back(distance);
-    }
-    if (key == 4) 
-    {
-    distance_4_data.push_back(distance);
-    }
-
-    int distance_counter = 0;
-
-    if (distance_1_data.size() > 1) 
-    {
-      distance_counter += 1;
-    }
-    if (distance_2_data.size() > 1) 
-    {
-      distance_counter += 1;
-    }
-    if (distance_3_data.size() > 1) 
-    {
-      distance_counter += 1;
-    }
-    if (distance_4_data.size() > 1) 
-    {
-      distance_counter += 1;
-    }
-
-    int good_distance_counter = 0;
-
-    if (distance_1_data.size() > 4) 
-    {
-      good_distance_counter += 1;
-    }
-    if (distance_2_data.size() > 4) 
-    {
-      good_distance_counter += 1;
-    }
-    if (distance_3_data.size() > 4) 
-    {
-      good_distance_counter += 1;
-    }
-    if (distance_4_data.size() > 4) 
-    {
-      good_distance_counter += 1;
-    }
-
-    // checks if there is enough data to send
-    if (distance_counter >= 4 || good_distance_counter >= 3) 
-    {
-      // resets averages
-      float average_1 = 0;
-      float average_2 = 0;
-      float average_3 = 0;
-      float average_4 = 0;
-
-      // find average of each distance list
-      if (distance_1_data.size() > 0) 
+      // appends data to appropriate array
+      if (key == 1) 
       {
-        float sum = 0;
-        for (float d : distance_1_data) 
+        distance_1_data.push_back(distance);
+      }
+      if (key == 2) 
+      {
+        distance_2_data.push_back(distance);
+      }
+      if (key == 3) 
+      {
+        distance_3_data.push_back(distance);
+      }
+      if (key == 4) 
+      {
+      distance_4_data.push_back(distance);
+      }
+      if (key == 5) 
+      {
+        distance_5_data.push_back(distance);
+      }
+      if (key == 6) 
+      {
+      distance_6_data.push_back(distance);
+      }
+      if (key == 7) 
+      {
+        distance_7_data.push_back(distance);
+      }
+      if (key == 8) 
+      {
+        distance_8_data.push_back(distance);
+      }
+      if (key == 9) 
+      {
+        distance_9_data.push_back(distance);
+      }
+      if (key == 10) 
+      {
+      distance_10_data.push_back(distance);
+      }
+      if (key == 11) 
+      {
+        distance_11_data.push_back(distance);
+      }
+      if (key == 12) 
+      {
+      distance_12_data.push_back(distance);
+      }
+
+      // counter
+      int distance_counter = 0;
+
+      if (distance_1_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_2_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_3_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_4_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_5_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_6_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_7_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_8_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_9_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_10_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_11_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+      if (distance_12_data.size() > 1) 
+      {
+        distance_counter += 1;
+      }
+
+      // checks if there is enough data to send
+      if (distance_counter >= 5) 
+      {
+        // resets averages
+        float average_1 = 0;
+        float average_2 = 0;
+        float average_3 = 0;
+        float average_4 = 0;
+        float average_5 = 0;
+        float average_6 = 0;
+
+        // find average of each distance list
+        if (distance_1_data.size() > 0) 
         {
-          sum += d;
-        }
-        float average_1 = sum / distance_1_data.size();
-        averages.push_back(average_1);
-      } 
-      else 
-      {
-        averages.push_back(0);
-      }
-      if (distance_2_data.size() > 0) 
-      {
-        float sum = 0;
-        for (float d : distance_2_data) 
+          float sum = 0;
+          for (float d : distance_1_data) 
+          {
+            sum += d;
+          }
+          float average_1 = sum / distance_1_data.size();
+          averages.push_back(average_1);
+        } 
+        else 
         {
-          sum += d;
+          averages.push_back(0);
         }
-        float average_2 = sum / distance_2_data.size();
-        averages.push_back(average_2);
-      } 
-      else 
-      {
-        averages.push_back(0);
-      }
-      if (distance_3_data.size() > 0) 
-      {
-        float sum = 0;
-        for (float d : distance_3_data) 
+        if (distance_2_data.size() > 0) 
         {
-          sum += d;
-        }
-        float average_3 = sum / distance_3_data.size();
-        averages.push_back(average_3);
-      } 
-      else 
-      {
-        averages.push_back(0);
-      }
-      if (distance_4_data.size() > 0) 
-      {
-        float sum = 0;
-        for (float d : distance_4_data) 
+          float sum = 0;
+          for (float d : distance_2_data) 
+          {
+            sum += d;
+          }
+          float average_2 = sum / distance_2_data.size();
+          averages.push_back(average_2);
+        } 
+        else 
         {
-          sum += d;
+          averages.push_back(0);
         }
-        float average_4 = sum / distance_4_data.size();
-        averages.push_back(average_4);
-      } 
-      else 
-      {
-        averages.push_back(0);
-      }
+        if (distance_3_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_3_data) 
+          {
+            sum += d;
+          }
+          float average_3 = sum / distance_3_data.size();
+          averages.push_back(average_3);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_4_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_4_data) 
+          {
+            sum += d;
+          }
+          float average_4 = sum / distance_4_data.size();
+          averages.push_back(average_4);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_5_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_5_data) 
+          {
+            sum += d;
+          }
+          float average_5 = sum / distance_5_data.size();
+          averages.push_back(average_5);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_6_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_6_data) 
+          {
+            sum += d;
+          }
+          float average_6 = sum / distance_6_data.size();
+          averages.push_back(average_6);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_7_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_7_data) 
+          {
+            sum += d;
+          }
+          float average_7 = sum / distance_7_data.size();
+          averages.push_back(average_7);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_8_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_8_data) 
+          {
+            sum += d;
+          }
+          float average_8 = sum / distance_8_data.size();
+          averages.push_back(average_8);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_9_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_9_data) 
+          {
+            sum += d;
+          }
+          float average_9 = sum / distance_9_data.size();
+          averages.push_back(average_9);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_10_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_10_data) 
+          {
+            sum += d;
+          }
+          float average_10 = sum / distance_10_data.size();
+          averages.push_back(average_10);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_11_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_11_data) 
+          {
+            sum += d;
+          }
+          float average_11 = sum / distance_11_data.size();
+          averages.push_back(average_11);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
+        if (distance_12_data.size() > 0) 
+        {
+          float sum = 0;
+          for (float d : distance_12_data) 
+          {
+            sum += d;
+          }
+          float average_12 = sum / distance_12_data.size();
+          averages.push_back(average_12);
+        } 
+        else 
+        {
+          averages.push_back(0);
+        }
 
-      // convert vector into Json array
-      const size_t capacity = JSON_ARRAY_SIZE(4);
-      DynamicJsonDocument doc(capacity);
-      JsonArray averaged_points = doc.to<JsonArray>();
-      for (int i = 0; i < averages.size(); i++)
-      {
-        averaged_points.add(averages[i]);
-      }
+        // convert vector into Json array
+        const size_t capacity = JSON_ARRAY_SIZE(12);
+        DynamicJsonDocument doc(capacity);
+        JsonArray averaged_points = doc.to<JsonArray>();
+        for (int i = 0; i < averages.size(); i++)
+        {
+          averaged_points.add(averages[i]);
+        }
 
-      // convert the Json array to a string
-      String jsonString;
-      serializeJson(doc, jsonString);
+        // convert the Json array to a string
+        String jsonString;
+        serializeJson(doc, jsonString);
 
-      // Create a UDP connection to the laptop
-      WiFiUDP udp;
-      udp.begin(port);
-      IPAddress ip;
-      if (WiFi.hostByName(host, ip)) 
-      {
-        // Send the Json data over the socket connection
-        udp.beginPacket(ip, port);
-        udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
-        udp.endPacket();
-      } 
-      else 
-      {
-        Serial.println("Unable to resolve hostname");
-      }
+        // Create a UDP connection to the laptop
+        WiFiUDP udp;
+        udp.begin(port);
+        IPAddress ip;
+        if (WiFi.hostByName(host, ip)) 
+        {
+          // Send the Json data over the socket connection
+          udp.beginPacket(ip, port);
+          udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
+          udp.endPacket();
+        } 
+        else 
+        {
+          Serial.println("Unable to resolve hostname");
+        }
 
-      
-      distance_1_data.clear();
-      distance_2_data.clear();
-      distance_3_data.clear();
-      distance_4_data.clear();
+        
+        distance_1_data.clear();
+        distance_2_data.clear();
+        distance_3_data.clear();
+        distance_4_data.clear();
+        distance_5_data.clear();
+        distance_6_data.clear();
+        distance_7_data.clear();
+        distance_8_data.clear();
+        distance_9_data.clear();
+        distance_10_data.clear();
+        distance_11_data.clear();
+        distance_12_data.clear();
 
-      averages.clear();
+        averages.clear();
 
-    }  
+        break;
+      }  
+    }
   }
 }
 
