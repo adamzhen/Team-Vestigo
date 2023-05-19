@@ -193,7 +193,7 @@ void readDimensions(std::string filename, double& length, double& width, std::ve
         std::getline(inputFile, line);
         sscanf_s(line.c_str(), "Room Dimensions: %lf, %lf", &length, &width);
 
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 7; i++)
         {
             Eigen::Vector3d point;
             std::getline(inputFile, line);
@@ -550,6 +550,8 @@ int main()
         float distance_2;
         float distance_3;
         float distance_4;
+        float distance_5;
+        float distance_6;
         float roll = 0;
         float pitch = 0;
         float yaw = 0;
@@ -567,6 +569,8 @@ int main()
             distance_2 = UWB_data[1];
             distance_3 = UWB_data[2];
             distance_4 = UWB_data[3];
+            distance_5 = UWB_data[4];
+            distance_6 = UWB_data[5];
         }
 
 
@@ -597,36 +601,38 @@ int main()
             UWB_y = previous_UWB_position[1];
             UWB_z = previous_UWB_position[2];
         }
-        
-        std::cout << "All Distances" << std::endl;
-        // Define the anchor points
-        std::vector<Eigen::Vector3d> points = {
-            Eigen::Vector3d(point_1[0], point_1[1], point_1[2]),
-            Eigen::Vector3d(point_2[0], point_2[1], point_2[2]),
-            Eigen::Vector3d(point_3[0], point_3[1], point_3[2]),
-            Eigen::Vector3d(point_4[0], point_4[1], point_4[2]),
-            Eigen::Vector3d(point_5[0], point_5[1], point_5[2]),
-            Eigen::Vector3d(point_6[0], point_6[1], point_6[2])
-        };
+        else
+        {
+            std::cout << "All Distances" << std::endl;
+            // Define the anchor points
+            std::vector<Eigen::Vector3d> points = {
+                Eigen::Vector3d(point_1[0], point_1[1], point_1[2]),
+                Eigen::Vector3d(point_2[0], point_2[1], point_2[2]),
+                Eigen::Vector3d(point_3[0], point_3[1], point_3[2]),
+                Eigen::Vector3d(point_4[0], point_4[1], point_4[2]),
+                Eigen::Vector3d(point_5[0], point_5[1], point_5[2]),
+                Eigen::Vector3d(point_6[0], point_6[1], point_6[2])
+            };
 
-        // Define the distances
-        std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4 };
+            // Define the distances
+            std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4, distance_5, distance_6 };
 
-        // Call the multilateration function
-        Eigen::Vector3d result;
-        try {
-            result = multilateration(points, distances, previous_UWB_position);
-            // Update the previous position
-            previous_UWB_position = result;
+            // Call the multilateration function
+            Eigen::Vector3d result;
+            try {
+                result = multilateration(points, distances, previous_UWB_position);
+                // Update the previous position
+                previous_UWB_position = result;
+            }
+            catch (std::exception& e) {
+                // Use the previous position if a unique solution is not found
+                result = previous_UWB_position;
+            }
+
+            UWB_x = result[0];
+            UWB_y = result[1];
+            UWB_z = result[2];
         }
-        catch (std::exception& e) {
-            // Use the previous position if a unique solution is not found
-            result = previous_UWB_position;
-        }
-
-        UWB_x = result[0];
-        UWB_y = result[1];
-        UWB_z = result[2];
 
 
         // writes the location data to the console
