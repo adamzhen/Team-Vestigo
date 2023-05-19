@@ -1,7 +1,5 @@
 #include <iostream>
 #include <Eigen/Dense>
-#include <unsupported/Eigen/NonLinearOptimization>
-#include <unsupported/Eigen/NumericalDiff>
 #include <string>
 #include <cstring>
 #include <ws2tcpip.h>
@@ -10,20 +8,19 @@
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
-
 #pragma comment(lib, "ws2_32.lib")
-
 #include <WinSock2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <Windows.h>
 #include <SDL.h>
-#undef main
 #include <fstream>
 #include <vector>
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+
+#undef main
 
 
 using std::cout;
@@ -35,7 +32,7 @@ const float inch_to_meter = 0.0254;
 Eigen::Vector3d previous_UWB_position(0.0, 0.0, 0.0);
 
 /***********************************
-*********** LM Algorithm ***********
+*********** LM ALGORITHM ***********
 ***********************************/
 
 
@@ -113,6 +110,10 @@ Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, cons
 }
 
 
+/*********************************************
+*********** ROOM AND ANCHOR CONFIG ***********
+*********************************************/
+
 // Function to get dimensions of room from user input
 float* getDimensions()
 {
@@ -161,11 +162,51 @@ std::vector<Eigen::Vector3d> getAnchors()
     std::cin >> x >> y >> z;
     Eigen::Vector3d point_4(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
 
+    std::cout << "Anchor Point 5: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_5(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 6: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_6(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 7: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_7(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 8: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_8(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 9: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_9(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 10: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_10(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 11: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_11(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
+    std::cout << "Anchor Point 12: ";
+    std::cin >> x >> y >> z;
+    Eigen::Vector3d point_12(x * inch_to_meter, y * inch_to_meter, z * inch_to_meter);
+
     std::vector<Eigen::Vector3d> result;
     result.push_back(point_1);
     result.push_back(point_2);
     result.push_back(point_3);
     result.push_back(point_4);
+    result.push_back(point_5);
+    result.push_back(point_6);
+    result.push_back(point_7);
+    result.push_back(point_8);
+    result.push_back(point_9);
+    result.push_back(point_10);
+    result.push_back(point_11);
+    result.push_back(point_12);
 
     return result;
 }
@@ -182,7 +223,7 @@ void readDimensions(std::string filename, double& length, double& width, std::ve
         std::getline(inputFile, line);
         sscanf_s(line.c_str(), "Room Dimensions: %lf, %lf", &length, &width);
 
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 7; i++)
         {
             Eigen::Vector3d point;
             std::getline(inputFile, line);
@@ -211,6 +252,14 @@ void saveDimensions(float length, float width, std::vector<Eigen::Vector3d> anch
     Eigen::Vector3d point_2 = anchor_positions[1];
     Eigen::Vector3d point_3 = anchor_positions[2];
     Eigen::Vector3d point_4 = anchor_positions[3];
+    Eigen::Vector3d point_5 = anchor_positions[4];
+    Eigen::Vector3d point_6 = anchor_positions[5];
+    Eigen::Vector3d point_7 = anchor_positions[6];
+    Eigen::Vector3d point_8 = anchor_positions[7];
+    Eigen::Vector3d point_9 = anchor_positions[8];
+    Eigen::Vector3d point_10 = anchor_positions[9];
+    Eigen::Vector3d point_11 = anchor_positions[10];
+    Eigen::Vector3d point_12 = anchor_positions[11];
 
     if (outputFile.is_open())
     {
@@ -219,6 +268,14 @@ void saveDimensions(float length, float width, std::vector<Eigen::Vector3d> anch
         outputFile << "Anchor 2: " << point_2[0] << ", " << point_2[1] << ", " << point_2[2] << std::endl;
         outputFile << "Anchor 3: " << point_3[0] << ", " << point_3[1] << ", " << point_3[2] << std::endl;
         outputFile << "Anchor 4: " << point_4[0] << ", " << point_4[1] << ", " << point_4[2] << std::endl;
+        outputFile << "Anchor 5: " << point_5[0] << ", " << point_5[1] << ", " << point_5[2] << std::endl;
+        outputFile << "Anchor 6: " << point_6[0] << ", " << point_6[1] << ", " << point_6[2] << std::endl;
+        outputFile << "Anchor 7: " << point_7[0] << ", " << point_1[1] << ", " << point_1[2] << std::endl;
+        outputFile << "Anchor 8: " << point_8[0] << ", " << point_2[1] << ", " << point_2[2] << std::endl;
+        outputFile << "Anchor 9: " << point_9[0] << ", " << point_3[1] << ", " << point_3[2] << std::endl;
+        outputFile << "Anchor 10: " << point_10[0] << ", " << point_4[1] << ", " << point_4[2] << std::endl;
+        outputFile << "Anchor 11: " << point_11[0] << ", " << point_5[1] << ", " << point_5[2] << std::endl;
+        outputFile << "Anchor 12: " << point_12[0] << ", " << point_6[1] << ", " << point_6[2] << std::endl;
         std::cout << "Dimensions saved to " << filename << std::endl;
     }
     else
@@ -228,6 +285,10 @@ void saveDimensions(float length, float width, std::vector<Eigen::Vector3d> anch
 
     outputFile.close();
 }
+
+/*****************************************
+*********** GENERAL FUNCTIONS  ***********
+*****************************************/
 
 // Function to draw the tag
 void drawTag(SDL_Renderer* renderer, float x, float y)
@@ -268,18 +329,29 @@ float calculate_average(std::vector<float> vector)
     return sum / vector.size();
 }
 
+/********************************
+*********** MAIN LOOP ***********
+********************************/
 
-// main code
 int main()
 {
-    /********* Variable *********
-     ******* Declarations *******/
+    /***********************************
+    *********** ROOM CONFIG ***********
+    ***********************************/
 
      // Anchor Positions in x,y,z
     Eigen::Vector3d point_1;
     Eigen::Vector3d point_2;
     Eigen::Vector3d point_3;
     Eigen::Vector3d point_4;
+    Eigen::Vector3d point_5;
+    Eigen::Vector3d point_6;
+    Eigen::Vector3d point_7;
+    Eigen::Vector3d point_8;
+    Eigen::Vector3d point_9;
+    Eigen::Vector3d point_10;
+    Eigen::Vector3d point_11;
+    Eigen::Vector3d point_12;
 
     // Room Dimensions
     double length;
@@ -289,9 +361,6 @@ int main()
     float UWB_x = 0;
     float UWB_y = 0;
     float UWB_z = 0;
-
-    /********* Room *********
-     ******** Config *******/
 
     std::cout << "Tracking Startup Menu:" << std::endl;
     std::cout << "Do you want to set up a new room? (Y/N)? ";
@@ -311,6 +380,14 @@ int main()
         point_2 = anchor_positions[1];
         point_3 = anchor_positions[2];
         point_4 = anchor_positions[3];
+        point_5 = anchor_positions[4];
+        point_6 = anchor_positions[5];
+        point_7 = anchor_positions[6];
+        point_8 = anchor_positions[7];
+        point_9 = anchor_positions[8];
+        point_10 = anchor_positions[9];
+        point_11 = anchor_positions[10];
+        point_12 = anchor_positions[11];
 
         std::cout << "Do you want to save the new room configuration (Y/N)?";
         char choice_save;
@@ -357,6 +434,14 @@ int main()
         point_2 = anchor_position[1];
         point_3 = anchor_position[2];
         point_4 = anchor_position[3];
+        point_5 = anchor_position[4];
+        point_6 = anchor_position[5];
+        point_7 = anchor_position[6];
+        point_8 = anchor_position[7];
+        point_9 = anchor_position[8];
+        point_10 = anchor_position[9];
+        point_11 = anchor_position[10];
+        point_12 = anchor_position[11];
 
     }
     else {
@@ -379,6 +464,14 @@ int main()
     std::cout << "  Point 2: " << point_2.transpose() << std::endl;
     std::cout << "  Point 3: " << point_3.transpose() << std::endl;
     std::cout << "  Point 4: " << point_4.transpose() << std::endl;
+    std::cout << "  Point 5: " << point_5.transpose() << std::endl;
+    std::cout << "  Point 6: " << point_6.transpose() << std::endl;
+    std::cout << "  Point 7: " << point_7.transpose() << std::endl;
+    std::cout << "  Point 8: " << point_8.transpose() << std::endl;
+    std::cout << "  Point 9: " << point_9.transpose() << std::endl;
+    std::cout << "  Point 10: " << point_10.transpose() << std::endl;
+    std::cout << "  Point 11: " << point_11.transpose() << std::endl;
+    std::cout << "  Point 12: " << point_12.transpose() << std::endl;
 
     // IMU Orientation Startup Delay
     /*std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
@@ -388,9 +481,6 @@ int main()
         i -= 5;
         Sleep(5000);
     }*/
-
-    /***** Tracking File ****
-     ******** Startup *******/
 
      // Open the file for writing
     std::ofstream outFile("Tracked Location", std::ios::app);
@@ -409,8 +499,10 @@ int main()
         return 1;
     }
 
-    /********* UWB *********
-     ******** Socket *******/
+
+    /*********************************
+    *********** UWB SOCKET ***********
+    *********************************/
 
      // check if UWB socket connection is good
     SOCKET sock_1 = socket(AF_INET, SOCK_DGRAM, 0);
@@ -445,8 +537,9 @@ int main()
     sockaddr_in clientAddr_1;
     int clientAddrLen_1 = sizeof(clientAddr_1);
 
-    /********* IMU *********
-     ******** Socket *******/
+    /*********************************
+    *********** IMU SOCKET ***********
+    *********************************/
 
      // checks if IMU socket connection is good
     SOCKET sock_2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -475,8 +568,9 @@ int main()
     sockaddr_in clientAddr_2;
     int clientAddrLen_2 = sizeof(clientAddr_2);
 
-    /********** SDL *********
-     ******** Startup *******/
+    /***********************************
+    *********** SDL2 STARTUP ***********
+    ***********************************/
 
      // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -495,12 +589,12 @@ int main()
     int object_height = 7;
     SDL_Color object_color = { 210, 0 , 0, 255 };
 
-    // data collection and display loop
+    /**************************************
+    *********** DATA PROCESSING ***********
+    **************************************/
+
     bool quit = false;
     while (!quit) {
-
-        /******** Time ********
-        ******** Data ********/
 
         // get the current timestamp
         auto now = std::chrono::system_clock::now();
@@ -524,6 +618,8 @@ int main()
         float distance_2;
         float distance_3;
         float distance_4;
+        float distance_5;
+        float distance_6;
         float roll = 0;
         float pitch = 0;
         float yaw = 0;
@@ -541,6 +637,8 @@ int main()
             distance_2 = UWB_data[1];
             distance_3 = UWB_data[2];
             distance_4 = UWB_data[3];
+            distance_5 = UWB_data[4];
+            distance_6 = UWB_data[5];
         }
 
 
@@ -560,9 +658,9 @@ int main()
         dt = IMU_data[6] / 1000000; // s
 
 
-        /***************/
-        /***** UWB *****/
-        /***************/
+        /*************************************
+        *********** UWB PROCESSING ***********
+        *************************************/
 
         // checks if UWB received data this pass
         if (recvLen_1 <= 0) {
@@ -571,7 +669,7 @@ int main()
             UWB_y = previous_UWB_position[1];
             UWB_z = previous_UWB_position[2];
         }
-        else if (distance_1 != 0 and distance_2 != 0 and distance_3 != 0 and distance_4 != 0)
+        else
         {
             std::cout << "All Distances" << std::endl;
             // Define the anchor points
@@ -579,11 +677,13 @@ int main()
                 Eigen::Vector3d(point_1[0], point_1[1], point_1[2]),
                 Eigen::Vector3d(point_2[0], point_2[1], point_2[2]),
                 Eigen::Vector3d(point_3[0], point_3[1], point_3[2]),
-                Eigen::Vector3d(point_4[0], point_4[1], point_4[2])
+                Eigen::Vector3d(point_4[0], point_4[1], point_4[2]),
+                Eigen::Vector3d(point_5[0], point_5[1], point_5[2]),
+                Eigen::Vector3d(point_6[0], point_6[1], point_6[2])
             };
 
             // Define the distances
-            std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4 };
+            std::vector<double> distances = { distance_1, distance_2, distance_3, distance_4, distance_5, distance_6 };
 
             // Call the multilateration function
             Eigen::Vector3d result;
@@ -600,13 +700,8 @@ int main()
             UWB_x = result[0];
             UWB_y = result[1];
             UWB_z = result[2];
+        }
 
-        }
-        else
-        {
-            std::cout << "Missing Information" << std::endl;
-            continue;
-        }
 
         // writes the location data to the console
         std::cout << "x: " << UWB_x << ", y: " << UWB_y << ", z: " << UWB_z << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
@@ -628,9 +723,9 @@ int main()
             previous_UWB_position[2] = UWB_z;
         }
 
-        /***************/
-        /***** IMU *****/
-        /***************/
+        /*************************************
+        *********** IMU PROCESSING ***********
+        *************************************/
 
         double PI = M_PI;
 
@@ -650,9 +745,9 @@ int main()
         float rtheta = theta * PI / 180;
 
 
-        /***************/
-        /***** Vis *****/
-        /***************/
+        /***************************************
+        *********** REALTIME DISPLAY ***********
+        ***************************************/
 
         // Write location data to file
         outFile << UWB_x << ", " << UWB_y << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
