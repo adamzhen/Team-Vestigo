@@ -353,8 +353,6 @@ void loop()
 {
   // Distance reset
   bool looping = true;
-  float distance = 0;
-  double tof = 0;
         
   // Update Key Order
   for (int i = 1; i <= 12; ++i) {
@@ -397,6 +395,9 @@ void loop()
   {
     for (const auto& key : keys) 
     {
+      float distance = 0;
+      double tof = 0;
+
       Serial.print("Key: ");
       Serial.println(key.first);
       twr_transmitter_mode(key.first, tof);                  
