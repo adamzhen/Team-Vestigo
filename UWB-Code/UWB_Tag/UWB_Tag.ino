@@ -383,6 +383,7 @@ void loop()
     {
       // Append data to the appropriate vector
       distance_data[key.first].push_back(distance);
+      Serial.println("Distance Data Append");
 
       // counter
       int distance_counter = 0;
@@ -394,12 +395,14 @@ void loop()
           distance_counter += 1;
         }
       }
+      Serial.println("Distance Counter Added");
 
       // checks if there is enough data to send
       if (distance_counter >= 5) 
       {
         // resets averages
         std::vector<float> averages(12, 0);
+        Serial.println("Reset Averages");
 
         // find average of each distance list
         for (int i = 0; i < 12; i++) 
@@ -418,6 +421,7 @@ void loop()
             averages[i] = 0;
           }
         }
+        Serial.println("Average of Distances");
 
         // convert vector into Json array
         const size_t capacity = JSON_ARRAY_SIZE(12);
@@ -427,6 +431,7 @@ void loop()
         {
           averaged_points.add(averages[i]);
         }
+        Serial.println("Convert to JSON");
 
         // convert the Json array to a string
         String jsonString;
@@ -454,8 +459,10 @@ void loop()
         {
           distance_data[i].clear();
         }
+        Serial.println("Reset Distance Data");
 
         averages.clear();
+        Serial.println("Average Clear");
 
         break;
       }  
