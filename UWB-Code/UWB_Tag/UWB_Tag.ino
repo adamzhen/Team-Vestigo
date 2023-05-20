@@ -294,14 +294,11 @@ void setup()
 
   UART_init();
   test_run_info((unsigned char *)APP_NAME);
-  Serial.println("UART Init");
 
   /* Configure SPI rate, DW3000 supports up to 38 MHz */
   /* Reset DW IC */
   spiBegin(PIN_IRQ, PIN_RST);
   spiSelect(PIN_SS);
-
-  Serial.println("SPI Begin");
 
   delay(2); // Time needed for DW3000 to start up (transition from INIT_RC to IDLE_RC, or could wait for SPIRDY event)
 
@@ -317,8 +314,6 @@ void setup()
     while (1) ;
   }
 
-  Serial.println("UART Config");
-
   // Enabling LEDs here for debug so that for each TX the D1 LED will flash on DW3000 red eval-shield boards.
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 
@@ -328,8 +323,6 @@ void setup()
     UART_puts("CONFIG FAILED\r\n");
     while (1) ;
   }
-
-  Serial.println("DW Config");
 
   /* Configure the TX spectrum parameters (power, PG delay and PG count) */
   dwt_configuretxrf(&txconfig_options);
