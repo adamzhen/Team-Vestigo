@@ -393,8 +393,6 @@ void loop()
     Serial.println(key.second);
   }
 
-  int topSixCycles = 0;
-
   while(looping)
   {
     for (const auto& key : keys) 
