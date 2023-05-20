@@ -25,7 +25,7 @@ const int port = 1234;
 
 
 // list creation
-std::vector<std::vector<float>> distance_data(12);
+std::vector<std::vector<float>> distance_data(13);
 std::vector<std::pair<int, int>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
