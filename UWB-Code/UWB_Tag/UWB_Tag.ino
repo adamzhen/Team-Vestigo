@@ -407,7 +407,7 @@ void loop()
       double tof = 0;
 
       Serial.print("Key: ");
-      Serial.println(key.first);
+      Serial.println(keys[i].first);
       twr_transmitter_mode(keys[i].first, tof);                  
       distance = tof * SPEED_OF_LIGHT;
 
@@ -418,7 +418,7 @@ void loop()
       if (distance != 0) 
       {
         // Append data to the appropriate vector
-        distance_data[key.first - 1].push_back(distance);
+        distance_data[keys[i].first - 1].push_back(distance);
         Serial.println("Distance Data Append");
 
         // counter
