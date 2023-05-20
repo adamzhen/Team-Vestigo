@@ -421,7 +421,8 @@ void loop()
 
         for (int i = 0; i < 12; i++) 
         {
-          if (distance_data[i].size() > 1) 
+          Serial.println(distance_data[i].size());
+          if (distance_data[i].size() >= 1) 
           {
             distance_counter += 1;
           }
