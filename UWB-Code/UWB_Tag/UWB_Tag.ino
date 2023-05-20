@@ -423,7 +423,8 @@ void loop()
             distance_counter += 1;
           }
         }
-        Serial.println("Distance Counter Added");
+        Serial.print("Distance Counter Added: ");
+        Serial.println(distance_counter);
 
         // checks if there is enough data to send
         if (distance_counter >= 5) 
