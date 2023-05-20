@@ -360,6 +360,12 @@ void loop()
     keys[i-1].second = distance_data[i].size();
   }
   Serial.println("Key Order");
+  for (const auto& key : keys) {
+        Serial.print("Key: ");
+        Serial.print(key.first);
+        Serial.print(", Value: ");
+        Serial.println(key.second);
+    }
 
   std::sort(keys.begin(), keys.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
     return a.second > b.second;
@@ -378,12 +384,12 @@ void loop()
     }
 
   for (const auto& key : keys) {
+    Serial.print("Key: ");
+    Serial.println(key.first);
     twr_transmitter_mode(key.first, tof);                  
     distance = tof * SPEED_OF_LIGHT;
 
     Serial.println("Transmitted");
-    Serial.print("Key: ");
-    Serial.println(key.first);
 
     delayMicroseconds(750);
 
