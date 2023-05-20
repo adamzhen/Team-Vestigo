@@ -395,8 +395,9 @@ void loop()
 
   while(looping)
   {
-    for (const auto& key : keys) 
+    for (int i = 0; i < 7; i++) 
     {
+      const auto& key = keys[i];
       float distance = 0;
       double tof = 0;
 
