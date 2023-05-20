@@ -25,18 +25,7 @@ const int port = 1234;
 
 
 // list creation
-std::vector<float> distance_1_data;
-std::vector<float> distance_2_data;
-std::vector<float> distance_3_data;
-std::vector<float> distance_4_data;
-std::vector<float> distance_5_data;
-std::vector<float> distance_6_data;
-std::vector<float> distance_7_data;
-std::vector<float> distance_8_data;
-std::vector<float> distance_9_data;
-std::vector<float> distance_10_data;
-std::vector<float> distance_11_data;
-std::vector<float> distance_12_data;
+std::vector<std::vector<float>> distance_data(12);
 std::vector<std::pair<int, int>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
@@ -196,93 +185,96 @@ void twr_transmitter_mode(int key, double& tof)
  
 void twr_receiver_mode(int key)
 {
-  uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
-  uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-  /* Frame sequence number, incremented after each transmission. */
-  uint8_t frame_seq_nb = 0;
-
-  /* Buffer to store received messages.
-   Its size is adjusted to longest frame that this example code is supposed to handle. */
-  int RX_BUF_LEN = 12; //Must be less than FRAME_LEN_MAX_EX
-  uint8_t rx_buffer[RX_BUF_LEN];
-
-  /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
-  #define POLL_RX_TO_RESP_TX_DLY_UUS 450
-
-  /* Activate reception immediately. */
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
-  
-  /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
-  while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
-  { };
-  
-  if (!(status_reg & SYS_STATUS_RXFCG_BIT_MASK))
+  while(true) 
   {
-    /* Clear RX error events in the DW IC status register. */
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
-  }
+    uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
+    uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-  uint32_t frame_len;
-  
-  /* Clear good RX frame event in the DW IC status register. */
-  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
-  
-  /* A frame has been received, read it into the local buffer. */
-  frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
-  if (frame_len > sizeof(rx_buffer))
-  {
-    continue;
-  }
+    /* Frame sequence number, incremented after each transmission. */
+    uint8_t frame_seq_nb = 0;
+
+    /* Buffer to store received messages.
+    Its size is adjusted to longest frame that this example code is supposed to handle. */
+    int RX_BUF_LEN = 12; //Must be less than FRAME_LEN_MAX_EX
+    uint8_t rx_buffer[RX_BUF_LEN];
+
+    /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
+    #define POLL_RX_TO_RESP_TX_DLY_UUS 450
+
+    /* Activate reception immediately. */
+    dwt_rxenable(DWT_START_RX_IMMEDIATE);
     
-  dwt_readrxdata(rx_buffer, frame_len, 0);
-  
-  /* Check that the frame is a poll sent by "SS TWR initiator" example.
-  As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
-  rx_buffer[ALL_MSG_SN_IDX] = 0;
-  if (memcmp(rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) != 0)
-  {
-    continue;
-  }
+    /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
+    while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
+    { };
+    
+    if (!(status_reg & SYS_STATUS_RXFCG_BIT_MASK))
+    {
+      /* Clear RX error events in the DW IC status register. */
+      dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+    }
+
+    uint32_t frame_len;
+    
+    /* Clear good RX frame event in the DW IC status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+    
+    /* A frame has been received, read it into the local buffer. */
+    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
+    if (frame_len > sizeof(rx_buffer))
+    {
+      break;
+    }
       
-  uint32_t resp_tx_time;
-  int ret;
-  
-  /* Retrieve poll reception timestamp. */
-  poll_rx_ts = get_rx_timestamp_u64();
-  
-  /* Compute response message transmission time. See NOTE 7 below. */
-  resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
-  dwt_setdelayedtrxtime(resp_tx_time);
-  
-  /* Response TX timestamp is the transmission time we programmed plus the antenna delay. */
-  resp_tx_ts = (((uint64_t)(resp_tx_time & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
-  
-  /* Write all timestamps in the final message. See NOTE 8 below. */
-  resp_msg_set_ts(&tx_resp_msg[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
-  resp_msg_set_ts(&tx_resp_msg[RESP_MSG_RESP_TX_TS_IDX], resp_tx_ts);
-  
-  /* Write and send the response message. See NOTE 9 below. */
-  tx_resp_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
-  dwt_writetxdata(sizeof(tx_resp_msg), tx_resp_msg, 0); /* Zero offset in TX buffer. */
-  dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
-  ret = dwt_starttx(DWT_START_TX_DELAYED);
-  
-  /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 10 below. */
-  if (ret != DWT_SUCCESS)
-  {
-    continue;
-  }
+    dwt_readrxdata(rx_buffer, frame_len, 0);
     
-  /* Poll DW IC until TX frame sent event set. See NOTE 6 below. */
-  while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK))
-  { };
-  
-  /* Clear TXFRS event. */
-  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
-  
-  /* Increment frame sequence number after transmission of the poll message (modulo 256). */
-  frame_seq_nb++;
+    /* Check that the frame is a poll sent by "SS TWR initiator" example.
+    As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
+    rx_buffer[ALL_MSG_SN_IDX] = 0;
+    if (memcmp(rx_buffer, rx_poll_msg, ALL_MSG_COMMON_LEN) != 0)
+    {
+      break;
+    }
+        
+    uint32_t resp_tx_time;
+    int ret;
+    
+    /* Retrieve poll reception timestamp. */
+    poll_rx_ts = get_rx_timestamp_u64();
+    
+    /* Compute response message transmission time. See NOTE 7 below. */
+    resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
+    dwt_setdelayedtrxtime(resp_tx_time);
+    
+    /* Response TX timestamp is the transmission time we programmed plus the antenna delay. */
+    resp_tx_ts = (((uint64_t)(resp_tx_time & 0xFFFFFFFEUL)) << 8) + TX_ANT_DLY;
+    
+    /* Write all timestamps in the final message. See NOTE 8 below. */
+    resp_msg_set_ts(&tx_resp_msg[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
+    resp_msg_set_ts(&tx_resp_msg[RESP_MSG_RESP_TX_TS_IDX], resp_tx_ts);
+    
+    /* Write and send the response message. See NOTE 9 below. */
+    tx_resp_msg[ALL_MSG_SN_IDX] = frame_seq_nb;
+    dwt_writetxdata(sizeof(tx_resp_msg), tx_resp_msg, 0); /* Zero offset in TX buffer. */
+    dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1); /* Zero offset in TX buffer, ranging. */
+    ret = dwt_starttx(DWT_START_TX_DELAYED);
+    
+    /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 10 below. */
+    if (ret != DWT_SUCCESS)
+    {
+      break;
+    }
+      
+    /* Poll DW IC until TX frame sent event set. See NOTE 6 below. */
+    while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK))
+    { };
+    
+    /* Clear TXFRS event. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
+    
+    /* Increment frame sequence number after transmission of the poll message (modulo 256). */
+    frame_seq_nb++;
+  }
 }
 
 void setup() 
@@ -348,18 +340,9 @@ void setup()
   * Note, in real low power applications the LEDs should not be used. */
   dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
 
-  keys.push_back(std::make_pair(1, distance_1_data.size()));
-  keys.push_back(std::make_pair(2, distance_2_data.size()));
-  keys.push_back(std::make_pair(3, distance_3_data.size()));
-  keys.push_back(std::make_pair(4, distance_4_data.size()));
-  keys.push_back(std::make_pair(5, distance_5_data.size()));
-  keys.push_back(std::make_pair(6, distance_6_data.size()));
-  keys.push_back(std::make_pair(7, distance_7_data.size()));
-  keys.push_back(std::make_pair(8, distance_8_data.size()));
-  keys.push_back(std::make_pair(9, distance_9_data.size()));
-  keys.push_back(std::make_pair(10, distance_10_data.size()));
-  keys.push_back(std::make_pair(11, distance_11_data.size()));
-  keys.push_back(std::make_pair(12, distance_12_data.size()));
+  for (int i = 1; i <= 12; ++i) {
+    keys.push_back(std::make_pair(i, distance_data[i].size()));
+  }
   
 }
 
@@ -370,318 +353,58 @@ void loop()
   double tof = 0;
         
   // Update Key Order
-  keys[0].second = distance_1_data.size();
-  keys[1].second = distance_2_data.size();
-  keys[2].second = distance_3_data.size();
-  keys[3].second = distance_4_data.size();
-  keys[4].second = distance_5_data.size();
-  keys[5].second = distance_6_data.size();
-  keys[6].second = distance_7_data.size();
-  keys[7].second = distance_8_data.size();
-  keys[8].second = distance_9_data.size();
-  keys[9].second = distance_10_data.size();
-  keys[10].second = distance_11_data.size();
-  keys[11].second = distance_12_data.size();
+  for (int i = 1; i <= 12; ++i) {
+    keys[i-1].second = distance_data[i].size();
+  }
 
   std::sort(keys.begin(), keys.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
     return a.second > b.second;
   });
 
   for (const auto& key : keys) {
-    twr_transmitter_mode(key, 1, tof);                  
+    twr_transmitter_mode(key.first, tof);                  
     distance = tof * SPEED_OF_LIGHT;
 
     delayMicroseconds(750);
 
     if (distance != 0) 
     {
-      // appends data to appropriate array
-      if (key == 1) 
-      {
-        distance_1_data.push_back(distance);
-      }
-      if (key == 2) 
-      {
-        distance_2_data.push_back(distance);
-      }
-      if (key == 3) 
-      {
-        distance_3_data.push_back(distance);
-      }
-      if (key == 4) 
-      {
-      distance_4_data.push_back(distance);
-      }
-      if (key == 5) 
-      {
-        distance_5_data.push_back(distance);
-      }
-      if (key == 6) 
-      {
-      distance_6_data.push_back(distance);
-      }
-      if (key == 7) 
-      {
-        distance_7_data.push_back(distance);
-      }
-      if (key == 8) 
-      {
-        distance_8_data.push_back(distance);
-      }
-      if (key == 9) 
-      {
-        distance_9_data.push_back(distance);
-      }
-      if (key == 10) 
-      {
-      distance_10_data.push_back(distance);
-      }
-      if (key == 11) 
-      {
-        distance_11_data.push_back(distance);
-      }
-      if (key == 12) 
-      {
-      distance_12_data.push_back(distance);
-      }
+      // Append data to the appropriate vector
+      distance_data[key.first].push_back(distance);
 
       // counter
       int distance_counter = 0;
 
-      if (distance_1_data.size() > 1) 
+      for (int i = 0; i < 12; i++) 
       {
-        distance_counter += 1;
-      }
-      if (distance_2_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_3_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_4_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_5_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_6_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_7_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_8_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_9_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_10_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_11_data.size() > 1) 
-      {
-        distance_counter += 1;
-      }
-      if (distance_12_data.size() > 1) 
-      {
-        distance_counter += 1;
+        if (distance_data[i].size() > 1) 
+        {
+          distance_counter += 1;
+        }
       }
 
       // checks if there is enough data to send
       if (distance_counter >= 5) 
       {
         // resets averages
-        float average_1 = 0;
-        float average_2 = 0;
-        float average_3 = 0;
-        float average_4 = 0;
-        float average_5 = 0;
-        float average_6 = 0;
-        float average_1 = 0;
-        float average_2 = 0;
-        float average_3 = 0;
-        float average_4 = 0;
-        float average_5 = 0;
-        float average_6 = 0;
+        std::vector<float> averages(12, 0);
 
         // find average of each distance list
-        if (distance_1_data.size() > 0) 
+        for (int i = 0; i < 12; i++) 
         {
-          float sum = 0;
-          for (float d : distance_1_data) 
+          if (distance_data[i].size() > 0) 
           {
-            sum += d;
-          }
-          float average_1 = sum / distance_1_data.size();
-          averages.push_back(average_1);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_2_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_2_data) 
+            float sum = 0;
+            for (float d : distance_data[i]) 
+            {
+              sum += d;
+            }
+            averages[i] = sum / distance_data[i].size();
+          } 
+          else 
           {
-            sum += d;
+            averages[i] = 0;
           }
-          float average_2 = sum / distance_2_data.size();
-          averages.push_back(average_2);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_3_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_3_data) 
-          {
-            sum += d;
-          }
-          float average_3 = sum / distance_3_data.size();
-          averages.push_back(average_3);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_4_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_4_data) 
-          {
-            sum += d;
-          }
-          float average_4 = sum / distance_4_data.size();
-          averages.push_back(average_4);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_5_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_5_data) 
-          {
-            sum += d;
-          }
-          float average_5 = sum / distance_5_data.size();
-          averages.push_back(average_5);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_6_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_6_data) 
-          {
-            sum += d;
-          }
-          float average_6 = sum / distance_6_data.size();
-          averages.push_back(average_6);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_7_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_7_data) 
-          {
-            sum += d;
-          }
-          float average_7 = sum / distance_7_data.size();
-          averages.push_back(average_7);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_8_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_8_data) 
-          {
-            sum += d;
-          }
-          float average_8 = sum / distance_8_data.size();
-          averages.push_back(average_8);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_9_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_9_data) 
-          {
-            sum += d;
-          }
-          float average_9 = sum / distance_9_data.size();
-          averages.push_back(average_9);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_10_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_10_data) 
-          {
-            sum += d;
-          }
-          float average_10 = sum / distance_10_data.size();
-          averages.push_back(average_10);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_11_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_11_data) 
-          {
-            sum += d;
-          }
-          float average_11 = sum / distance_11_data.size();
-          averages.push_back(average_11);
-        } 
-        else 
-        {
-          averages.push_back(0);
-        }
-        if (distance_12_data.size() > 0) 
-        {
-          float sum = 0;
-          for (float d : distance_12_data) 
-          {
-            sum += d;
-          }
-          float average_12 = sum / distance_12_data.size();
-          averages.push_back(average_12);
-        } 
-        else 
-        {
-          averages.push_back(0);
         }
 
         // convert vector into Json array
@@ -714,18 +437,11 @@ void loop()
         }
 
         
-        distance_1_data.clear();
-        distance_2_data.clear();
-        distance_3_data.clear();
-        distance_4_data.clear();
-        distance_5_data.clear();
-        distance_6_data.clear();
-        distance_7_data.clear();
-        distance_8_data.clear();
-        distance_9_data.clear();
-        distance_10_data.clear();
-        distance_11_data.clear();
-        distance_12_data.clear();
+        // clears data collected
+        for (int i = 0; i < 12; i++) 
+        {
+          distance_data[i].clear();
+        }
 
         averages.clear();
 
