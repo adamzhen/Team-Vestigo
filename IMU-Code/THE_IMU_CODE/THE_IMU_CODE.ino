@@ -78,6 +78,7 @@ const char *Adam_laptop = "192.168.8.203";
 const char *Adam_laptop_LAN = "192.168.8.148";
 const char *Aiden_PC = "192.168.8.122";
 const char *Aiden_laptop_LAN = "192.168.8.219";
+const char *Aiden_PC_LAN = "192.168.8.132";
 
 #ifdef TRANSMIT
   // Setting WiFi
@@ -89,7 +90,8 @@ const char *Aiden_laptop_LAN = "192.168.8.219";
     // host = Adam_laptop;
     // host = Aiden_PC;
     // host = Adam_laptop_LAN; 
-    host = Aiden_laptop_LAN;
+    // host = Aiden_laptop_LAN;
+    host = Aiden_PC_LAN;
   } 
   else if (network == 1){
     ssid = "UMAT_WiFi";
