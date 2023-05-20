@@ -427,7 +427,7 @@ void loop()
         Serial.println(distance_counter);
 
         // checks if there is enough data to send
-        if (distance_counter >= 5) 
+        if (distance_counter >= 4) 
         {
           // resets averages
           std::vector<float> averages(12, 0);
