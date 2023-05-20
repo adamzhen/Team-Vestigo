@@ -270,12 +270,12 @@ void saveDimensions(float length, float width, std::vector<Eigen::Vector3d> anch
         outputFile << "Anchor 4: " << point_4[0] << ", " << point_4[1] << ", " << point_4[2] << std::endl;
         outputFile << "Anchor 5: " << point_5[0] << ", " << point_5[1] << ", " << point_5[2] << std::endl;
         outputFile << "Anchor 6: " << point_6[0] << ", " << point_6[1] << ", " << point_6[2] << std::endl;
-        outputFile << "Anchor 7: " << point_7[0] << ", " << point_1[1] << ", " << point_1[2] << std::endl;
-        outputFile << "Anchor 8: " << point_8[0] << ", " << point_2[1] << ", " << point_2[2] << std::endl;
-        outputFile << "Anchor 9: " << point_9[0] << ", " << point_3[1] << ", " << point_3[2] << std::endl;
-        outputFile << "Anchor 10: " << point_10[0] << ", " << point_4[1] << ", " << point_4[2] << std::endl;
-        outputFile << "Anchor 11: " << point_11[0] << ", " << point_5[1] << ", " << point_5[2] << std::endl;
-        outputFile << "Anchor 12: " << point_12[0] << ", " << point_6[1] << ", " << point_6[2] << std::endl;
+        outputFile << "Anchor 7: " << point_7[0] << ", " << point_7[1] << ", " << point_7[2] << std::endl;
+        outputFile << "Anchor 8: " << point_8[0] << ", " << point_8[1] << ", " << point_8[2] << std::endl;
+        outputFile << "Anchor 9: " << point_9[0] << ", " << point_9[1] << ", " << point_9[2] << std::endl;
+        outputFile << "Anchor 10: " << point_10[0] << ", " << point_10[1] << ", " << point_10[2] << std::endl;
+        outputFile << "Anchor 11: " << point_11[0] << ", " << point_11[1] << ", " << point_11[2] << std::endl;
+        outputFile << "Anchor 12: " << point_12[0] << ", " << point_12[1] << ", " << point_12[2] << std::endl;
         std::cout << "Dimensions saved to " << filename << std::endl;
     }
     else
@@ -339,7 +339,7 @@ int main()
     *********** ROOM CONFIG ***********
     ***********************************/
 
-     // Anchor Positions in x,y,z
+    // Anchor Positions in x,y,z
     Eigen::Vector3d point_1;
     Eigen::Vector3d point_2;
     Eigen::Vector3d point_3;
@@ -482,7 +482,7 @@ int main()
         Sleep(5000);
     }*/
 
-     // Open the file for writing
+    // Open the file for writing
     std::ofstream outFile("Tracked Location", std::ios::app);
 
     // Check if the file was opened successfully
@@ -504,7 +504,7 @@ int main()
     *********** UWB SOCKET ***********
     *********************************/
 
-     // check if UWB socket connection is good
+    // check if UWB socket connection is good
     SOCKET sock_1 = socket(AF_INET, SOCK_DGRAM, 0);
     u_long mode = 1;
     int result = ioctlsocket(sock_1, FIONBIO, &mode);
@@ -541,7 +541,7 @@ int main()
     *********** IMU SOCKET ***********
     *********************************/
 
-     // checks if IMU socket connection is good
+    // checks if IMU socket connection is good
     SOCKET sock_2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock_2 == INVALID_SOCKET) {
         std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
@@ -572,7 +572,7 @@ int main()
     *********** SDL2 STARTUP ***********
     ***********************************/
 
-     // Initialize SDL
+    // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cout << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
         return 1;
