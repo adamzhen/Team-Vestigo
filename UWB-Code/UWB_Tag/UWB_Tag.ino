@@ -352,6 +352,7 @@ void setup()
 void loop() 
 {
   // Distance reset
+  bool looping = true;
   float distance = 0;
   double tof = 0;
         
@@ -359,6 +360,13 @@ void loop()
   for (int i = 1; i <= 12; ++i) {
     keys[i-1].second = distance_data[i].size();
   }
+
+  for (int i = 0; i < 12; i++) 
+  {
+    distance_data[i].clear();
+  }
+  Serial.println("Reset Distance Data");
+
   Serial.println("Key Order");
   for (const auto& key : keys) {
         Serial.print("Key: ");
@@ -367,10 +375,12 @@ void loop()
         Serial.println(key.second);
     }
 
+  // Sort Key Order
   std::sort(keys.begin(), keys.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
     return a.second > b.second;
   });
 
+  // Reset Key Count
   for (auto& key : keys) {
     key.second = 0;
   }
@@ -383,105 +393,104 @@ void loop()
         Serial.println(key.second);
     }
 
-  for (const auto& key : keys) {
-    Serial.print("Key: ");
-    Serial.println(key.first);
-    twr_transmitter_mode(key.first, tof);                  
-    distance = tof * SPEED_OF_LIGHT;
-
-    Serial.println("Transmitted");
-
-    delayMicroseconds(750);
-
-    if (distance != 0) 
+  while(looping)
+  {
+    for (const auto& key : keys) 
     {
-      // Append data to the appropriate vector
-      distance_data[key.first].push_back(distance);
-      Serial.println("Distance Data Append");
+      Serial.print("Key: ");
+      Serial.println(key.first);
+      twr_transmitter_mode(key.first, tof);                  
+      distance = tof * SPEED_OF_LIGHT;
 
-      // counter
-      int distance_counter = 0;
+      Serial.println("Transmitted");
 
-      for (int i = 0; i < 12; i++) 
+      delayMicroseconds(750);
+
+      if (distance != 0) 
       {
-        if (distance_data[i].size() > 1) 
-        {
-          distance_counter += 1;
-        }
-      }
-      Serial.println("Distance Counter Added");
+        // Append data to the appropriate vector
+        distance_data[key.first].push_back(distance);
+        Serial.println("Distance Data Append");
 
-      // checks if there is enough data to send
-      if (distance_counter >= 5) 
-      {
-        // resets averages
-        std::vector<float> averages(12, 0);
-        Serial.println("Reset Averages");
+        // counter
+        int distance_counter = 0;
 
-        // find average of each distance list
         for (int i = 0; i < 12; i++) 
         {
-          if (distance_data[i].size() > 0) 
+          if (distance_data[i].size() > 1) 
           {
-            float sum = 0;
-            for (float d : distance_data[i]) 
+            distance_counter += 1;
+          }
+        }
+        Serial.println("Distance Counter Added");
+
+        // checks if there is enough data to send
+        if (distance_counter >= 5) 
+        {
+          // resets averages
+          std::vector<float> averages(12, 0);
+          Serial.println("Reset Averages");
+
+          // find average of each distance list
+          for (int i = 0; i < 12; i++) 
+          {
+            if (distance_data[i].size() > 0) 
             {
-              sum += d;
+              float sum = 0;
+              for (float d : distance_data[i]) 
+              {
+                sum += d;
+              }
+              averages[i] = sum / distance_data[i].size();
+            } 
+            else 
+            {
+              averages[i] = 0;
             }
-            averages[i] = sum / distance_data[i].size();
+          }
+          Serial.println("Average of Distances");
+
+          // convert vector into Json array
+          const size_t capacity = JSON_ARRAY_SIZE(12);
+          DynamicJsonDocument doc(capacity);
+          JsonArray averaged_points = doc.to<JsonArray>();
+          for (int i = 0; i < averages.size(); i++)
+          {
+            averaged_points.add(averages[i]);
+            Serial.print("Averaged Points: ");
+            Serial.println(averages[i]);
+          }
+          Serial.println("Convert to JSON");
+
+          // convert the Json array to a string
+          String jsonString;
+          serializeJson(doc, jsonString);
+
+          // Create a UDP connection to the laptop
+          WiFiUDP udp;
+          udp.begin(port);
+          IPAddress ip;
+          if (WiFi.hostByName(host, ip)) 
+          {
+            // Send the Json data over the socket connection
+            udp.beginPacket(ip, port);
+            udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
+            udp.endPacket();
           } 
           else 
           {
-            averages[i] = 0;
+            Serial.println("Unable to resolve hostname");
           }
-        }
-        Serial.println("Average of Distances");
 
-        // convert vector into Json array
-        const size_t capacity = JSON_ARRAY_SIZE(12);
-        DynamicJsonDocument doc(capacity);
-        JsonArray averaged_points = doc.to<JsonArray>();
-        for (int i = 0; i < averages.size(); i++)
-        {
-          averaged_points.add(averages[i]);
-          Serial.print("Averaged Points: ");
-          Serial.println(averages[i]);
-        }
-        Serial.println("Convert to JSON");
+          
+          // clears data collected
+          averages.clear();
+          Serial.println("Average Clear");
 
-        // convert the Json array to a string
-        String jsonString;
-        serializeJson(doc, jsonString);
-
-        // Create a UDP connection to the laptop
-        WiFiUDP udp;
-        udp.begin(port);
-        IPAddress ip;
-        if (WiFi.hostByName(host, ip)) 
-        {
-          // Send the Json data over the socket connection
-          udp.beginPacket(ip, port);
-          udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
-          udp.endPacket();
-        } 
-        else 
-        {
-          Serial.println("Unable to resolve hostname");
-        }
-
-        
-        // clears data collected
-        for (int i = 0; i < 12; i++) 
-        {
-          distance_data[i].clear();
-        }
-        Serial.println("Reset Distance Data");
-
-        averages.clear();
-        Serial.println("Average Clear");
-
-        break;
-      }  
+          looping = false;
+          break;
+        }  
+      }
     }
   }
 }
