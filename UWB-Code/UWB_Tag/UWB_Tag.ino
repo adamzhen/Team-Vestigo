@@ -365,6 +365,10 @@ void loop()
     return a.second > b.second;
   });
 
+  for (auto& key : keys) {
+    key.second = 0;
+  }
+
   Serial.println("Key Sort");
   for (const auto& key : keys) {
         Serial.print("Key: ");
@@ -372,7 +376,6 @@ void loop()
         Serial.print(", Value: ");
         Serial.println(key.second);
     }
-
 
   for (const auto& key : keys) {
     twr_transmitter_mode(key.first, tof);                  
