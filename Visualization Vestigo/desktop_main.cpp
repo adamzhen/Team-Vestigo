@@ -652,6 +652,8 @@ int main()
         *********** UWB PROCESSING ***********
         *************************************/
 
+        std::cout << "Distances: " << distances << std::endl;
+
         // checks if UWB received data this pass
         if (recvLen_1 <= 0) {
             std::cout << "No Data Received" << std::endl;
@@ -670,6 +672,7 @@ int main()
                 Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
             };
 
+            std::cout << "Points: " << points << std::endl;
 
 
             // Call the multilateration function
