@@ -21,7 +21,7 @@ const char *Aiden_PC_LAN = "192.168.8.132";
 // Wifi creds
 const char *ssid = "Vestigo-Router";
 const char *password = "Vestigo&2023";
-const char *host = Aiden_laptop_LAN;
+const char *host = Aiden_PC_LAN;
 const int port = 1234;
 
 
@@ -366,12 +366,12 @@ void loop()
   });
 
   Serial.println("Key Sort");
-  // for (const auto& key : keys) {
-  //       Serial.print("Key: ");
-  //       Serial.print(key.first);
-  //       Serial.print(", Value: ");
-  //       Serial.println(key.second);
-  //   }
+  for (const auto& key : keys) {
+        Serial.print("Key: ");
+        Serial.print(key.first);
+        Serial.print(", Value: ");
+        Serial.println(key.second);
+    }
 
 
   for (const auto& key : keys) {
@@ -380,6 +380,7 @@ void loop()
 
     Serial.println("Transmitted");
     Serial.print("Key: ");
+    Serial.println(key.first);
 
     delayMicroseconds(750);
 
@@ -434,6 +435,8 @@ void loop()
         for (int i = 0; i < averages.size(); i++)
         {
           averaged_points.add(averages[i]);
+          Serial.print("Averaged Points: ");
+          Serial.println(averages[i]);
         }
         Serial.println("Convert to JSON");
 
