@@ -411,6 +411,8 @@ void loop()
       {
         // Append data to the appropriate vector
         distance_data[key.first].push_back(distance);
+        Serial.print("Key first: ");
+        Serial.println(key.first);
         Serial.println("Distance Data Append");
 
         // counter
