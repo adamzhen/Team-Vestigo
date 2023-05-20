@@ -16,6 +16,7 @@ const char *Adam_laptop = "192.168.8.203";
 const char *Aiden_PC = "192.168.8.122";
 const char *Aiden_laptop_LAN = "192.168.8.219";
 const char *Adam_laptop_LAN = "192.168.8.148";
+const char *Aiden_PC_LAN = "192.168.8.132";
 
 // Wifi creds
 const char *ssid = "Vestigo-Router";
@@ -340,6 +341,8 @@ void setup()
   * Note, in real low power applications the LEDs should not be used. */
   dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
 
+  Serial.println("Checks");
+
   for (int i = 1; i <= 12; ++i) {
     keys.push_back(std::make_pair(i, distance_data[i].size()));
   }
@@ -361,7 +364,15 @@ void loop()
   std::sort(keys.begin(), keys.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
     return a.second > b.second;
   });
+
   Serial.println("Key Sort");
+  // for (const auto& key : keys) {
+  //       Serial.print("Key: ");
+  //       Serial.print(key.first);
+  //       Serial.print(", Value: ");
+  //       Serial.println(key.second);
+  //   }
+
 
   for (const auto& key : keys) {
     twr_transmitter_mode(key.first, tof);                  
@@ -369,7 +380,6 @@ void loop()
 
     Serial.println("Transmitted");
     Serial.print("Key: ");
-    Serial.println(key);
 
     delayMicroseconds(750);
 
