@@ -358,7 +358,6 @@ void loop()
   // Distance reset
   float distance = 0;
   double tof = 0;
-  Serial.println("Resets");
         
   // Update Key Order
   for (int i = 1; i <= 12; ++i) {
@@ -376,6 +375,8 @@ void loop()
     distance = tof * SPEED_OF_LIGHT;
 
     Serial.println("Transmitted");
+    Serial.print("Key: ");
+    Serial.println(key);
 
     delayMicroseconds(750);
 
