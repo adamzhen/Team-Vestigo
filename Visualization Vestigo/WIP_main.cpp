@@ -509,79 +509,77 @@ int main()
     }
 
 
-    /**********************************
-    *********** UWB SOCKETS ***********
-    **********************************/
+    /************************************
+    *********** SOCKETS SETUP ***********
+    ************************************/
 
     const int num_ports = 4;
-    int ports[num_ports] = { 1234, 1235, 1236, 1237 };  // replace with your actual port numbers
-    SOCKET socks[num_ports];
-    sockaddr_in serverAddrs[num_ports];
-    int recvLens[num_ports];
-    sockaddr_in clientAddrs[num_ports];
-    int clientAddrLens[num_ports] = { sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in) };
+    int UWB_ports[num_ports] = { 1234, 1235, 1236, 1237 };  
+    int IMU_ports[num_ports] = { 1238, 1239, 1240, 1241 };  
+    SOCKET UWB_socks[num_ports];
+    SOCKET IMU_socks[num_ports];
+    sockaddr_in UWB_serverAddrs[num_ports];
+    sockaddr_in IMU_serverAddrs[num_ports];
+    int UWB_recvLens[num_ports];
+    int IMU_recvLens[num_ports];
+    sockaddr_in UWB_clientAddrs[num_ports];
+    sockaddr_in IMU_clientAddrs[num_ports];
+    int UWB_clientAddrLens[num_ports] = { sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in) };
+    int IMU_clientAddrLens[num_ports] = { sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in) };
 
     for (int i = 0; i < num_ports; ++i) {
         // check if UWB socket connection is good
-        socks[i] = socket(AF_INET, SOCK_DGRAM, 0);
+        UWB_socks[i] = socket(AF_INET, SOCK_DGRAM, 0);
         u_long mode = 1;
-        int result = ioctlsocket(socks[i], FIONBIO, &mode);
+        int result = ioctlsocket(UWB_socks[i], FIONBIO, &mode);
         if (result != NO_ERROR) {
             std::cerr << "Error setting socket to non-blocking mode: " << result << std::endl;
         }
-        if (socks[i] == INVALID_SOCKET) {
+        if (UWB_socks[i] == INVALID_SOCKET) {
             std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
             WSACleanup();
             return 1;
         }
 
         // defines port and ip address for UWB
-        serverAddrs[i].sin_family = AF_INET;
-        serverAddrs[i].sin_port = htons(ports[i]);
-        serverAddrs[i].sin_addr.s_addr = INADDR_ANY;
+        UWB_serverAddrs[i].sin_family = AF_INET;
+        UWB_serverAddrs[i].sin_port = htons(UWB_ports[i]);
+        UWB_serverAddrs[i].sin_addr.s_addr = INADDR_ANY;
 
         // checks if port binded properly
-        if (bind(socks[i], (sockaddr*)&serverAddrs[i], sizeof(serverAddrs[i])) == SOCKET_ERROR) {
+        if (bind(UWB_socks[i], (sockaddr*)&UWB_serverAddrs[i], sizeof(UWB_serverAddrs[i])) == SOCKET_ERROR) {
             std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
-            closesocket(socks[i]);
+            closesocket(UWB_socks[i]);
+            WSACleanup();
+            return 1;
+        }
+
+        // check if IMU socket connection is good
+        IMU_socks[i] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        if (IMU_socks[i] == INVALID_SOCKET) {
+            std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
+            WSACleanup();
+            return 1;
+        }
+
+        // defines port and ip address for IMU
+        IMU_serverAddrs[i].sin_family = AF_INET;
+        IMU_serverAddrs[i].sin_port = htons(IMU_ports[i]);
+        IMU_serverAddrs[i].sin_addr.s_addr = INADDR_ANY;
+
+        // checks if port binded properly
+        if (bind(IMU_socks[i], (sockaddr*)&IMU_serverAddrs[i], sizeof(IMU_serverAddrs[i])) == SOCKET_ERROR) {
+            std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
+            closesocket(IMU_socks[i]);
             WSACleanup();
             return 1;
         }
     }
 
+    
+
     // defines buffer size and client address
     char buffer[1024];
-
-    /*********************************
-    *********** IMU SOCKET ***********
-    *********************************/
-
-    // checks if IMU socket connection is good
-    SOCKET sock_5 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock_5 == INVALID_SOCKET) {
-        std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
-        WSACleanup();
-        return 1;
-    }
-
-    // defines port and ip address for IMU
-    sockaddr_in serverAddr_5;
-    serverAddr_5.sin_family = AF_INET;
-    serverAddr_5.sin_port = htons(1238);
-    serverAddr_5.sin_addr.s_addr = INADDR_ANY;
-
-    // checks if port binded properly
-    if (bind(sock_5, (sockaddr*)&serverAddr_5, sizeof(serverAddr_5)) == SOCKET_ERROR) {
-        std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
-        closesocket(sock_5);
-        WSACleanup();
-        return 1;
-    }
-
-    // defines buffer size and client address
-    int recvLen_5;
-    sockaddr_in clientAddr_5;
-    int clientAddrLen_5 = sizeof(clientAddr_5);
 
     /***********************************
     *********** SDL2 STARTUP ***********
@@ -602,7 +600,12 @@ int main()
     // Set the size and color of the object
     int object_width = 7;
     int object_height = 7;
-    SDL_Color object_color = { 210, 0 , 0, 255 };
+    SDL_Color colors[] = {
+    { 255, 0, 0, 255 },   // Red
+    { 0, 255, 0, 255 },   // Green
+    { 0, 0, 255, 255 },   // Blue
+    { 255, 255, 0, 255 }  // Yellow
+    };
 
     /**************************************
     *********** DATA PROCESSING ***********
@@ -639,24 +642,24 @@ int main()
 
 
             // pulls UWB data from first port
-            recvLens[i] = recvfrom(socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&clientAddrs[i], &clientAddrLens[i]);
+            UWB_recvLens[i] = recvfrom(UWB_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&UWB_clientAddrs[i], &UWB_clientAddrLens[i]);
 
             // checks if data is received on port
-            if (recvLens[i] > 0) {
-                std::string str(buffer, recvLens[i]);
-                distances = dataProcessing(str);
+            if (UWB_recvLens[i] > 0) {
+                std::string UWB_str(buffer, UWB_recvLens[i]);
+                distances = dataProcessing(UWB_str);
             }
 
 
             // pulls IMU data from second port
-            recvLen_5 = recvfrom(sock_5, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr_5, &clientAddrLen_5);
+            IMU_recvLens[i] = recvfrom(IMU_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&IMU_clientAddrs[i], &IMU_clientAddrLens[i]);
 
-            if (recvLen_5 <= 0) {
+            if (IMU_recvLens[i] <= 0) {
                 return 1;
             }
 
-            std::string str_5(buffer, recvLen_5);
-            IMU_data = dataProcessing(str_5);
+            std::string IMU_str(buffer, IMU_recvLens[i]);
+            IMU_data = dataProcessing(IMU_str);
 
             roll = IMU_data[0]; // degrees
             pitch = -IMU_data[1]; // degrees
@@ -670,7 +673,7 @@ int main()
 
 
             // checks if UWB received data this pass
-            if (recvLens[i] <= 0) {
+            if (UWB_recvLens[i] <= 0) {
                 std::cout << "No Data Received" << std::endl;
                 UWB_x = previous_UWB_position[0];
                 UWB_y = previous_UWB_position[1];
@@ -776,7 +779,7 @@ int main()
 
             // Draw the object
             SDL_Rect object_rect = { UWB_x_pixel - 4, UWB_y_pixel - 4, 8, 8 };
-            SDL_SetRenderDrawColor(renderer, object_color.r, object_color.g, object_color.b, object_color.a);
+            SDL_SetRenderDrawColor(renderer, colors[i].r, colors[i].g, colors[i].b, colors[i].a);
             SDL_RenderFillRect(renderer, &object_rect);
 
             // Draw line for orientation
