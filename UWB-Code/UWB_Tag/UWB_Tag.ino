@@ -184,7 +184,7 @@ void twr_transmitter_mode(int key, double& tof)
 ************ TWR RECEIVER MODE ************
 ******************************************/
  
-void twr_receiver_mode(int key)
+void twr_receiver_mode(int key, bool& received)
 {
   while(true) 
   {
@@ -275,6 +275,8 @@ void twr_receiver_mode(int key)
     
     /* Increment frame sequence number after transmission of the poll message (modulo 256). */
     frame_seq_nb++;
+
+    received = true;
   }
 }
 
@@ -504,6 +506,8 @@ void setup()
   for (int i = 1; i <= 12; ++i) {
     keys.push_back(std::make_pair(i, distance_data[i].size()));
   }
+
+  bool received = true;
   
 }
 
@@ -514,6 +518,20 @@ void setup()
 void loop() 
 {
   advancedRanging();
+
+  double tof = 0;
+
+  while (tof = 0)
+  {
+    twr_transmitter_mode(102, tof);
+  }
+
+  bool received = false;
+
+  while (!received)
+  {
+    twr_receiver_mode(101, received);
+  }
 }
 
 
