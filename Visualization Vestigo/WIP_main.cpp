@@ -29,7 +29,9 @@ using std::endl;
 
 // Definitions
 const float inch_to_meter = 0.0254;
-Eigen::Vector3d previous_UWB_position(0.0, 0.0, 0.0);
+std::vector<Eigen::Vector3d> previous_UWB_position = { 
+    {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} 
+};
 
 /***********************************
 *********** LM ALGORITHM ***********
@@ -366,11 +368,6 @@ int main()
     double length;
     double width;
 
-    // Defines variables for location coordinates
-    float UWB_x = 0;
-    float UWB_y = 0;
-    float UWB_z = 0;
-
     std::cout << "Tracking Startup Menu:" << std::endl;
     std::cout << "Do you want to set up a new room? (Y/N)? ";
     char choice_new_room;
@@ -628,18 +625,21 @@ int main()
         int minutes = timeinfo.tm_min;
         int seconds = timeinfo.tm_sec;
 
+        // Defines variables for location coordinates
+        float UWB_x[num_ports]; 
+        float UWB_y[num_ports];
+        float UWB_z[num_ports];
+
+        float roll[num_ports];
+        float pitch[num_ports];
+        float yaw[num_ports];
+        float dt[num_ports];
+
+        std::vector<float> distances;
+
         for (int i = 0; i < num_ports; ++i)
-        {
-            // reads incoming string into data
-            std::vector<float> UWB_data;
-            std::vector<float> IMU_data;
-            std::vector<float> distances;
-
-            float roll = 0;
-            float pitch = 0;
-            float yaw = 0;
-            float dt = 0;
-
+        {   
+            std::cout << "Port Num: " << i << std::endl;
 
             // pulls UWB data from first port
             UWB_recvLens[i] = recvfrom(UWB_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&UWB_clientAddrs[i], &UWB_clientAddrLens[i]);
@@ -650,7 +650,6 @@ int main()
                 distances = dataProcessing(UWB_str);
             }
 
-
             // pulls IMU data from second port
             IMU_recvLens[i] = recvfrom(IMU_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&IMU_clientAddrs[i], &IMU_clientAddrLens[i]);
 
@@ -659,12 +658,12 @@ int main()
             }
 
             std::string IMU_str(buffer, IMU_recvLens[i]);
-            IMU_data = dataProcessing(IMU_str);
+            std::vector<float> IMU_data = dataProcessing(IMU_str);
 
-            roll = IMU_data[0]; // degrees
-            pitch = -IMU_data[1]; // degrees
-            yaw = IMU_data[2]; // degrees
-            dt = IMU_data[6] / 1000000; // s
+            roll[i] = IMU_data[0]; // degrees
+            pitch[i] = -IMU_data[1]; // degrees
+            yaw[i] = IMU_data[2]; // degrees
+            dt[i] = IMU_data[6] / 1000000; // s
 
 
             /*************************************
@@ -675,9 +674,9 @@ int main()
             // checks if UWB received data this pass
             if (UWB_recvLens[i] <= 0) {
                 std::cout << "No Data Received" << std::endl;
-                UWB_x = previous_UWB_position[0];
-                UWB_y = previous_UWB_position[1];
-                UWB_z = previous_UWB_position[2];
+                UWB_x[i] = previous_UWB_position[i][0];
+                UWB_y[i] = previous_UWB_position[i][1];
+                UWB_z[i] = previous_UWB_position[i][2];
             }
             else
             {
@@ -696,23 +695,23 @@ int main()
                 // Call the multilateration function
                 Eigen::Vector3d result;
                 try {
-                    result = multilateration(points, distances, previous_UWB_position);
+                    result = multilateration(points, distances, previous_UWB_position[i]);
                     // Update the previous position
-                    previous_UWB_position = result;
+                    previous_UWB_position[i] = result;
                 }
                 catch (std::exception& e) {
                     // Use the previous position if a unique solution is not found
-                    result = previous_UWB_position;
+                    result = previous_UWB_position[i];
                 }
 
-                UWB_x = result[0];
-                UWB_y = result[1];
-                UWB_z = result[2];
+                UWB_x[i] = result[0];
+                UWB_y[i] = result[1];
+                UWB_z[i] = result[2];
             }
 
 
             // writes the location data to the console
-            std::cout << "x: " << UWB_x << ", y: " << UWB_y << ", z: " << UWB_z << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
+            std::cout << "x: " << UWB_x[i] << ", y: " << UWB_y[i] << ", z: " << UWB_z[i] << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
 
             // Handle events (such as window close)
             SDL_Event event;
@@ -725,10 +724,10 @@ int main()
             }
 
             // Storing current position
-            if (UWB_x - previous_UWB_position[0] != 0 || UWB_y - previous_UWB_position[1] != 0 || UWB_z - previous_UWB_position[2] != 0) {
-                previous_UWB_position[0] = UWB_x;
-                previous_UWB_position[1] = UWB_y;
-                previous_UWB_position[2] = UWB_z;
+            if (UWB_x[i] - previous_UWB_position[i][0] != 0 || UWB_y[i] - previous_UWB_position[i][1] != 0 || UWB_z[i] - previous_UWB_position[i][2] != 0) {
+                previous_UWB_position[i][0] = UWB_x[i];
+                previous_UWB_position[i][1] = UWB_y[i];
+                previous_UWB_position[i][2] = UWB_z[i];
             }
 
             /*************************************
@@ -739,7 +738,7 @@ int main()
 
             // calculating orientation
             float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
-            float compass = zerodir - yaw;
+            float compass = zerodir - yaw[i];
             if (compass < 0) {
                 compass += 360;
             }
@@ -758,39 +757,44 @@ int main()
             ***************************************/
 
             // Write location data to file
-            outFile << UWB_x << ", " << UWB_y << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
+            outFile << UWB_x[i] << ", " << UWB_y[i] << ", " << UWB_z[i] << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
 
             // Clear the screen
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
 
-            // Convert the object position from meters to pixels
-            int UWB_x_pixel = static_cast<int>(UWB_x * screen_scale);
-            int UWB_y_pixel = static_cast<int>(UWB_y * screen_scale);
+            for (int i = 0; i < num_ports; ++i)
+            {
+                // Convert the object position from meters to pixels
+                int UWB_x_pixel = static_cast<int>(UWB_x[i] * screen_scale);
+                int UWB_y_pixel = static_cast<int>(UWB_y[i] * screen_scale);
 
-            // Calculate line for orientation, currently assuming that North is in the positive x direction
-            int draw_length = 75;
-            int x_top = UWB_x_pixel + draw_length * cos(rtheta);
-            int y_top = UWB_y_pixel + draw_length * sin(rtheta);
-            int x_side_left = UWB_x_pixel + draw_length * cos(rtheta - PI / 4);
-            int y_side_left = UWB_y_pixel + draw_length * sin(rtheta - PI / 4);
-            int x_side_right = UWB_x_pixel + draw_length * cos(rtheta + PI / 4);
-            int y_side_right = UWB_y_pixel + draw_length * sin(rtheta + PI / 4);
+                // Calculate line for orientation, currently assuming that North is in the positive x direction
+                int draw_length = 75;
+                int x_top = UWB_x_pixel + draw_length * cos(rtheta);
+                int y_top = UWB_y_pixel + draw_length * sin(rtheta);
+                int x_side_left = UWB_x_pixel + draw_length * cos(rtheta - PI / 4);
+                int y_side_left = UWB_y_pixel + draw_length * sin(rtheta - PI / 4);
+                int x_side_right = UWB_x_pixel + draw_length * cos(rtheta + PI / 4);
+                int y_side_right = UWB_y_pixel + draw_length * sin(rtheta + PI / 4);
 
-            // Draw the object
-            SDL_Rect object_rect = { UWB_x_pixel - 4, UWB_y_pixel - 4, 8, 8 };
-            SDL_SetRenderDrawColor(renderer, colors[i].r, colors[i].g, colors[i].b, colors[i].a);
-            SDL_RenderFillRect(renderer, &object_rect);
+                // Draw the object
+                SDL_Rect object_rect = { UWB_x_pixel - 4, UWB_y_pixel - 4, 8, 8 };
+                SDL_SetRenderDrawColor(renderer, colors[i].r, colors[i].g, colors[i].b, colors[i].a);
+                SDL_RenderFillRect(renderer, &object_rect);
 
-            // Draw line for orientation
-            SDL_RenderDrawLine(renderer, UWB_x_pixel, UWB_y_pixel, x_side_left, y_side_left);
-            SDL_RenderDrawLine(renderer, UWB_x_pixel, UWB_y_pixel, x_side_right, y_side_right);
-            SDL_RenderDrawLine(renderer, x_side_left, y_side_left, x_side_right, y_side_right);
+                // Draw line for orientation
+                SDL_RenderDrawLine(renderer, UWB_x_pixel, UWB_y_pixel, x_side_left, y_side_left);
+                SDL_RenderDrawLine(renderer, UWB_x_pixel, UWB_y_pixel, x_side_right, y_side_right);
+                SDL_RenderDrawLine(renderer, x_side_left, y_side_left, x_side_right, y_side_right);
+            }
 
+            // Presents the rendereer to the screen
+            SDL_RenderPresent(renderer);
         }
-
-        // Presents the rendereer to the screen
-        SDL_RenderPresent(renderer);
+    
+    
+  
     }
 
     // Close the file
