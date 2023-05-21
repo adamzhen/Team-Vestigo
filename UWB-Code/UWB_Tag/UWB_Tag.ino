@@ -519,14 +519,14 @@ void loop()
 {
   advancedRanging();
 
-  double tof = 0;
+  double tof = 1;
 
   while (tof = 0)
   {
     twr_transmitter_mode(102, tof);
   }
 
-  bool received = false;
+  bool received = true;
 
   while (!received)
   {
