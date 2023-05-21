@@ -66,7 +66,7 @@ const char *password;
 const char *host;  
 
 const int network = 0; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
-const int port = 1235;
+const int port = 1238;
 
 void setup()
 {
