@@ -67,6 +67,7 @@ const char *host;
 
 const int network = 0; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
 const int port = 1238;
+int ports[4] = {1238, 1239, 1240, 1241};
 
 void setup()
 {
@@ -277,6 +278,9 @@ unsigned long dt;
 
 void loop()
 {
+  for (int count = 0; count < 4; ++count)
+  {
+
   unsigned long startTime = micros(); // declare a variable to hold the start time
 
   // Read any DMP data waiting in the FIFO
@@ -505,11 +509,11 @@ void loop()
 
   // Create a UDP connection to the laptop
   WiFiUDP udp;
-  udp.begin(port);
+  udp.begin(ports[count]);
   IPAddress ip;
   if (WiFi.hostByName(host, ip)) {
     // Send the Json data over the socket connection
-    udp.beginPacket(ip, port);
+    udp.beginPacket(ip, ports[count]);
     udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
     udp.endPacket();
 #ifdef DEBUG
@@ -546,6 +550,7 @@ void loop()
 
   Serial.println();
 #endif
+  }
 }
 
 // // initializeDMP is a weak function. Let's overwrite it so we can increase the sample rate
