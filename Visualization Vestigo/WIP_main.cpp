@@ -19,6 +19,7 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <thread>
 
 #undef main
 
@@ -514,72 +515,44 @@ int main()
     ************************************/
 
     const int num_ports = 4;
-    int UWB_ports[num_ports] = { 1234, 1235, 1236, 1237 };  
-    int IMU_ports[num_ports] = { 1238, 1239, 1240, 1241 };  
-    SOCKET UWB_socks[num_ports];
-    SOCKET IMU_socks[num_ports];
-    sockaddr_in UWB_serverAddrs[num_ports];
-    sockaddr_in IMU_serverAddrs[num_ports];
-    int UWB_recvLens[num_ports];
-    int IMU_recvLens[num_ports];
-    sockaddr_in UWB_clientAddrs[num_ports];
-    sockaddr_in IMU_clientAddrs[num_ports];
-    int UWB_clientAddrLens[num_ports] = { sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in) };
-    int IMU_clientAddrLens[num_ports] = { sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in) };
+    int ports[num_ports] = { 1234, 1235, 1236, 1237 };    
+    SOCKET socks[num_ports];
+    sockaddr_in serverAddrs[num_ports];
+    int recvLens[num_ports];
+    sockaddr_in clientAddrs[num_ports];
+    int clientAddrLens[num_ports] = { sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in) };
 
     for (int i = 0; i < num_ports; ++i) {
         // check if UWB socket connection is good
-        UWB_socks[i] = socket(AF_INET, SOCK_DGRAM, 0);
-        u_long mode = 1;
-        int result = ioctlsocket(UWB_socks[i], FIONBIO, &mode);
+        socks[i] = socket(AF_INET, SOCK_DGRAM, 0);
+        u_long mode = 0;
+        int result = ioctlsocket(socks[i], FIONBIO, &mode);
         if (result != NO_ERROR) {
             std::cerr << "Error setting socket to non-blocking mode: " << result << std::endl;
         }
-        if (UWB_socks[i] == INVALID_SOCKET) {
+        if (socks[i] == INVALID_SOCKET) {
             std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
             WSACleanup();
             return 1;
         }
 
         // defines port and ip address for UWB
-        UWB_serverAddrs[i].sin_family = AF_INET;
-        UWB_serverAddrs[i].sin_port = htons(UWB_ports[i]);
-        UWB_serverAddrs[i].sin_addr.s_addr = INADDR_ANY;
+        serverAddrs[i].sin_family = AF_INET;
+        serverAddrs[i].sin_port = htons(ports[i]);
+        serverAddrs[i].sin_addr.s_addr = INADDR_ANY;
 
         // checks if port binded properly
-        if (bind(UWB_socks[i], (sockaddr*)&UWB_serverAddrs[i], sizeof(UWB_serverAddrs[i])) == SOCKET_ERROR) {
+        if (bind(socks[i], (sockaddr*)&serverAddrs[i], sizeof(serverAddrs[i])) == SOCKET_ERROR) {
             std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
-            closesocket(UWB_socks[i]);
-            WSACleanup();
-            return 1;
-        }
-
-        // check if IMU socket connection is good
-        IMU_socks[i] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (IMU_socks[i] == INVALID_SOCKET) {
-            std::cout << "socket failed with error: " << WSAGetLastError() << std::endl;
-            WSACleanup();
-            return 1;
-        }
-
-        // defines port and ip address for IMU
-        IMU_serverAddrs[i].sin_family = AF_INET;
-        IMU_serverAddrs[i].sin_port = htons(IMU_ports[i]);
-        IMU_serverAddrs[i].sin_addr.s_addr = INADDR_ANY;
-
-        // checks if port binded properly
-        if (bind(IMU_socks[i], (sockaddr*)&IMU_serverAddrs[i], sizeof(IMU_serverAddrs[i])) == SOCKET_ERROR) {
-            std::cout << "bind failed with error: " << WSAGetLastError() << std::endl;
-            closesocket(IMU_socks[i]);
+            closesocket(socks[i]);
             WSACleanup();
             return 1;
         }
     }
 
-    
-
     // defines buffer size and client address
     char buffer[1024];
+
 
     /***********************************
     *********** SDL2 STARTUP ***********
@@ -633,94 +606,73 @@ int main()
         float UWB_y[num_ports];
         float UWB_z[num_ports];
 
-        float roll[num_ports];
-        float pitch[num_ports];
-        float yaw[num_ports];
-        float dt[num_ports];
+        float roll;
+        float pitch;
+        float yaw;
+        float dt;
 
+        std::vector<float> esp32_data;
         std::vector<float> distances;
-        std::vector<float> IMU_data;
 
         for (int i = 0; i < num_ports; ++i)
         {   
             std::cout << "Port Num: " << i << std::endl;
 
-            bool update = false;
-
             // pulls UWB data from first port
-            UWB_recvLens[i] = recvfrom(UWB_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&UWB_clientAddrs[i], &UWB_clientAddrLens[i]);
+            recvLens[i] = recvfrom(socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&clientAddrs[i], &clientAddrLens[i]);
 
             // checks if data is received on port
-            if (UWB_recvLens[i] > 0) {
-                std::string UWB_str(buffer, UWB_recvLens[i]);
-                distances = dataProcessing(UWB_str);
+            if (recvLens[i] <= 0) {
+                return 1;
             }
 
-            // pulls IMU data from second port
-            IMU_recvLens[i] = recvfrom(IMU_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&IMU_clientAddrs[i], &IMU_clientAddrLens[i]);
+            std::string data_str(buffer, recvLens[i]);
+            esp32_data = dataProcessing(data_str);
 
-            if (IMU_recvLens[i] > 0) {
-                std::string IMU_str(buffer, IMU_recvLens[i]);
-                IMU_data = dataProcessing(IMU_str);
-                update = true;
-                roll[i] = IMU_data[0]; // degrees
-                pitch[i] = -IMU_data[1]; // degrees
-                yaw[i] = IMU_data[2]; // degrees
-                dt[i] = IMU_data[6] / 1000000; // s
-            } 
-            else
-            {
-                update = false;
-                roll[i] = previous_IMU_data[i][0];
-                pitch[i] = previous_IMU_data[i][1];
-                yaw[i] = previous_IMU_data[i][2];
-                dt[i] = previous_IMU_data[i][3];
+            for (int j = 0; j < 13; ++j) {
+                distances.push_back(esp32_data[j]);
             }
+
+            //roll[i] = esp32_data[12]; // degrees
+            //pitch[i] = -esp32_data[13]; // degrees
+            //yaw[i] = esp32_data[14]; // degrees
+            //dt[i] = esp32_data[15] / 1000000; // s
+
+            roll = 0; 
+            pitch = 0; 
+            yaw = 0; 
+            dt = 0; 
 
 
             /*************************************
             *********** UWB PROCESSING ***********
             *************************************/
 
+            
+            // Define the anchor points
+            std::vector<Eigen::Vector3d> points = {
+                Eigen::Vector3d(point_1), Eigen::Vector3d(point_2), Eigen::Vector3d(point_3),
+                Eigen::Vector3d(point_4), Eigen::Vector3d(point_5), Eigen::Vector3d(point_6),
+                Eigen::Vector3d(point_7), Eigen::Vector3d(point_8), Eigen::Vector3d(point_9),
+                Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
+            };
 
-            // checks if UWB received data this pass
-            if (UWB_recvLens[i] <= 0) {
-                std::cout << "No Data Received" << std::endl;
-                UWB_x[i] = previous_UWB_position[i][0];
-                UWB_y[i] = previous_UWB_position[i][1];
-                UWB_z[i] = previous_UWB_position[i][2];
+
+            // Call the multilateration function
+            Eigen::Vector3d result;
+            try {
+                result = multilateration(points, distances, previous_UWB_position[i]);
+                // Update the previous position
+                previous_UWB_position[i] = result;
             }
-            else
-            {
-                std::cout << "All Distances" << std::endl;
-                // Define the anchor points
-                std::vector<Eigen::Vector3d> points = {
-                    Eigen::Vector3d(point_1), Eigen::Vector3d(point_2), Eigen::Vector3d(point_3),
-                    Eigen::Vector3d(point_4), Eigen::Vector3d(point_5), Eigen::Vector3d(point_6),
-                    Eigen::Vector3d(point_7), Eigen::Vector3d(point_8), Eigen::Vector3d(point_9),
-                    Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
-                };
-
-                //
-
-
-                // Call the multilateration function
-                Eigen::Vector3d result;
-                try {
-                    result = multilateration(points, distances, previous_UWB_position[i]);
-                    // Update the previous position
-                    previous_UWB_position[i] = result;
-                }
-                catch (std::exception& e) {
-                    // Use the previous position if a unique solution is not found
-                    result = previous_UWB_position[i];
-                }
-
-                UWB_x[i] = result[0];
-                UWB_y[i] = result[1];
-                UWB_z[i] = result[2];
+            catch (std::exception& e) {
+                // Use the previous position if a unique solution is not found
+                result = previous_UWB_position[i];
             }
 
+            UWB_x[i] = result[0];
+            UWB_y[i] = result[1];
+            UWB_z[i] = result[2];
 
             // writes the location data to the console
             std::cout << "x: " << UWB_x[i] << ", y: " << UWB_y[i] << ", z: " << UWB_z[i] << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
@@ -735,13 +687,6 @@ int main()
                 }
             }
 
-            // Storing current position
-            if (UWB_x[i] - previous_UWB_position[i][0] != 0 || UWB_y[i] - previous_UWB_position[i][1] != 0 || UWB_z[i] - previous_UWB_position[i][2] != 0) 
-            {
-                previous_UWB_position[i][0] = UWB_x[i];
-                previous_UWB_position[i][1] = UWB_y[i];
-                previous_UWB_position[i][2] = UWB_z[i];
-            }
 
             /*************************************
             *********** IMU PROCESSING ***********
@@ -751,7 +696,7 @@ int main()
 
             // calculating orientation
             float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
-            float compass = zerodir - yaw[i];
+            float compass = zerodir - yaw;
             if (compass < 0) {
                 compass += 360;
             }
@@ -764,22 +709,15 @@ int main()
 
             float rtheta = theta * PI / 180;
 
-            // Storing current IMU data
-            if (update)
-            {
-                previous_IMU_data[i][0] = roll[i];
-                previous_IMU_data[i][1] = pitch[i];
-                previous_IMU_data[i][2] = yaw[i];
-                previous_IMU_data[i][3] = dt[i];
-            }
 
+            
+
+            // Write location data to file
+            outFile << UWB_x[i] << ", " << UWB_y[i] << ", " << UWB_z[i] << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
 
             /***************************************
             *********** REALTIME DISPLAY ***********
             ***************************************/
-
-            // Write location data to file
-            outFile << UWB_x[i] << ", " << UWB_y[i] << ", " << UWB_z[i] << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
 
             // Clear the screen
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
