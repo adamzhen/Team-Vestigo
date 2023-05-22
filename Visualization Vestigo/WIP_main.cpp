@@ -30,7 +30,10 @@ using std::endl;
 // Definitions
 const float inch_to_meter = 0.0254;
 std::vector<Eigen::Vector3d> previous_UWB_position = { 
-    {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} 
+    {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} 
+};
+std::vector<std::vector<float>> previous_IMU_data = {
+    {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0}
 };
 
 /***********************************
@@ -636,10 +639,13 @@ int main()
         float dt[num_ports];
 
         std::vector<float> distances;
+        std::vector<float> IMU_data;
 
         for (int i = 0; i < num_ports; ++i)
         {   
             std::cout << "Port Num: " << i << std::endl;
+
+            bool update = false;
 
             // pulls UWB data from first port
             UWB_recvLens[i] = recvfrom(UWB_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&UWB_clientAddrs[i], &UWB_clientAddrLens[i]);
@@ -653,17 +659,23 @@ int main()
             // pulls IMU data from second port
             IMU_recvLens[i] = recvfrom(IMU_socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&IMU_clientAddrs[i], &IMU_clientAddrLens[i]);
 
-            if (IMU_recvLens[i] <= 0) {
-                return 1;
+            if (IMU_recvLens[i] > 0) {
+                std::string IMU_str(buffer, IMU_recvLens[i]);
+                IMU_data = dataProcessing(IMU_str);
+                update = true;
+                roll[i] = IMU_data[0]; // degrees
+                pitch[i] = -IMU_data[1]; // degrees
+                yaw[i] = IMU_data[2]; // degrees
+                dt[i] = IMU_data[6] / 1000000; // s
+            } 
+            else
+            {
+                update = false;
+                roll[i] = previous_IMU_data[i][0];
+                pitch[i] = previous_IMU_data[i][1];
+                yaw[i] = previous_IMU_data[i][2];
+                dt[i] = previous_IMU_data[i][3];
             }
-
-            std::string IMU_str(buffer, IMU_recvLens[i]);
-            std::vector<float> IMU_data = dataProcessing(IMU_str);
-
-            roll[i] = IMU_data[0]; // degrees
-            pitch[i] = -IMU_data[1]; // degrees
-            yaw[i] = IMU_data[2]; // degrees
-            dt[i] = IMU_data[6] / 1000000; // s
 
 
             /*************************************
@@ -724,7 +736,8 @@ int main()
             }
 
             // Storing current position
-            if (UWB_x[i] - previous_UWB_position[i][0] != 0 || UWB_y[i] - previous_UWB_position[i][1] != 0 || UWB_z[i] - previous_UWB_position[i][2] != 0) {
+            if (UWB_x[i] - previous_UWB_position[i][0] != 0 || UWB_y[i] - previous_UWB_position[i][1] != 0 || UWB_z[i] - previous_UWB_position[i][2] != 0) 
+            {
                 previous_UWB_position[i][0] = UWB_x[i];
                 previous_UWB_position[i][1] = UWB_y[i];
                 previous_UWB_position[i][2] = UWB_z[i];
@@ -750,6 +763,15 @@ int main()
             }
 
             float rtheta = theta * PI / 180;
+
+            // Storing current IMU data
+            if (update)
+            {
+                previous_IMU_data[i][0] = roll[i];
+                previous_IMU_data[i][1] = pitch[i];
+                previous_IMU_data[i][2] = yaw[i];
+                previous_IMU_data[i][3] = dt[i];
+            }
 
 
             /***************************************
