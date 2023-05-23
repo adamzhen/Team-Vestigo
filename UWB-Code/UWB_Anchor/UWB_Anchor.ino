@@ -205,7 +205,7 @@ void loop()
 {
   bool received = false;
   
-  receiver_mode(1, 1, received);
+  twr_receiver_mode(6, 1, received);
 
   Serial.println(received);
 }
