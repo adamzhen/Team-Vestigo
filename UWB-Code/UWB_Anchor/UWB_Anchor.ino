@@ -30,8 +30,6 @@ static dwt_config_t config = {
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 #define TX_ANT_DLY 16385
 #define RX_ANT_DLY 16385
-// Define Anchor ID
-int anchor_id = 6;
  
 /* Length of the common part of the message (up to and including the function code, see NOTE 3 below). */
 #define ALL_MSG_COMMON_LEN 10
