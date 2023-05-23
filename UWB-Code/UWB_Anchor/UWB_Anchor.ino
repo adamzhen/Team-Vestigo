@@ -4,6 +4,8 @@
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
 *******************************************/
+
+int anchor_id = 6;
  
 // connection pins
 const uint8_t PIN_RST = 27; // reset pin
@@ -203,7 +205,7 @@ void loop()
 {
   bool received = false;
   
-  twr_receiver_mode(6, 1, received);
+  twr_receiver_mode(anchor_id, 1, received);
 
   Serial.println(received);
 }
