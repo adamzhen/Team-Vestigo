@@ -145,12 +145,6 @@ void twr_transmitter_mode(int key, double& tof)
         rtd_resp = resp_tx_ts - poll_rx_ts;
 
         tof = ((rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0) * DWT_TIME_UNITS;
-        distance = tof * SPEED_OF_LIGHT;
-        Serial.println(distance);
-
-        /* Display computed distance on LCD. */
-        snprintf(dist_str, sizeof(dist_str), "DIST: %3.2f m", distance);
-        test_run_info((unsigned char *)dist_str);
       }
     }
   }
@@ -350,7 +344,7 @@ void advancedRanging()
         Serial.println(distance_counter);
 
         // checks if there is enough data to send
-        if (distance_counter >= 4) 
+        if (distance_counter >= 5) 
         {
           // resets averages
           std::vector<float> averages(12, 0);
@@ -503,19 +497,19 @@ void loop()
 {
   advancedRanging();
 
-  double tof = 1;
+  // double tof = 1;
 
-  while (tof = 0)
-  {
-    twr_transmitter_mode(102, tof);
-  }
+  // while (tof = 0)
+  // {
+  //   twr_transmitter_mode(102, tof);
+  // }
 
-  bool received = true;
+  // bool received = true;
 
-  while (!received)
-  {
-    twr_receiver_mode(101, received);
-  }
+  // while (!received)
+  // {
+  //   twr_receiver_mode(101, received);
+  // }
 }
 
 
