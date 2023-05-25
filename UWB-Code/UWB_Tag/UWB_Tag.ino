@@ -23,8 +23,7 @@ const int port = 1234;
 
 
 // list creation
-std::vector<std::vector<float>> distance_data(13);
-std::vector<std::pair<int, int>> keys;
+std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
@@ -264,48 +263,15 @@ void twr_transmitter_mode(int key, double& tof)
 
 void advancedRanging()
 {
-  // Distance reset
   bool looping = true;
-        
-  // Update Key Order
-  for (int i = 1; i <= 12; ++i) {
-    keys[i-1].second = distance_data[i].size();
-  }
 
-  for (int i = 0; i < 12; i++) 
-  {
-    distance_data[i].clear();
+  // Distance reset        
+  for (auto& key : keys) {
+    key.second.clear();
   }
   Serial.println("Reset Distance Data");
 
-  Serial.println("Key Order");
-  for (const auto& key : keys) 
-  {
-    Serial.print("Key: ");
-    Serial.print(key.first);
-    Serial.print(", Value: ");
-    Serial.println(key.second);
-  }
-
-  // Sort Key Order
-  std::sort(keys.begin(), keys.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
-    return a.second > b.second;
-  });
-
-  // Reset Key Count
-  for (auto& key : keys) {
-    key.second = 0;
-  }
-
-  Serial.println("Key Sort");
-  for (const auto& key : keys) 
-  {
-    Serial.print("Key: ");
-    Serial.print(key.first);
-    Serial.print(", Value: ");
-    Serial.println(key.second);
-  }
-
+  // Loop between keys until exit conditions are met
   while(looping)
   {
     for (int i = 0; i < 7; i++) 
@@ -321,53 +287,48 @@ void advancedRanging()
 
       Serial.println("Transmitted");
 
-      delayMicroseconds(750);
-
       if (distance != 0) 
       {
         // Append data to the appropriate vector
-        distance_data[key.first - 1].push_back(distance);
+        keys[key.first - 1].second.push_back(distance);
         Serial.println("Distance Data Append");
 
         // counter
-        int distance_counter = 0;
+        int unique_distance_counter = 0;
+        int total_distance_counter = 0;
 
         for (int i = 0; i < 12; i++) 
         {
-          Serial.println(distance_data[i].size());
-          if (distance_data[i].size() >= 1) 
+          Serial.println(keys[i].second.size());
+          if (keys[i].second.size() >= 2) 
           {
-            distance_counter += 1;
+            unique_distance_counter += 1;
+          } 
+          if (keys[i].second.size() >= 1) {
+            total_distance_counter += 1;
           }
         }
         Serial.print("Distance Counter Added: ");
-        Serial.println(distance_counter);
+        Serial.println(unique_distance_counter);
 
         // checks if there is enough data to send
-        if (distance_counter >= 5) 
+        if (unique_distance_counter >= 5) 
         {
           // resets averages
           std::vector<float> averages(12, 0);
-          Serial.println("Reset Averages");
 
           // find average of each distance list
-          for (int i = 0; i < 12; i++) 
-          {
-            if (distance_data[i].size() > 0) 
-            {
+          for (int i = 0; i < 12; ++i) {
+            if (!keys[i].second.empty()) {
               float sum = 0;
-              for (float d : distance_data[i]) 
-              {
+              for (float d : keys[i].second) {
                 sum += d;
               }
-              averages[i] = sum / distance_data[i].size();
-            } 
-            else 
-            {
+            averages[i] = sum / keys[i].second.size();
+            } else {
               averages[i] = 0;
             }
           }
-          Serial.println("Average of Distances");
 
           // convert vector into Json array
           const size_t capacity = JSON_ARRAY_SIZE(12);
@@ -379,7 +340,6 @@ void advancedRanging()
             Serial.print("Averaged Points: ");
             Serial.println(averages[i]);
           }
-          Serial.println("Convert to JSON");
 
           // convert the Json array to a string
           String jsonString;
@@ -401,7 +361,100 @@ void advancedRanging()
             Serial.println("Unable to resolve hostname");
           }
 
-          
+          // Sort Key Order
+          std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
+            float avg_a = 0;
+            if (!a.second.empty()) {
+              for (float d : a.second) {
+                avg_a += d;
+              }
+              avg_a /= a.second.size();
+            }
+
+            float avg_b = 0;
+            if (!b.second.empty()) {
+              for (float d : b.second) {
+                avg_b += d;
+              }
+              avg_b /= b.second.size();
+            }
+
+            return avg_a < avg_b;
+          });
+
+
+          Serial.println("Key Sort");
+          for (const auto& key : keys) 
+          {
+            Serial.print("Key: ");
+            Serial.print(key.first + 1);
+            Serial.print(", Average Value: ");
+            
+            float avg = 0;
+            if (!key.second.empty()) {
+              for (float d : key.second) {
+                avg += d;
+              }
+              avg /= key.second.size();
+            }
+            Serial.println(avg);
+          }
+
+          // Move the first 5 elements to the end
+          Serial.print("Total Distance: ");
+          Serial.println(total_distance_counter);
+          std::rotate(keys.begin(), keys.begin() + (12 - total_distance_counter), keys.end());
+
+          Serial.println("Key Rotate");
+          for (const auto& key : keys) 
+          {
+            Serial.print("Key: ");
+            Serial.print(key.first + 1);
+            Serial.print(", Average Value: ");
+            
+            float avg = 0;
+            if (!key.second.empty()) {
+              for (float d : key.second) {
+                avg += d;
+              }
+              avg /= key.second.size();
+            }
+            Serial.println(avg);
+          }
+
+          // Swap elements to allow for auto switching
+          s// Save the original 8th element in a temporary variable
+          std::pair<int, std::vector<float>> temp = keys[7];
+
+          // Move the 6th element to the 7th position
+          keys[7] = keys[5];
+
+          // Move the 7th element to the 9th position
+          keys[8] = keys[6];
+
+          // Move the original 8th element to the 6th position
+          keys[5] = temp;
+
+          // Move the 9th element to the 8th position
+          keys[6] = keys[8];
+
+          Serial.println("Key Swap");
+          for (const auto& key : keys) 
+          {
+            Serial.print("Key: ");
+            Serial.print(key.first + 1);
+            Serial.print(", Average Value: ");
+            
+            float avg = 0;
+            if (!key.second.empty()) {
+              for (float d : key.second) {
+                avg += d;
+              }
+              avg /= key.second.size();
+            }
+            Serial.println(avg);
+          }
+
           // clears data collected
           averages.clear();
           Serial.println("Average Clear");
@@ -481,8 +534,8 @@ void setup()
    * Note, in real low power applications the LEDs should not be used. */
   dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
 
-  for (int i = 1; i <= 12; ++i) {
-    keys.push_back(std::make_pair(i, distance_data[i].size()));
+  for (int i = 0; i < 12; ++i) {
+    keys.push_back(std::make_pair(i, std::vector<float>()));
   }
 
   bool received = true;
