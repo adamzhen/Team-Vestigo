@@ -30,7 +30,7 @@ using std::endl;
 
 // Definitions
 const float inch_to_meter = 0.0254;
-std::vector<Eigen::Vector3d> previous_UWB_position = { 
+std::vector<Eigen::Vector3d> UWB_previous = { 
     {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} 
 };
 std::vector<std::vector<float>> previous_IMU_data = {
@@ -71,9 +71,14 @@ Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, cons
     std::vector<Eigen::Vector3d> filtered_points;
     std::vector<float> filtered_distances;
     for (size_t i = 0; i < distances.size(); ++i) {
-        if (distances[i] != 0) {
+        if (distances[i] >= 0.1) {
             filtered_points.push_back(points[i]);
             filtered_distances.push_back(distances[i]);
+            /*std::cout << "Distance " << i + 1 << " Filtered: " << distances[i] << std::endl;
+            std::cout << "Point  " << i + 1 << " Filtered: " << points[i] << std::endl;*/
+        }
+        else {
+            std::cout << "SKIPPED: " << i + 1 << std::endl;
         }
     }
 
@@ -114,13 +119,14 @@ Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, cons
 
         // Increment the iteration count
         iterations++;
-    } while (updateNorm > 1e-6 && iterations < maxIterations);
+    } while (updateNorm > 1e-7 && iterations < maxIterations);
 
     if (iterations == maxIterations)
     {
         throw std::runtime_error("Levenberg-Marquardt algorithm did not converge");
     }
 
+    std::cout << "Iterations: " << iterations << std::endl;
     return estimate;
 }
 
@@ -334,7 +340,7 @@ std::vector<float> dataProcessing(std::string str)
     return data;
 }
 
-// Average of a vector
+// Average of a Vector
 float calculate_average(std::vector<float> vector)
 {
     float sum = 0.0;
@@ -525,7 +531,7 @@ int main()
     for (int i = 0; i < num_ports; ++i) {
         // check if UWB socket connection is good
         socks[i] = socket(AF_INET, SOCK_DGRAM, 0);
-        u_long mode = 0;
+        u_long mode = 1;
         int result = ioctlsocket(socks[i], FIONBIO, &mode);
         if (result != NO_ERROR) {
             std::cerr << "Error setting socket to non-blocking mode: " << result << std::endl;
@@ -616,15 +622,17 @@ int main()
 
         for (int i = 0; i < num_ports; ++i)
         {   
-            std::cout << "Port Num: " << i << std::endl;
+            /*std::cout << "Port Num: " << i << std::endl;*/
 
             // pulls UWB data from first port
             recvLens[i] = recvfrom(socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&clientAddrs[i], &clientAddrLens[i]);
 
             // checks if data is received on port
             if (recvLens[i] <= 0) {
-                return 1;
+                continue;
             }
+
+            
 
             std::string data_str(buffer, recvLens[i]);
             esp32_data = dataProcessing(data_str);
@@ -661,18 +669,29 @@ int main()
             // Call the multilateration function
             Eigen::Vector3d result;
             try {
-                result = multilateration(points, distances, previous_UWB_position[i]);
+                result = multilateration(points, distances, UWB_previous[i]);
                 // Update the previous position
-                previous_UWB_position[i] = result;
+                UWB_previous[i] = result;
             }
             catch (std::exception& e) {
                 // Use the previous position if a unique solution is not found
-                result = previous_UWB_position[i];
+                result = UWB_previous[i];
             }
 
-            UWB_x[i] = result[0];
-            UWB_y[i] = result[1];
-            UWB_z[i] = result[2];
+            // Checks for Outliers
+            Eigen::Vector3d UWB_current = { result[0] , result[1] , result[2] };
+            if (abs(UWB_current.norm() - UWB_previous[i].norm()) < 0.25) {
+                UWB_x[i] = UWB_current[0];
+                UWB_y[i] = UWB_current[1];
+                UWB_z[i] = UWB_current[2];
+            }
+            else {
+                UWB_x[i] = UWB_previous[i][0];
+                UWB_y[i] = UWB_previous[i][1];
+                UWB_z[i] = UWB_previous[i][2];
+                std::cout << "PREVIOUS USED" << std::endl;
+            }
+            
 
             // writes the location data to the console
             std::cout << "x: " << UWB_x[i] << ", y: " << UWB_y[i] << ", z: " << UWB_z[i] << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
@@ -725,6 +744,10 @@ int main()
 
             for (int i = 0; i < num_ports; ++i)
             {
+                if (i != 0) {
+                    continue;
+                }
+
                 // Convert the object position from meters to pixels
                 int UWB_x_pixel = static_cast<int>(UWB_x[i] * screen_scale);
                 int UWB_y_pixel = static_cast<int>(UWB_y[i] * screen_scale);
