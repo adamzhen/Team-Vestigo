@@ -7,6 +7,17 @@
 #include <algorithm>
 #include <SPI.h>
 
+// Vector Variables
+std::vector<std::pair<int, std::vector<float>>> keys;
+std::vector<float> clock_offset;
+std::vector<float> averages;
+
+// General Variables
+bool received = true; // True for Tag 1, False for all other 
+int tag_id = 1;
+int num_tags = 4;
+double tof;
+
 // IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
 const char *Evan_laptop = "192.168.8.162";
@@ -20,22 +31,7 @@ const char *Aiden_PC_LAN = "192.168.8.132";
 const char *ssid = "Vestigo-Router";
 const char *password = "Vestigo&2023";
 const char *host = Aiden_PC_LAN;
-const int port = 1234;
-
-
-// Vector Variables
-std::vector<std::pair<int, std::vector<float>>> keys;
-std::vector<float> clock_offset;
-std::vector<float> averages;
-
-// General Variables
-bool received = true; // True for Tag 1, False for all other 
-int num_tags = 4;
-int tag_id = 101;
-
-/* Hold copies of computed time of flight and distance here for reference so that it can be examined at a debug breakpoint. */
-static double tof;
-static double distance;
+const int port = 1233 + tag_id;
 
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
@@ -468,7 +464,7 @@ void loop()
 {
   while (!received)
   {
-    twr_receiver_mode(tag_id, received);
+    twr_receiver_mode(tag_id + 100, received);
   }
   
   received = false;
@@ -477,7 +473,7 @@ void loop()
 
   while (tof = 0)
   {
-    twr_transmitter_mode(((tag_id - 100) % num_tags) + 101, tof);
+    twr_transmitter_mode((tag_id % num_tags) + 101, tof);
   } 
 
   tof = 0;
