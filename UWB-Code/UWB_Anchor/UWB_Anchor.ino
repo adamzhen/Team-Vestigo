@@ -7,7 +7,7 @@ extern SPISettings _fastSPI;
 ************ GEN CONFIG OPTIONS ************
 *******************************************/
 
-int anchor_id = 1;
+int anchor_id = 14;
  
 #define PIN_RST 27
 #define PIN_IRQ 34

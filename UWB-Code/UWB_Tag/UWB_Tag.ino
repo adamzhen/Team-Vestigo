@@ -7,13 +7,15 @@
 #include <algorithm>
 #include <SPI.h>
 
+extern SPISettings _fastSPI;
+
 // Vector Variables
 std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
 // General Variables
-int tag_id = 1;
+int tag_id = 2;
 int num_tags = 4;
 double tof;
 bool start = true;
@@ -42,7 +44,6 @@ const uint8_t PIN_RST = 27; // reset pin
 const uint8_t PIN_IRQ = 34; // irq pin
 const uint8_t PIN_SS = 4; // spi select pin
 
-#define RNG_DELAY_MS 1
 #define TX_ANT_DLY 16385
 #define RX_ANT_DLY 16385
 #define ALL_MSG_COMMON_LEN 10
@@ -75,7 +76,6 @@ static uint32_t status_reg = 0;
 static uint64_t poll_rx_ts;
 static uint64_t resp_tx_ts;
 extern dwt_txconfig_t txconfig_options;
-extern SPISettings _fastSPI;
 
 /**********************************************
 ************ TWR TRANSMISTTER MODE ************
@@ -177,14 +177,10 @@ void twr_receiver_mode(int key)
   /* Activate reception immediately. */
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
-  Serial.println("waiting");
-
   /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
   while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
-  {
+  { Serial.println("Why?");
   };
-
-  Serial.println(status_reg);
 
   if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
   {
@@ -470,8 +466,10 @@ void loop()
 {
   if (!start || tag_id != 1) {
     Serial.print("Receiver mode: ");
-    Serial.println(tag_id + 100);
-    twr_receiver_mode(tag_id + 100);
+    Serial.println(tag_id);
+    int new_id = tag_id + 12
+    while 
+    twr_receiver_mode(new_id);
     Serial.print("RECEIVED");  
   } else {
       start = false;
@@ -484,8 +482,8 @@ void loop()
   while (distance < 0.001)
   {
     Serial.print("pinging: ");
-    Serial.println(((tag_id % num_tags) + 101));
-    twr_transmitter_mode(((tag_id % num_tags) + 101), tof);
+    Serial.println(((tag_id % num_tags) + 1 + 12));
+    twr_transmitter_mode(((tag_id % num_tags) + 1 + 12), tof);
     distance = tof * SPEED_OF_LIGHT;
     Serial.println(distance);
   } 
