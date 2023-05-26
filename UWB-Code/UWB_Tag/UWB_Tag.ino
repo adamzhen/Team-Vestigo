@@ -16,13 +16,7 @@ std::vector<float> averages;
 int tag_id = 1;
 int num_tags = 4;
 double tof;
-bool received;
-
-if (tag_id == 1) {
-  received = true;
-} else {
-  received = false;
-}
+bool start = true;
 
 // IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
@@ -89,7 +83,8 @@ extern SPISettings _fastSPI;
 
 void twr_transmitter_mode(int key, double& tof)
 {
-  
+  Serial.print("Key: ");
+  Serial.println(key);
   uint8_t frame_seq_nb = 0;
   uint8_t rx_buffer[20];
 
@@ -106,6 +101,8 @@ void twr_transmitter_mode(int key, double& tof)
    * set by dwt_setrxaftertxdelay() has elapsed. */
   dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
 
+  Serial.println("sent");
+
   /* We assume that the transmission is achieved correctly, poll for reception of a frame or error/timeout. See NOTE 8 below. */
   while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
   {
@@ -114,6 +111,7 @@ void twr_transmitter_mode(int key, double& tof)
   /* Increment frame sequence number after transmission of the poll message (modulo 256). */
   frame_seq_nb++;
 
+  Serial.println(status_reg);
   if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
   {
     uint32_t frame_len;
@@ -164,30 +162,29 @@ void twr_transmitter_mode(int key, double& tof)
   /* Execute a delay between ranging exchanges. */
   delayMicroseconds(750);
 }
-
+ 
 /******************************************
 ************ TWR RECEIVER MODE ************
 ******************************************/
  
-void twr_receiver_mode(int key, bool& received)
+void twr_receiver_mode(int key)
 {
   uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
   uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t frame_seq_nb = 0;
   uint8_t rx_buffer[20];
 
-  /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
-  #define POLL_RX_TO_RESP_TX_DLY_UUS 450
-
-  received = false;
-
   /* Activate reception immediately. */
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
+
+  Serial.println("waiting");
 
   /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
   while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
   {
   };
+
+  Serial.println(status_reg);
 
   if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
   {
@@ -243,7 +240,6 @@ void twr_receiver_mode(int key, bool& received)
 
           /* Increment frame sequence number after transmission of the poll message (modulo 256). */
           frame_seq_nb++;
-          received = true;
         }
       }
     }
@@ -338,6 +334,10 @@ void advancedRanging()
           JsonArray averaged_points = doc.to<JsonArray>();
           for (int i = 0; i < sortedKeys.size(); i++) {
             averaged_points.add(sortedKeys[i].second[0]);
+            Serial.print("Averaged Points: ");
+            Serial.print(i + 1);
+            Serial.print(", ");
+            Serial.println(sortedKeys[i].second[0]);
           }
 
           // convert the Json array to a string
@@ -468,21 +468,27 @@ void setup()
 
 void loop() 
 {
-  while (!received)
-  {
-    twr_receiver_mode(tag_id + 100, received);
+  if (!start || tag_id != 1) {
+    Serial.print("Receiver mode: ");
+    Serial.println(tag_id + 100);
+    twr_receiver_mode(tag_id + 100);
+    Serial.print("RECEIVED");  
+  } else {
+      start = false;
   }
   
-  received = false;
-
   advancedRanging();
 
-  while (tof = 0)
-  {
-    twr_transmitter_mode((tag_id % num_tags) + 101, tof);
-  } 
+  double distance = 0;
 
-  tof = 0;
+  while (distance < 0.001)
+  {
+    Serial.print("pinging: ");
+    Serial.println(((tag_id % num_tags) + 101));
+    twr_transmitter_mode(((tag_id % num_tags) + 101), tof);
+    distance = tof * SPEED_OF_LIGHT;
+    Serial.println(distance);
+  } 
 }
 
 

@@ -43,7 +43,7 @@ static dwt_config_t config = {
 static uint32_t status_reg = 0;
 static uint64_t poll_rx_ts;
 static uint64_t resp_tx_ts;
- extern dwt_txconfig_t txconfig_options;
+extern dwt_txconfig_t txconfig_options;
 
 /******************************************
 ************ TWR RECEIVER MODE ************
@@ -55,9 +55,6 @@ void twr_receiver_mode(int key)
   uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t frame_seq_nb = 0;
   uint8_t rx_buffer[20];
-
-  /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
-  #define POLL_RX_TO_RESP_TX_DLY_UUS 450
 
   /* Activate reception immediately. */
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
