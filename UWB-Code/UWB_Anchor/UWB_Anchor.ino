@@ -7,7 +7,7 @@ extern SPISettings _fastSPI;
 ************ GEN CONFIG OPTIONS ************
 *******************************************/
 
-int anchor_id = 7;
+int anchor_id = 1;
  
 #define PIN_RST 27
 #define PIN_IRQ 34
@@ -49,7 +49,7 @@ static uint64_t resp_tx_ts;
 ************ TWR RECEIVER MODE ************
 ******************************************/
  
-void twr_receiver_mode(int key, bool& received)
+void twr_receiver_mode(int key)
 {
   uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', (uint8_t) key, 'E', 0xE0, 0, 0};
   uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, (uint8_t) key, 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -58,8 +58,6 @@ void twr_receiver_mode(int key, bool& received)
 
   /* Delay between frames, in UWB microseconds. See NOTE 1 below. */
   #define POLL_RX_TO_RESP_TX_DLY_UUS 450
-
-  received = false;
 
   /* Activate reception immediately. */
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
@@ -123,7 +121,6 @@ void twr_receiver_mode(int key, bool& received)
 
           /* Increment frame sequence number after transmission of the poll message (modulo 256). */
           frame_seq_nb++;
-          received = true;
         }
       }
     }
@@ -193,5 +190,5 @@ void setup()
  
 void loop() 
 {
-  twr_receiver_mode(anchor_id, received);
+  twr_receiver_mode(anchor_id);
 }
