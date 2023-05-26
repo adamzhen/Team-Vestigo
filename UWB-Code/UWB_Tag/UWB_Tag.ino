@@ -13,10 +13,16 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 
 // General Variables
-bool received = true; // True for Tag 1, False for all other 
 int tag_id = 1;
 int num_tags = 4;
 double tof;
+bool received;
+
+if (tag_id == 1) {
+  received = true;
+} else {
+  received = false;
+}
 
 // IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
