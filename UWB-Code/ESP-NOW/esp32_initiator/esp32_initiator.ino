@@ -59,7 +59,7 @@ void loop() {
   myData.c = float_value;
   myData.d = bool_value;
 
-  esp_err_t result = esp_now_send(broadcastAddress, (uin8_t *) &myData, sizeof(myData));
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
 
   if (result == ESP_OK) {
     Serial.println("Sending Confirmed");

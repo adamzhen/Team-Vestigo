@@ -26,7 +26,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 }
 
 void setup() {
-  Serial.beign(115200);
+  Serial.begin(115200);
 
   WiFi.mode(WIFI_STA);
 
