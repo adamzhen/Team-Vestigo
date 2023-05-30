@@ -7,7 +7,7 @@ extern SPISettings _fastSPI;
 ************ GEN CONFIG OPTIONS ************
 *******************************************/
 
-int anchor_id = 14;
+int anchor_id = 1;
  
 #define PIN_RST 27
 #define PIN_IRQ 34
@@ -39,7 +39,6 @@ static dwt_config_t config = {
   DWT_PDOA_M0      /* PDOA mode off */
 };
 
-
 static uint32_t status_reg = 0;
 static uint64_t poll_rx_ts;
 static uint64_t resp_tx_ts;
@@ -61,7 +60,7 @@ void twr_receiver_mode(int key)
 
   /* Poll for reception of a frame or error/timeout. See NOTE 6 below. */
   while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR)))
-  {
+  { 
   };
 
   if (status_reg & SYS_STATUS_RXFCG_BIT_MASK)
