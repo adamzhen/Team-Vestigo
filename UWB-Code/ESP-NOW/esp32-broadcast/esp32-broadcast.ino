@@ -1,11 +1,11 @@
 #include <WiFi.h>
-#include <essp_now.h>
+#include <esp_now.h>
 
 bool buttonDown = false;
 bool ledOn = false;
 
 void formatMacAddress(const uint8_t *macAddr, char *buffer, int maxLength) {
-  snprintf(buffer, maxLength, "%02x:%02x:%02x:%02x:%02x:%02x", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5])
+  snprintf(buffer, maxLength, "%02x:%02x:%02x:%02x:%02x:%02x", macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
 }
 
 void receiveCallback(const uint8_t *macAddr, const uint8_t *data, int dataLen) {
@@ -48,7 +48,7 @@ void broadcast(const String &message) {
     esp_now_add_peer(&peerInfo);
   }
 
-  esp_err_t result = esp_now_send(boradcastAddress, (const uint8_t *) message.c_str(), message.length());
+  esp_err_t result = esp_now_send(broadcastAddress, (const uint8_t *) message.c_str(), message.length());
 
   if (result == ESP_OK) {
     Serial.println("Broadcast message success");
@@ -63,13 +63,13 @@ void broadcast(const String &message) {
     Serial.println("Internal Error");
   }
   else if (result == ESP_ERR_ESPNOW_NO_MEM) {
-    Serial.println("No Mem")
+    Serial.println("No Mem");
   }
   else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
     Serial.println("Peer Not Found");
   }
   else {
-    Serial.println("Unknown Error")
+    Serial.println("Unknown Error");
   }
 }
 
@@ -88,7 +88,7 @@ void setup() {
   if (esp_now_init() == ESP_OK) {
     Serial.println("ESP-NOW Init Success");
     esp_now_register_recv_cb(receiveCallback);
-    eso_now_register_send_cb(sentCallback);
+    esp_now_register_send_cb(sentCallback);
   }
   else {
     Serial.println("ESP-NOW Init Failed");
