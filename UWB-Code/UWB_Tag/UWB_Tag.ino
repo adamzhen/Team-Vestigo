@@ -6,6 +6,7 @@
 #include <WiFi.h>
 #include <algorithm>
 #include <SPI.h>
+#include <esp_now.h>
 
 
 // Vector Variables
@@ -15,7 +16,7 @@ std::vector<float> averages;
 
 // General Variables
 int tag_id = 1;
-int num_tags = 3;
+int num_tags = 4;
 
 // IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
@@ -72,6 +73,74 @@ static uint32_t status_reg = 0;
 static uint64_t poll_rx_ts;
 static uint64_t resp_tx_ts;
 extern dwt_txconfig_t txconfig_options;
+
+/******************************************
+************ ESP-NOW FUNCTIONS ************
+******************************************/
+
+// MAC addresses
+uint8_t mac_TAG1[6] = {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8};
+uint8_t mac_TAG2[6] = {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C};
+uint8_t mac_TAG3[6] = {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54};
+uint8_t mac_TAG4[6] = {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44};
+uint8_t mac_MIO[6] = {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0};
+
+// Structure example to send data
+// Must match the receiver structure
+typedef struct struct_message {
+    bool run_ranging;
+} struct_message;
+
+// Create a struct_message called myData
+struct_message myData;
+
+// Create a struct_message to hold incoming readings
+struct_message incomingReadings;
+
+// Callback when data is sent
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("\r\nLast Packet Send Status:\t");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+}
+
+// Callback when data is received
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
+  Serial.print("Bytes received: ");
+  Serial.println(len);
+  Serial.print("run_ranging: ");
+  Serial.println(incomingReadings.run_ranging);
+}
+
+void setup_esp_now() {
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  // Init ESPNow with a fallback logic
+  WiFi.disconnect();
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESPNow Init Failed");
+    ESP.restart();
+  }
+  Serial.println("ESPNow Init Success");
+
+  // Once ESPNow is successfully Init, we will register for Send CB to
+  // get the status of Trasnmitted packet
+  esp_now_register_send_cb(OnDataSent);
+  
+  // Register peer
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, mac_TAG1, 6);
+  peerInfo.channel = 0;  
+  peerInfo.encrypt = false;
+  
+  // Add peer        
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer");
+    return;
+  }
+}
+
 
 /**********************************************
 ************ TWR TRANSMISTTER MODE ************
@@ -306,6 +375,8 @@ void setup()
   Serial.println("Wifi connected");
   delay(2000);
 
+  setup_esp_now();
+
   UART_init();
 
   spiBegin(PIN_IRQ, PIN_RST);
@@ -365,7 +436,24 @@ void setup()
 
 void loop() 
 {
-  advancedRanging();
+  // Check for incoming ESP-NOW messages
+  if (incomingReadings.run_ranging) {
+    // Reset flag
+    incomingReadings.run_ranging = false;
+
+    // Execute the advancedRanging function
+    advancedRanging();
+
+    // Prepare and send an update to a different ESP32
+    myData.run_ranging = true; // or whatever value you want to send
+    esp_err_t result = esp_now_send(mac_TAG2, (uint8_t*)&myData, sizeof(myData)); // replace mac_TAG2 with the MAC address of the ESP32 you want to update
+
+    if (result == ESP_OK) {
+      Serial.println("Sent with success");
+    } else {
+      Serial.println("Error sending the data");
+    }
+  }
 }
 
 
