@@ -15,8 +15,9 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 
 // General Variables
-int tag_id = 1;
+int tag_id = 4;
 int num_tags = 4;
+bool firstRun;
 
 // IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
@@ -79,16 +80,21 @@ extern dwt_txconfig_t txconfig_options;
 ******************************************/
 
 // MAC addresses
-uint8_t mac_TAG1[6] = {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8};
-uint8_t mac_TAG2[6] = {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C};
-uint8_t mac_TAG3[6] = {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54};
-uint8_t mac_TAG4[6] = {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44};
-uint8_t mac_MIO[6] = {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0};
+uint8_t macs[][6] = {
+  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
+  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
+  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // MIO
+};
+
+// Global variable to indicate if ESP-NOW data was sent
+volatile bool packetSent = false;
 
 // Structure example to send data
 // Must match the receiver structure
 typedef struct struct_message {
-    bool run_ranging;
+  bool run_ranging;
 } struct_message;
 
 // Create a struct_message called myData
@@ -97,10 +103,26 @@ struct_message myData;
 // Create a struct_message to hold incoming readings
 struct_message incomingReadings;
 
+void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
+  if(bufferSize < 18) {
+    return; // Buffer is too small
+  }
+  sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
 // Callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.print("\r\nLast Packet Send Status:\t");
+  char macStr[18];
+  formatMacAddress(mac_addr, macStr, 18);
+  Serial.print("Last Packet Sent to: ");
+  Serial.println(macStr);
+  Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+
+  // If the packet was sent successfully, set the flag to true
+  if (status == ESP_NOW_SEND_SUCCESS) {
+    packetSent = true;
+  }
 }
 
 // Callback when data is received
@@ -125,22 +147,50 @@ void setup_esp_now() {
   Serial.println("ESPNow Init Success");
 
   // Once ESPNow is successfully Init, we will register for Send CB to
-  // get the status of Trasnmitted packet
+  // get the status of Transmitted packet
   esp_now_register_send_cb(OnDataSent);
-  
-  // Register peer
-  esp_now_peer_info_t peerInfo;
-  memcpy(peerInfo.peer_addr, mac_TAG1, 6);
-  peerInfo.channel = 0;  
-  peerInfo.encrypt = false;
-  
-  // Add peer        
-  if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
-    return;
+
+  // Register for Receive CB to get incoming data
+  esp_now_register_recv_cb(OnDataRecv);
+
+  // Register peers
+  for(int i=0; i<sizeof(macs)/sizeof(macs[0]); i++) {
+    esp_now_peer_info_t peerInfo;
+    memcpy(peerInfo.peer_addr, macs[i], 6);
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+
+    peerInfo.ifidx = WIFI_IF_STA;
+
+    // Add peer        
+    if (esp_now_add_peer(&peerInfo) != ESP_OK){
+      Serial.println("Failed to add peer");
+      return;
+    }
   }
 }
 
+void sendToPeer(uint8_t *peerMAC, struct_message *message) {
+  esp_err_t result;
+  
+  do {
+    result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(struct_message));
+    if (result == ESP_OK) {
+      Serial.println("Sent message success");
+      packetSent = false;  // Reset the flag
+    } else {
+      Serial.println("Error sending the message");
+      delay(100);  // Delay before retry
+    }
+  } while (result != ESP_OK);
+}
+
+void waitForPacketSent() {
+  while(!packetSent) {
+    // Wait for the packet to be sent
+    delay(10);  // Non-busy wait
+  }
+}
 
 /**********************************************
 ************ TWR TRANSMISTTER MODE ************
@@ -312,21 +362,25 @@ void advancedRanging()
           String jsonString;
           serializeJson(doc, jsonString);
 
-          // Create a UDP connection to the laptop
-          WiFiUDP udp;
-          udp.begin(port);
-          IPAddress ip;
-          if (WiFi.hostByName(host, ip)) 
-          {
-            // Send the Json data over the socket connection
-            udp.beginPacket(ip, port);
-            udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
-            udp.endPacket();
-          } 
-          else 
-          {
-            Serial.println("Unable to resolve hostname");
-          }
+          /***********UN-COMMENT FOR RELEASE*********/
+
+          // // Create a UDP connection to the laptop
+          // WiFiUDP udp;
+          // udp.begin(port);
+          // IPAddress ip;
+          // if (WiFi.hostByName(host, ip)) 
+          // {
+          //   // Send the Json data over the socket connection
+          //   udp.beginPacket(ip, port);
+          //   udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
+          //   udp.endPacket();
+          // } 
+          // else 
+          // {
+          //   Serial.println("Unable to resolve hostname");
+          // }
+
+          /***********UN-COMMENT FOR RELEASE*********/
 
           // Sort Key Order
           std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
@@ -364,18 +418,22 @@ void setup()
 {
   Serial.begin(115200);
 
-  // WiFi Connection
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to Wifi... ");
-  }
-  Serial.println("Wifi connected");
-  delay(2000);
-
   setup_esp_now();
+
+  /***********UN-COMMENT FOR RELEASE*********/
+
+  // // WiFi Connection
+  // Serial.print("Connecting to ");
+  // Serial.println(ssid);
+  // WiFi.begin(ssid, password);
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   delay(1000);
+  //   Serial.println("Connecting to Wifi... ");
+  // }
+  // Serial.println("Wifi connected");
+  // delay(2000);
+
+  /***********UN-COMMENT FOR RELEASE*********/
 
   UART_init();
 
@@ -428,6 +486,15 @@ void setup()
   for (int i = 0; i < 12; ++i) {
     keys.push_back(std::make_pair(i, std::vector<float>()));
   }  
+
+  if (tag_id == 1) {
+    firstRun = true;
+    Serial.println("First Run True");
+  }
+  else {
+    firstRun = false;
+    Serial.println("First Run False");
+  }
 }
 
 /*************************************
@@ -436,24 +503,30 @@ void setup()
 
 void loop() 
 {
-  // Check for incoming ESP-NOW messages
-  if (incomingReadings.run_ranging) {
-    // Reset flag
-    incomingReadings.run_ranging = false;
+  do {
+    if (firstRun || incomingReadings.run_ranging) {
+      Serial.println("Read Data or First Run");
+      // Reset flag
+      incomingReadings.run_ranging = false;
 
-    // Execute the advancedRanging function
-    advancedRanging();
+      // Execute the advancedRanging function
+      advancedRanging();
+      Serial.println("Ranging Data Gathered");
 
-    // Prepare and send an update to a different ESP32
-    myData.run_ranging = true; // or whatever value you want to send
-    esp_err_t result = esp_now_send(mac_TAG2, (uint8_t*)&myData, sizeof(myData)); // replace mac_TAG2 with the MAC address of the ESP32 you want to update
-
-    if (result == ESP_OK) {
-      Serial.println("Sent with success");
-    } else {
-      Serial.println("Error sending the data");
+      // Prepare and send an update to a different ESP32
+      myData.run_ranging = true; // or whatever value you want to send
+      sendToPeer(macs[tag_id % 4], &myData);
+      waitForPacketSent();
+      Serial.println("Next device activated");
     }
-  }
+
+    if (firstRun) {
+      firstRun = false;
+      Serial.println("First Run Reset");
+    }
+
+    // Repeat the loop while there is an incoming ESP-NOW message
+  } while (true);
 }
 
 
