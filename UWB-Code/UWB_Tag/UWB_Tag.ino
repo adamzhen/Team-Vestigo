@@ -15,7 +15,7 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 
 // General Variables
-int tag_id = 1;
+const int tag_id = 1;
 int num_tags = 4;
 bool firstRun;
 
@@ -96,6 +96,7 @@ volatile bool packetSent = false;
 typedef struct struct_message {
   bool run_ranging;
   float data[13];
+  int tag_id;
 } struct_message;
 
 // Create a struct_message called myData
@@ -395,21 +396,6 @@ void setup()
 
   setup_esp_now();
 
-  /***********UN-COMMENT FOR RELEASE*********/
-
-  // // WiFi Connection
-  // Serial.print("Connecting to ");
-  // Serial.println(ssid);
-  // WiFi.begin(ssid, password);
-  // while (WiFi.status() != WL_CONNECTED) {
-  //   delay(1000);
-  //   Serial.println("Connecting to Wifi... ");
-  // }
-  // Serial.println("Wifi connected");
-  // delay(2000);
-
-  /***********UN-COMMENT FOR RELEASE*********/
-
   UART_init();
 
   spiBegin(PIN_IRQ, PIN_RST);
@@ -470,6 +456,8 @@ void setup()
     firstRun = false;
     Serial.println("First Run False");
   }
+
+  myData.tag_id = tag_id;
 }
 
 /*************************************
