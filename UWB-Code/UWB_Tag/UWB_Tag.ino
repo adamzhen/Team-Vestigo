@@ -15,7 +15,7 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 
 // General Variables
-const int tag_id = 1;
+const int tag_id = 4;
 int num_tags = 4;
 bool firstRun;
 
@@ -457,7 +457,7 @@ void setup()
     Serial.println("First Run False");
   }
 
-  myData.tag_id = tag_id;
+  myData.tag_id = tag_id - 1;
 }
 
 /*************************************
