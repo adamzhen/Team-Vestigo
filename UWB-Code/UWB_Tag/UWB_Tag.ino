@@ -15,7 +15,7 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 
 // General Variables
-int tag_id = 4;
+int tag_id = 1;
 int num_tags = 4;
 bool firstRun;
 
@@ -85,7 +85,7 @@ uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
   {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // MIO
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // GATEWAY
 };
 
 // Global variable to indicate if ESP-NOW data was sent
@@ -95,6 +95,7 @@ volatile bool packetSent = false;
 // Must match the receiver structure
 typedef struct struct_message {
   bool run_ranging;
+  float data[13];
 } struct_message;
 
 // Create a struct_message called myData
@@ -350,37 +351,11 @@ void advancedRanging()
             return a.first < b.first;
           });
 
-          // convert vector into Json array
-          const size_t capacity = JSON_ARRAY_SIZE(12);
-          DynamicJsonDocument doc(capacity);
-          JsonArray averaged_points = doc.to<JsonArray>();
           for (int i = 0; i < sortedKeys.size(); i++) {
-            averaged_points.add(sortedKeys[i].second[0]);
+            myData.data[i] = sortedKeys[i].second[0];
           }
 
-          // convert the Json array to a string
-          String jsonString;
-          serializeJson(doc, jsonString);
-
-          /***********UN-COMMENT FOR RELEASE*********/
-
-          // // Create a UDP connection to the laptop
-          // WiFiUDP udp;
-          // udp.begin(port);
-          // IPAddress ip;
-          // if (WiFi.hostByName(host, ip)) 
-          // {
-          //   // Send the Json data over the socket connection
-          //   udp.beginPacket(ip, port);
-          //   udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
-          //   udp.endPacket();
-          // } 
-          // else 
-          // {
-          //   Serial.println("Unable to resolve hostname");
-          // }
-
-          /***********UN-COMMENT FOR RELEASE*********/
+          sendToPeer(macs[4], &myData);  // Assuming macs[4] is the gateway
 
           // Sort Key Order
           std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
@@ -503,30 +478,26 @@ void setup()
 
 void loop() 
 {
-  do {
-    if (firstRun || incomingReadings.run_ranging) {
-      Serial.println("Read Data or First Run");
-      // Reset flag
-      incomingReadings.run_ranging = false;
+  if (firstRun || incomingReadings.run_ranging) {
+    Serial.println("Read Data or First Run");
+    // Reset flag
+    incomingReadings.run_ranging = false;
 
-      // Execute the advancedRanging function
-      advancedRanging();
-      Serial.println("Ranging Data Gathered");
+    // Execute the advancedRanging function
+    advancedRanging();
+    Serial.println("Ranging Data Gathered");
 
-      // Prepare and send an update to a different ESP32
-      myData.run_ranging = true; // or whatever value you want to send
-      sendToPeer(macs[tag_id % 4], &myData);
-      waitForPacketSent();
-      Serial.println("Next device activated");
-    }
+    // Prepare and send an update to a different ESP32
+    myData.run_ranging = true; // or whatever value you want to send
+    sendToPeer(macs[tag_id % 4], &myData);
+    waitForPacketSent();
+    Serial.println("Next device activated");
+  }
 
-    if (firstRun) {
-      firstRun = false;
-      Serial.println("First Run Reset");
-    }
-
-    // Repeat the loop while there is an incoming ESP-NOW message
-  } while (true);
+  if (firstRun) {
+    firstRun = false;
+    Serial.println("First Run Reset");
+  }
 }
 
 
