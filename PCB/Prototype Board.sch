@@ -8212,6 +8212,48 @@ Source: AVX .. aphvc.pdf</description>
 </deviceset>
 </devicesets>
 </library>
+<library name="SparkFun-PowerSymbols" urn="urn:adsk.eagle:library:530">
+<description>&lt;h3&gt;SparkFun Power Symbols&lt;/h3&gt;
+This library contains power, ground, and voltage-supply symbols.
+&lt;br&gt;
+&lt;br&gt;
+We've spent an enormous amount of time creating and checking these footprints and parts, but it is &lt;b&gt; the end user's responsibility&lt;/b&gt; to ensure correctness and suitablity for a given componet or application. 
+&lt;br&gt;
+&lt;br&gt;If you enjoy using this library, please buy one of our products at &lt;a href=" www.sparkfun.com"&gt;SparkFun.com&lt;/a&gt;.
+&lt;br&gt;
+&lt;br&gt;
+&lt;b&gt;Licensing:&lt;/b&gt; Creative Commons ShareAlike 4.0 International - https://creativecommons.org/licenses/by-sa/4.0/ 
+&lt;br&gt;
+&lt;br&gt;
+You are welcome to use this library for commercial purposes. For attribution, we ask that when you begin to sell your device using our footprint, you email us with a link to the product being sold. We want bragging rights that we helped (in a very small part) to create your 8th world wonder. We would like the opportunity to feature your device on our homepage.</description>
+<packages>
+</packages>
+<symbols>
+<symbol name="1.8V" urn="urn:adsk.eagle:symbol:39409/1" library_version="1">
+<description>&lt;h3&gt;1.8V Voltage Supply&lt;/h3&gt;</description>
+<wire x1="0.762" y1="1.27" x2="0" y2="2.54" width="0.254" layer="94"/>
+<wire x1="0" y1="2.54" x2="-0.762" y2="1.27" width="0.254" layer="94"/>
+<pin name="1.8V" x="0" y="0" visible="off" length="short" direction="sup" rot="R90"/>
+<text x="0" y="2.794" size="1.778" layer="96" align="bottom-center">&gt;VALUE</text>
+</symbol>
+</symbols>
+<devicesets>
+<deviceset name="1.8V" urn="urn:adsk.eagle:component:39440/1" prefix="SUPPLY" library_version="1">
+<description>&lt;h3&gt;1.8V Supply Symbol&lt;/h3&gt;
+&lt;p&gt;Power supply symbol for a specifically-stated 1.8V source.&lt;/p&gt;</description>
+<gates>
+<gate name="G$1" symbol="1.8V" x="0" y="0"/>
+</gates>
+<devices>
+<device name="">
+<technologies>
+<technology name=""/>
+</technologies>
+</device>
+</devices>
+</deviceset>
+</devicesets>
+</library>
 </libraries>
 <attributes>
 </attributes>
@@ -8288,6 +8330,14 @@ Source: AVX .. aphvc.pdf</description>
 <part name="C6" library="rcl" deviceset="C-EU" device="C0603" value="10uF"/>
 <part name="GND10" library="SparkFun-Aesthetics" deviceset="GND" device=""/>
 <part name="GND13" library="supply1" deviceset="GND" device=""/>
+<part name="GND15" library="supply1" deviceset="GND" device=""/>
+<part name="C7" library="Discrete" deviceset="C*" device="-0603" value="1.0uF"/>
+<part name="C9" library="Discrete" deviceset="C*" device="-0603" value="0.1uF"/>
+<part name="GND16" library="supply1" deviceset="GND" device=""/>
+<part name="GND17" library="supply1" deviceset="GND" device=""/>
+<part name="C11" library="Discrete" deviceset="C*" device="-0603" value="0.1uF"/>
+<part name="GND18" library="supply1" deviceset="GND" device=""/>
+<part name="SUPPLY11" library="SparkFun-PowerSymbols" library_urn="urn:adsk.eagle:library:530" deviceset="1.8V" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -8517,6 +8567,33 @@ disconnect PWR LED.</text>
 <instance part="GND13" gate="1" x="38.1" y="63.5" smashed="yes" rot="R90">
 <attribute name="VALUE" x="40.64" y="60.96" size="1.778" layer="96" rot="R90"/>
 </instance>
+<instance part="GND15" gate="1" x="149.86" y="48.26" smashed="yes">
+<attribute name="VALUE" x="147.32" y="45.72" size="1.778" layer="96"/>
+</instance>
+<instance part="C7" gate="C" x="149.86" y="55.88" smashed="yes" rot="R270">
+<attribute name="NAME" x="146.558" y="56.134" size="1.016" layer="95"/>
+<attribute name="VALUE" x="145.288" y="54.61" size="1.016" layer="96"/>
+</instance>
+<instance part="C9" gate="C" x="166.37" y="55.88" smashed="yes" rot="R270">
+<attribute name="NAME" x="161.798" y="56.134" size="1.016" layer="95"/>
+<attribute name="VALUE" x="160.528" y="54.61" size="1.016" layer="96"/>
+</instance>
+<instance part="GND16" gate="1" x="166.37" y="48.26" smashed="yes">
+<attribute name="VALUE" x="163.83" y="45.72" size="1.778" layer="96"/>
+</instance>
+<instance part="GND17" gate="1" x="173.99" y="48.26" smashed="yes">
+<attribute name="VALUE" x="171.45" y="45.72" size="1.778" layer="96"/>
+</instance>
+<instance part="C11" gate="C" x="158.75" y="55.88" smashed="yes" rot="R270">
+<attribute name="NAME" x="154.178" y="56.134" size="1.016" layer="95"/>
+<attribute name="VALUE" x="152.908" y="54.61" size="1.016" layer="96"/>
+</instance>
+<instance part="GND18" gate="1" x="158.75" y="48.26" smashed="yes">
+<attribute name="VALUE" x="156.21" y="45.72" size="1.778" layer="96"/>
+</instance>
+<instance part="SUPPLY11" gate="G$1" x="149.86" y="73.66" smashed="yes">
+<attribute name="VALUE" x="149.86" y="76.454" size="1.778" layer="96" align="bottom-center"/>
+</instance>
 </instances>
 <busses>
 </busses>
@@ -8647,6 +8724,28 @@ disconnect PWR LED.</text>
 <pinref part="GND13" gate="1" pin="GND"/>
 <wire x1="20.32" y1="62.23" x2="35.56" y2="62.23" width="0.1524" layer="91"/>
 <wire x1="35.56" y1="62.23" x2="35.56" y2="63.5" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<wire x1="149.86" y1="52.07" x2="149.86" y2="50.8" width="0.1524" layer="91"/>
+<pinref part="GND15" gate="1" pin="GND"/>
+<pinref part="C7" gate="C" pin="2"/>
+</segment>
+<segment>
+<pinref part="C9" gate="C" pin="2"/>
+<pinref part="GND16" gate="1" pin="GND"/>
+<wire x1="166.37" y1="52.07" x2="166.37" y2="50.8" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="U1" gate="G$1" pin="GND"/>
+<wire x1="180.34" y1="58.42" x2="175.26" y2="58.42" width="0.1524" layer="91"/>
+<pinref part="GND17" gate="1" pin="GND"/>
+<wire x1="175.26" y1="58.42" x2="175.26" y2="50.8" width="0.1524" layer="91"/>
+<wire x1="175.26" y1="50.8" x2="173.99" y2="50.8" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="C11" gate="C" pin="2"/>
+<pinref part="GND18" gate="1" pin="GND"/>
+<wire x1="158.75" y1="52.07" x2="158.75" y2="50.8" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="3.3V" class="1">
@@ -8789,85 +8888,7 @@ disconnect PWR LED.</text>
 <wire x1="137.16" y1="116.84" x2="127" y2="116.84" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="GND1" class="0">
-<segment>
-<wire x1="177.8" y1="48.26" x2="177.8" y2="58.42" width="0.1524" layer="91"/>
-<pinref part="U1" gate="G$1" pin="GND"/>
-<wire x1="177.8" y1="58.42" x2="180.34" y2="58.42" width="0.1524" layer="91"/>
-</segment>
-</net>
-<net name="N$1" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="REGOUT"/>
-<wire x1="180.34" y1="60.96" x2="172.72" y2="60.96" width="0.1524" layer="91"/>
-</segment>
-</net>
-<net name="INT" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="INT"/>
-<wire x1="177.8" y1="66.04" x2="180.34" y2="66.04" width="0.1524" layer="91"/>
-<label x="177.8" y="66.04" size="1.27" layer="95" font="vector" rot="R180" xref="yes"/>
-</segment>
-</net>
-<net name="FSYNC" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="FSYNC"/>
-<wire x1="180.34" y1="63.5" x2="177.8" y2="63.5" width="0.1524" layer="91"/>
-<label x="177.8" y="63.5" size="1.27" layer="95" font="vector" rot="R180" xref="yes"/>
-</segment>
-</net>
-<net name="AD0/SDO" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="AD0/SDO"/>
-<wire x1="213.36" y1="58.42" x2="210.82" y2="58.42" width="0.1524" layer="91"/>
-<label x="213.36" y="58.42" size="1.27" layer="95" font="vector" xref="yes"/>
-</segment>
-</net>
-<net name="SDA/SDI" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="SDA/SDI"/>
-<wire x1="213.36" y1="60.96" x2="210.82" y2="60.96" width="0.1524" layer="91"/>
-<label x="213.36" y="60.96" size="1.27" layer="95" font="vector" xref="yes"/>
-</segment>
-</net>
-<net name="SCL/SCLK" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="SCL/SCLK"/>
-<wire x1="213.36" y1="63.5" x2="210.82" y2="63.5" width="0.1524" layer="91"/>
-<label x="213.36" y="63.5" size="1.27" layer="95" font="vector" xref="yes"/>
-</segment>
-</net>
-<net name="!CS" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="!CS"/>
-<label x="213.36" y="66.04" size="1.27" layer="95" font="vector" xref="yes"/>
-<wire x1="213.36" y1="66.04" x2="210.82" y2="66.04" width="0.1524" layer="91"/>
-</segment>
-</net>
-<net name="AUX_DA" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="AUX_DA"/>
-<wire x1="213.36" y1="68.58" x2="210.82" y2="68.58" width="0.1524" layer="91"/>
-<label x="213.36" y="68.58" size="1.27" layer="95" font="vector" xref="yes"/>
-</segment>
-</net>
-<net name="AUX_CL" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="AUX_CL"/>
-<wire x1="213.36" y1="71.12" x2="210.82" y2="71.12" width="0.1524" layer="91"/>
-<label x="213.36" y="71.12" size="1.27" layer="95" font="vector" xref="yes"/>
-</segment>
-</net>
 <net name="1.8V" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="VDDIO"/>
-<wire x1="180.34" y1="68.58" x2="177.8" y2="68.58" width="0.1524" layer="91"/>
-<wire x1="177.8" y1="68.58" x2="177.8" y2="71.12" width="0.1524" layer="91"/>
-<pinref part="U1" gate="G$1" pin="VDD"/>
-<wire x1="177.8" y1="71.12" x2="180.34" y2="71.12" width="0.1524" layer="91"/>
-<wire x1="177.8" y1="71.12" x2="170.18" y2="71.12" width="0.1524" layer="91"/>
-<junction x="177.8" y="71.12"/>
-</segment>
 <segment>
 <pinref part="U6" gate="G$1" pin="OUT"/>
 <wire x1="88.9" y1="132.08" x2="91.44" y2="132.08" width="0.1524" layer="91"/>
@@ -8876,6 +8897,25 @@ disconnect PWR LED.</text>
 <wire x1="91.44" y1="132.08" x2="93.98" y2="132.08" width="0.1524" layer="91"/>
 <junction x="91.44" y="132.08"/>
 <pinref part="TP1" gate="G$1" pin="1"/>
+</segment>
+<segment>
+<pinref part="U1" gate="G$1" pin="VDD"/>
+<wire x1="180.34" y1="71.12" x2="165.1" y2="71.12" width="0.1524" layer="91"/>
+<pinref part="C11" gate="C" pin="1"/>
+<wire x1="165.1" y1="71.12" x2="157.48" y2="71.12" width="0.1524" layer="91"/>
+<wire x1="157.48" y1="71.12" x2="157.48" y2="59.69" width="0.1524" layer="91"/>
+<wire x1="157.48" y1="59.69" x2="158.75" y2="59.69" width="0.1524" layer="91"/>
+<pinref part="U1" gate="G$1" pin="VDDIO"/>
+<wire x1="180.34" y1="68.58" x2="165.1" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="165.1" y1="68.58" x2="165.1" y2="71.12" width="0.1524" layer="91"/>
+<junction x="165.1" y="71.12"/>
+<pinref part="C7" gate="C" pin="1"/>
+<wire x1="149.86" y1="59.69" x2="149.86" y2="71.12" width="0.1524" layer="91"/>
+<wire x1="149.86" y1="71.12" x2="157.48" y2="71.12" width="0.1524" layer="91"/>
+<junction x="157.48" y="71.12"/>
+<junction x="149.86" y="71.12"/>
+<pinref part="SUPPLY11" gate="G$1" pin="1.8V"/>
+<wire x1="149.86" y1="73.66" x2="149.86" y2="71.12" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="V_BATT" class="1">
@@ -9081,15 +9121,82 @@ disconnect PWR LED.</text>
 </net>
 <net name="IO4" class="0">
 <segment>
+<pinref part="U3" gate="G$1" pin="IO4"/>
+<wire x1="20.32" y1="31.75" x2="25.4" y2="31.75" width="0.1524" layer="91"/>
+<wire x1="25.4" y1="31.75" x2="25.4" y2="30.48" width="0.1524" layer="91"/>
+<label x="25.4" y="30.48" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="IO5" class="0">
+<segment>
 <pinref part="U5" gate="G$1" pin="SPICSN"/>
 <wire x1="109.22" y1="55.88" x2="129.54" y2="55.88" width="0.1524" layer="91"/>
 <label x="129.54" y="55.88" size="1.778" layer="95"/>
 </segment>
 <segment>
-<pinref part="U3" gate="G$1" pin="IO4"/>
-<wire x1="20.32" y1="31.75" x2="25.4" y2="31.75" width="0.1524" layer="91"/>
-<wire x1="25.4" y1="31.75" x2="25.4" y2="30.48" width="0.1524" layer="91"/>
-<label x="25.4" y="30.48" size="1.778" layer="95"/>
+<pinref part="U3" gate="G$1" pin="IO5"/>
+<wire x1="20.32" y1="39.37" x2="25.4" y2="39.37" width="0.1524" layer="91"/>
+<wire x1="25.4" y1="39.37" x2="25.4" y2="38.1" width="0.1524" layer="91"/>
+<label x="25.4" y="38.1" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="GPIO15" class="0">
+<segment>
+<pinref part="U1" gate="G$1" pin="!CS"/>
+<wire x1="210.82" y1="66.04" x2="218.44" y2="66.04" width="0.1524" layer="91"/>
+<label x="218.44" y="66.04" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U3" gate="G$1" pin="IO15"/>
+<wire x1="5.08" y1="19.05" x2="5.08" y2="10.16" width="0.1524" layer="91"/>
+<label x="5.08" y="7.62" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="GPIO14" class="0">
+<segment>
+<pinref part="U1" gate="G$1" pin="SCL/SCLK"/>
+<wire x1="210.82" y1="63.5" x2="218.44" y2="63.5" width="0.1524" layer="91"/>
+<label x="218.44" y="63.5" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U3" gate="G$1" pin="IO14"/>
+<wire x1="-27.94" y1="31.75" x2="-43.18" y2="31.75" width="0.1524" layer="91"/>
+<wire x1="-43.18" y1="31.75" x2="-43.18" y2="30.48" width="0.1524" layer="91"/>
+<label x="-40.64" y="30.48" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="GPIO13" class="0">
+<segment>
+<pinref part="U1" gate="G$1" pin="SDA/SDI"/>
+<wire x1="210.82" y1="60.96" x2="218.44" y2="60.96" width="0.1524" layer="91"/>
+<label x="218.44" y="60.96" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U3" gate="G$1" pin="IO13"/>
+<wire x1="-12.7" y1="19.05" x2="-12.7" y2="10.16" width="0.1524" layer="91"/>
+<label x="-12.7" y="7.62" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="GPIO12" class="0">
+<segment>
+<pinref part="U1" gate="G$1" pin="AD0/SDO"/>
+<wire x1="210.82" y1="58.42" x2="218.44" y2="58.42" width="0.1524" layer="91"/>
+<label x="218.44" y="58.42" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U3" gate="G$1" pin="IO12"/>
+<wire x1="-27.94" y1="29.21" x2="-43.18" y2="29.21" width="0.1524" layer="91"/>
+<wire x1="-43.18" y1="29.21" x2="-43.18" y2="27.94" width="0.1524" layer="91"/>
+<label x="-40.64" y="27.94" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="N$13" class="0">
+<segment>
+<pinref part="U1" gate="G$1" pin="REGOUT"/>
+<wire x1="180.34" y1="60.96" x2="167.64" y2="60.96" width="0.1524" layer="91"/>
+<pinref part="C9" gate="C" pin="1"/>
+<wire x1="167.64" y1="60.96" x2="167.64" y2="59.69" width="0.1524" layer="91"/>
+<wire x1="167.64" y1="59.69" x2="166.37" y2="59.69" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
@@ -9101,6 +9208,11 @@ disconnect PWR LED.</text>
 <note version="6.3" minversion="6.2.2" severity="warning">
 Since Version 6.2.2 text objects can contain more than one line,
 which will not be processed correctly with this version.
+</note>
+<note version="8.2" severity="warning">
+Since Version 8.2, EAGLE supports online libraries. The ids
+of those online libraries will not be understood (or retained)
+with this version.
 </note>
 <note version="8.3" severity="warning">
 Since Version 8.3, EAGLE supports URNs for individual library
