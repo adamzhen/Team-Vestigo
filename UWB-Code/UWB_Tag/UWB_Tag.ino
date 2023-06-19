@@ -18,6 +18,7 @@ std::vector<float> averages;
 const int tag_id = 4;
 int num_tags = 4;
 bool firstRun;
+volatile bool reset_received = false;
 
 // IP Addresses
 const char *Aiden_laptop = "192.168.8.101";
@@ -95,8 +96,9 @@ volatile bool packetSent = false;
 // Must match the receiver structure
 typedef struct struct_message {
   bool run_ranging;
-  float data[13];
-  int tag_id;
+  bool reset_chain;
+  float data[13];  // Assuming there are 12 elements
+  int tag_id = 0; 
 } struct_message;
 
 // Create a struct_message called myData
@@ -134,6 +136,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.println(len);
   Serial.print("run_ranging: ");
   Serial.println(incomingReadings.run_ranging);
+
+  if(incomingReadings.reset_chain) {
+    Serial.println("Reset command received");
+    reset_received = true;
+  }
 }
 
 void setup_esp_now() {
@@ -458,6 +465,8 @@ void setup()
   }
 
   myData.tag_id = tag_id - 1;
+
+  reset_received = false;
 }
 
 /*************************************
@@ -466,10 +475,11 @@ void setup()
 
 void loop() 
 {
-  if (firstRun || incomingReadings.run_ranging) {
-    Serial.println("Read Data or First Run");
-    // Reset flag
+  if (firstRun || incomingReadings.run_ranging || reset_received) {
+    Serial.println("Read Data or First Run or Reset received");
+    // Reset flags
     incomingReadings.run_ranging = false;
+    reset_received = false;  // Reset the reset_received flag here
 
     // Execute the advancedRanging function
     advancedRanging();
@@ -487,5 +497,4 @@ void loop()
     Serial.println("First Run Reset");
   }
 }
-
 
