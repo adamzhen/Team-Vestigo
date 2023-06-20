@@ -65,7 +65,7 @@ const char *ssid;
 const char *password;
 const char *host;  
 
-const int network = 0; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
+const int network = 1; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
 const int port = 1234;
 
 void setup()
@@ -96,7 +96,7 @@ const char *Aiden_PC_LAN = "192.168.8.132";
   else if (network == 1){
     ssid = "UMAT_WiFi";
     password = "andito21";
-    host = "192.168.106.177"; 
+    host = "192.168.197.177"; 
   
   } 
   else if (network == 2){
@@ -246,7 +246,7 @@ const char *Aiden_PC_LAN = "192.168.8.132";
 
   // WAIT FOR SENSOR TO CALIBRATE (LOCK ONTO CORRECT ORIENTATION)
   int elapsedCalibration = 0;
-  int calibrationTime = 30000;
+  int calibrationTime = 3000;
   pinMode(LED_PIN, OUTPUT);
   while (elapsedCalibration <= calibrationTime){
     digitalWrite(LED_PIN, HIGH); // turn the LED on   
@@ -480,23 +480,34 @@ void loop()
 */
 
 #ifdef TRANSMIT
-  std::vector<float> imu_data;
-  // roll, pitch, yaw, dt
-  imu_data.push_back(roll);
-  imu_data.push_back(pitch);
-  imu_data.push_back(yaw);
-  imu_data.push_back(dt);
+  std::vector<std::vector<float>> all_data;
+  std::vector<float> tag_1{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
+  std::vector<float> tag_2{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
+  std::vector<float> tag_3{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
+  std::vector<float> tag_4{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
+  all_data.push_back(tag_1);
+  all_data.push_back(tag_2);
+  all_data.push_back(tag_3);
+  all_data.push_back(tag_4);
 
-  // convert vector into Json array
-  const size_t capacity = JSON_ARRAY_SIZE(4);
+  // convert vector into JSON array
+  const size_t capacity = JSON_ARRAY_SIZE(all_data.size()) * JSON_ARRAY_SIZE(all_data[0].size()); // 4 x 15
   DynamicJsonDocument doc(capacity);
-  JsonArray angle_data = doc.to<JsonArray>();
-  for (int i = 0; i < imu_data.size(); i++){
-    //SERIAL_PORT.print("Added Point: ");
-    //SERIAL_PORT.println(imu_data[i]);
-    angle_data.add(imu_data[i]);
+  // JsonArray json_data = doc.to<JsonArray>();
+  // for (int i = 0; i < all_data.size(); i++){
+  //   //SERIAL_PORT.print("Added Point: ");
+  //   //SERIAL_PORT.println(all_data[i]);
+  //   angle_data.add(all_data[i]);
+  // }
+  JsonArray json_data = doc.to<JsonArray>();
+  for (const auto& row : all_data) {
+    JsonArray innerArr = json_data.createNestedArray();
+    for (const auto& element : row) {
+      innerArr.add(element);
+      //SERIAL_PORT.print("Added Point: ");
+      //SERIAL_PORT.println(element);
+    }
   }
-
   // convert the Json array to a string
   String jsonString;
   serializeJson(doc, jsonString);
@@ -510,6 +521,8 @@ void loop()
     udp.beginPacket(ip, port);
     udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
     udp.endPacket();
+    SERIAL_PORT.println();
+    SERIAL_PORT.println(jsonString);
 #ifdef DEBUG
     SERIAL_PORT.println("Json data sent");
     SERIAL_PORT.println(jsonString.length());
@@ -518,7 +531,7 @@ void loop()
     SERIAL_PORT.println("Unable to resolve hostname");
   }
 
-  imu_data.clear();
+  all_data.clear();
 #endif 
 
   if (myICM.status != ICM_20948_Stat_FIFOMoreDataAvail) // If more data is available then we should read it right away, otherwise wait

@@ -244,7 +244,7 @@ void readDimensions(std::string filename, double& length, double& width, std::ve
         std::getline(inputFile, line);
         sscanf_s(line.c_str(), "Room Dimensions: %lf, %lf", &length, &width);
 
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 12; i++)
         {
             Eigen::Vector3d point;
             std::getline(inputFile, line);
@@ -321,8 +321,10 @@ void saveDimensions(float length, float width, std::vector<Eigen::Vector3d> anch
 //}
 
 // Incoming Data Processing
-std::vector<float> dataProcessing(std::string str)
+std::vector<float> dataProcessing(std::string str) // data string = str
 {
+    // [[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105]]
+
     std::vector<float> data;
 
     size_t start = str.find("[") + 1;
@@ -446,6 +448,7 @@ int main()
         std::vector<Eigen::Vector3d> anchor_position;
         readDimensions(read_filename, length, width, anchor_position);
 
+        std::cout << anchor_position.size() << std::endl;
         point_1 = anchor_position[0];
         point_2 = anchor_position[1];
         point_3 = anchor_position[2];
@@ -458,7 +461,6 @@ int main()
         point_10 = anchor_position[9];
         point_11 = anchor_position[10];
         point_12 = anchor_position[11];
-
     }
     else {
 
@@ -520,13 +522,13 @@ int main()
     *********** SOCKETS SETUP ***********
     ************************************/
 
-    const int num_ports = 4;
-    int ports[num_ports] = { 1234, 1235, 1236, 1237 };    
+    const int num_ports = 1;
+    int ports[num_ports] = { 1234 };    
     SOCKET socks[num_ports];
     sockaddr_in serverAddrs[num_ports];
     int recvLens[num_ports];
     sockaddr_in clientAddrs[num_ports];
-    int clientAddrLens[num_ports] = { sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in), sizeof(sockaddr_in) };
+    int clientAddrLens[num_ports] = { sizeof(sockaddr_in) };
 
     for (int i = 0; i < num_ports; ++i) {
         // check if UWB socket connection is good
@@ -595,10 +597,8 @@ int main()
 
         // get the current timestamp
         auto now = std::chrono::system_clock::now();
-
         // convert the timestamp to a time_t object
         std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
-
         // set the desired timezone
         std::tm timeinfo;
         localtime_s(&timeinfo, &timestamp);
@@ -617,7 +617,11 @@ int main()
         float yaw;
         float dt;
 
-        std::vector<float> esp32_data;
+        std::vector<std::vector<float>> tag_data;
+        std::vector<float> tag1_data;
+        std::vector<float> tag2_data;
+        std::vector<float> tag3_data;
+        std::vector<float> tag4_data;
         std::vector<float> distances;
 
         for (int i = 0; i < num_ports; ++i)
@@ -629,17 +633,34 @@ int main()
 
             // checks if data is received on port
             if (recvLens[i] <= 0) {
+                /*std::cout << "Loopy" << std::endl;*/
                 continue;
             }
 
-            
-
             std::string data_str(buffer, recvLens[i]);
-            esp32_data = dataProcessing(data_str);
+            // data_str = "[[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105]]";
 
-            for (int j = 0; j < 13; ++j) {
-                distances.push_back(esp32_data[j]);
+            // converts string into 2D vector
+            data_str = data_str.substr(1, data_str.length() - 2); // trimming off first and last brackets
+            size_t start = 0;
+            size_t end = 0;
+            do {
+                start = data_str.find("[", end);
+                end = data_str.find("]", start) + 1;
+                //std::cout << data_str.substr(start, end - start) << std::endl;
+                tag_data.push_back(dataProcessing(data_str.substr(start, end - start))); 
+            } while (data_str.find(",[", start) != -1); // iterating through each vector within the 2D vector
+            
+            for (const auto& row : tag_data) {
+                for (const auto& element : row) {
+                    std::cout << element << " ";
+                }
+                std::cout << std::endl;
             }
+
+            //for (int j = 0; j < 13; ++j) {
+            //    distances.push_back(esp32_data[j]);
+            //}
 
             //roll[i] = esp32_data[12]; // degrees
             //pitch[i] = -esp32_data[13]; // degrees
