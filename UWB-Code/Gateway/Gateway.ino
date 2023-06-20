@@ -3,35 +3,73 @@
 #include <esp_now.h>
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
+#include <Ethernet.h>
 
-// Replace with your network credentials
-const char* ssid = "Vestigo-Router";
-const char* password = "Vestigo&2023";
-const char* host = "192.168.8.132";
+// PHY config
+#define ETH_CLK_MODE    ETH_CLOCK_GPIO17_OUT
+#define ETH_PHY_POWER   12
+
+// Add your server's IP address
+IPAddress server(192, 168, 8, 132);
 unsigned int port = 1234; // Replace with your port
+
+EthernetClient client;
+
+// MAC addresses
+uint8_t macs[][6] = {
+  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
+  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
+  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // GATEWAY
+};
+
+// Global variable to indicate if ESP-NOW data was sent
+volatile bool packetSent = false;
+
+unsigned long lastDataReceivedMillis = 0;
+unsigned long dataTimeoutMillis = 3000; // Set timeout to 3 seconds
 
 // Structure example to send data
 // Must match the receiver structure
 typedef struct struct_message {
   bool run_ranging;
+  bool reset_chain;
   float data[13];  // Assuming there are 12 elements
   int tag_id = 0; 
 } struct_message;
 
-// Create a WiFiUDP object
-WiFiUDP udp;
 
 // Arrays to hold the distances
 float distances[4][13] = {0};
 bool received[4] = {false};
+
+// Create a struct_message called myData
+struct_message myData;
+
+// Create a struct_message to hold incoming readings
 struct_message incomingReadings;
+
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  char macStr[18];
+  formatMacAddress(mac_addr, macStr, 18);
+  Serial.print("Last Packet Sent to: ");
+  Serial.println(macStr);
+  Serial.print("Last Packet Send Status: ");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+
+  // If the packet was sent successfully, set the flag to true
+  if (status == ESP_NOW_SEND_SUCCESS) {
+    packetSent = true;
+  }
+}
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
   if(incomingReadings.tag_id >= 0 && incomingReadings.tag_id <= 3 && !received[incomingReadings.tag_id]) {
     memcpy(distances[incomingReadings.tag_id], incomingReadings.data, sizeof(incomingReadings.data));
     received[incomingReadings.tag_id] = true;
-    
+
     // For debugging: print the received distances
     Serial.println("Distances received:");
     for (int i = 0; i < 13; i++) {
@@ -46,6 +84,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       received[i] = false;
     }
   }
+  // Update the last data received time
+  lastDataReceivedMillis = millis();
 }
 
 void sendJson() {
@@ -60,41 +100,66 @@ void sendJson() {
   serializeJson(doc, jsonString);
   Serial.println("Sending JSON: ");
   Serial.println(jsonString);
-  // Send the data over UDP
-  IPAddress ip;
-  if (WiFi.hostByName(host, ip)) 
-  {
-    // Send the Json data over the socket connection
-    udp.beginPacket(ip, port);
-    udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
-    udp.endPacket();
-  } 
-  else 
-  {
-    Serial.println("Unable to resolve hostname");
+
+  // Connect to server
+  if (client.connect(server, port)) {
+    // Send JSON string
+    client.println(jsonString);
+    client.stop(); // Close the connection
+  } else {
+    Serial.println("Failed to connect to server");
   }
 }
 
-void setup() {
+void sendReset() {
+  // Prepare and send reset message to each device in the chain
+  myData.reset_chain = true;
+  for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {  // Start from the one before last, since the last one is Gateway.
+    sendToPeer(macs[i], &myData);
+    waitForPacketSent();
+  }
+  myData.reset_chain = false;
+}
+
+void setup() 
+{
   Serial.begin(115200);
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("ESPNow Init Failed");
-    ESP.restart();
+  
+  // Start Ethernet
+  Ethernet.init(ETH_PHY_POWER);   // power pin
+  Ethernet.begin(macs[sizeof(macs)/sizeof(macs[0]) - 1], ETH_PHY_ADDR, ETH_CLK_MODE);  // Use Gateway MAC for Ethernet.begin
+  delay(1000);
+
+  // Check for Ethernet hardware present
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield was not found.");
+    while (true) {
+      delay(1); // do nothing, no point running without Ethernet hardware
+    }
   }
+  if (Ethernet.linkStatus() == LinkOFF) {
+    Serial.println("Ethernet cable is not connected.");
+  }
+
+  setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting...");
-  }
-  udp.begin(port);
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
 }
 
-void loop() {
-  // nothing here
+void loop() 
+{
+  // Add this part to maintain the Ethernet connection
+  if (Ethernet.linkStatus() == LinkOFF) {
+    Serial.println("Ethernet link has been lost, waiting for reconnection...");
+    delay(10);
+    return;
+  }
+
+  // Check if no data was received for more than dataTimeoutMillis milliseconds
+  if (millis() - lastDataReceivedMillis > dataTimeoutMillis) {
+    sendReset();
+    // Reset lastDataReceivedMillis to avoid multiple reset commands
+    lastDataReceivedMillis = millis();
+  }
+
+  delay(10);  // Delay before checking the condition again
 }
