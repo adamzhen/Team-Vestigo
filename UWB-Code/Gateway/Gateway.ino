@@ -30,6 +30,10 @@ volatile bool packetSent = false;
 unsigned long lastDataReceivedMillis = 0;
 unsigned long dataTimeoutMillis = 3000; // Set timeout to 3 seconds
 
+// Variables to keep track of reset attempts
+unsigned int resetAttempts = 0;
+unsigned int resetsConfirmed = 0;
+
 // Structure example to send data
 // Must match the receiver structure
 typedef struct struct_message {
@@ -82,6 +86,14 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     sendJson();
     for(int i = 0; i < 4; i++) {
       received[i] = false;
+    }
+  }
+  // If myData.reset_chain is true, increment resetsConfirmed
+  if (myData.reset_chain) {
+    resetsConfirmed++;
+    if (resetsConfirmed == (sizeof(macs)/sizeof(macs[0]))-1) { // if all devices have been reset
+      resetAttempts = 0;
+      resetsConfirmed = 0;
     }
   }
   // Update the last data received time
@@ -157,6 +169,15 @@ void loop()
   // Check if no data was received for more than dataTimeoutMillis milliseconds
   if (millis() - lastDataReceivedMillis > dataTimeoutMillis) {
     sendReset();
+    resetAttempts++;
+    // If we've tried resetting 5 times with no success, send an error
+    if (resetAttempts > 5) {
+      if (errorClient.connect(server, 1235)) {
+        errorClient.println("Error: Unable to reset devices after 5 attempts.");
+        errorClient.stop();
+        resetAttempts = 0;
+      }
+    }
     // Reset lastDataReceivedMillis to avoid multiple reset commands
     lastDataReceivedMillis = millis();
   }
