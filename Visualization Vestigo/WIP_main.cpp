@@ -31,7 +31,7 @@ using std::endl;
 // Definitions
 const float inch_to_meter = 0.0254;
 std::vector<Eigen::Vector3d> UWB_previous = { 
-    {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 0.0} 
+    {1.0, 1.0, 1.0} , {1.0, 1.0, 1.0} , {1.0, 1.0, 1.0} , {1.0, 1.0, 1.0} 
 };
 std::vector<std::vector<float>> previous_IMU_data = {
     {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0}
@@ -74,8 +74,8 @@ Eigen::Vector3d multilateration(const std::vector<Eigen::Vector3d>& points, cons
         if (distances[i] >= 0.1) {
             filtered_points.push_back(points[i]);
             filtered_distances.push_back(distances[i]);
-            /*std::cout << "Distance " << i + 1 << " Filtered: " << distances[i] << std::endl;
-            std::cout << "Point  " << i + 1 << " Filtered: " << points[i] << std::endl;*/
+            //std::cout << "Distance " << i + 1 << " Filtered: " << distances[i] << std::endl;
+            //std::cout << "Point  " << i + 1 << " Filtered: " << points[i] << std::endl;
         }
         else {
             std::cout << "SKIPPED: " << i + 1 << std::endl;
@@ -608,9 +608,10 @@ int main()
         int seconds = timeinfo.tm_sec;
 
         // Defines variables for location coordinates
-        float UWB_x[num_ports]; 
-        float UWB_y[num_ports];
-        float UWB_z[num_ports];
+        const int num_tags = 4;
+        float UWB_x[num_tags]; 
+        float UWB_y[num_tags];
+        float UWB_z[num_tags];
 
         float roll;
         float pitch;
@@ -633,7 +634,6 @@ int main()
 
             // checks if data is received on port
             if (recvLens[i] <= 0) {
-                /*std::cout << "Loopy" << std::endl;*/
                 continue;
             }
 
@@ -644,134 +644,123 @@ int main()
             data_str = data_str.substr(1, data_str.length() - 2); // trimming off first and last brackets
             size_t start = 0;
             size_t end = 0;
-            do {
+            do { // iterating through each vector within the 2D vector
                 start = data_str.find("[", end);
                 end = data_str.find("]", start) + 1;
                 //std::cout << data_str.substr(start, end - start) << std::endl;
                 tag_data.push_back(dataProcessing(data_str.substr(start, end - start))); 
-            } while (data_str.find(",[", start) != -1); // iterating through each vector within the 2D vector
+            } while (data_str.find(",[", start) != -1); 
             
+            // Prints out data received
+            std::cout << std::endl;
             for (const auto& row : tag_data) {
                 for (const auto& element : row) {
                     std::cout << element << " ";
                 }
                 std::cout << std::endl;
             }
+            std::cout << std::endl;
 
-            //for (int j = 0; j < 13; ++j) {
-            //    distances.push_back(esp32_data[j]);
-            //}
-
-            //roll[i] = esp32_data[12]; // degrees
-            //pitch[i] = -esp32_data[13]; // degrees
-            //yaw[i] = esp32_data[14]; // degrees
-            //dt[i] = esp32_data[15] / 1000000; // s
-
-            roll = 0; 
-            pitch = 0; 
-            yaw = 0; 
-            dt = 0; 
-
-
-            /*************************************
-            *********** UWB PROCESSING ***********
-            *************************************/
-
-            
-            // Define the anchor points
-            std::vector<Eigen::Vector3d> points = {
-                Eigen::Vector3d(point_1), Eigen::Vector3d(point_2), Eigen::Vector3d(point_3),
-                Eigen::Vector3d(point_4), Eigen::Vector3d(point_5), Eigen::Vector3d(point_6),
-                Eigen::Vector3d(point_7), Eigen::Vector3d(point_8), Eigen::Vector3d(point_9),
-                Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
-            };
-
-
-            // Call the multilateration function
-            Eigen::Vector3d result;
-            try {
-                result = multilateration(points, distances, UWB_previous[i]);
-                // Update the previous position
-                UWB_previous[i] = result;
-            }
-            catch (std::exception& e) {
-                // Use the previous position if a unique solution is not found
-                result = UWB_previous[i];
-            }
-
-            // Checks for Outliers
-            Eigen::Vector3d UWB_current = { result[0] , result[1] , result[2] };
-            if (abs(UWB_current.norm() - UWB_previous[i].norm()) < 0.25) {
-                UWB_x[i] = UWB_current[0];
-                UWB_y[i] = UWB_current[1];
-                UWB_z[i] = UWB_current[2];
-            }
-            else {
-                UWB_x[i] = UWB_previous[i][0];
-                UWB_y[i] = UWB_previous[i][1];
-                UWB_z[i] = UWB_previous[i][2];
-                std::cout << "PREVIOUS USED" << std::endl;
-            }
-            
-
-            // writes the location data to the console
-            std::cout << "x: " << UWB_x[i] << ", y: " << UWB_y[i] << ", z: " << UWB_z[i] << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
-
-            // Handle events (such as window close)
-            SDL_Event event;
-            while (SDL_PollEvent(&event))
-            {
-                if (event.type == SDL_QUIT)
-                {
-                    quit = true;
-                }
-            }
-
-
-            /*************************************
-            *********** IMU PROCESSING ***********
-            *************************************/
-
-            double PI = M_PI;
-
-            // calculating orientation
-            float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
-            float compass = zerodir - yaw;
-            if (compass < 0) {
-                compass += 360;
-            }
-
-            float room_orientation = 20; // compass direction of positive x-axis of the room
-            float theta = compass - room_orientation;
-            if (theta < 0) {
-                theta += 360;
-            }
-
-            float rtheta = theta * PI / 180;
-
-
-            
-
-            // Write location data to file
-            outFile << UWB_x[i] << ", " << UWB_y[i] << ", " << UWB_z[i] << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
-
-            /***************************************
-            *********** REALTIME DISPLAY ***********
-            ***************************************/
-
+            /*** SDL SETUP **/
             // Clear the screen
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
 
-            for (int i = 0; i < num_ports; ++i)
-            {
-                if (i != 0) {
-                    continue;
+            // Loop through the tags
+            for (int j = 0; j < num_tags; ++j) {
+
+                /*************************************
+                *********** UWB PROCESSING ***********
+                *************************************/
+                for (int k = 0; k < 12; k++) {
+                    distances.push_back(tag_data[j][k]);
+                }
+                roll = tag_data[j][12];
+                pitch = tag_data[j][13];
+                yaw = tag_data[j][14];
+
+                // Define the anchor points
+                std::vector<Eigen::Vector3d> points = {
+                    Eigen::Vector3d(point_1), Eigen::Vector3d(point_2), Eigen::Vector3d(point_3),
+                    Eigen::Vector3d(point_4), Eigen::Vector3d(point_5), Eigen::Vector3d(point_6),
+                    Eigen::Vector3d(point_7), Eigen::Vector3d(point_8), Eigen::Vector3d(point_9),
+                    Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
+                };
+
+                // Call the multilateration function
+                Eigen::Vector3d result;
+                try {
+                    result = multilateration(points, distances, UWB_previous[j]);
+                    // Update the previous position
+                    UWB_previous[j] = result;
+                }
+                catch (std::exception& e) {
+                    // Use the previous position if a unique solution is not found
+                    result = UWB_previous[j];
+                }
+                distances.clear();
+
+                // Checks for Outliers
+                Eigen::Vector3d UWB_current = { result[0] , result[1] , result[2] };
+                if (abs(UWB_current.norm() - UWB_previous[j].norm()) < 0.25) {
+                    UWB_x[j] = UWB_current[0];
+                    UWB_y[j] = UWB_current[1];
+                    UWB_z[j] = UWB_current[2];
+                }         
+                else {    
+                    UWB_x[j] = UWB_previous[j][0];
+                    UWB_y[j] = UWB_previous[j][1];
+                    UWB_z[j] = UWB_previous[j][2];
+                    std::cout << "PREVIOUS USED" << std::endl;
                 }
 
+
+                // writes the location data to the console
+                std::cout << "x: " << UWB_x[j] << ", y: " << UWB_y[j] << ", z: " << UWB_z[j] << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
+
+                // Handle events (such as window close)
+                SDL_Event event;
+                while (SDL_PollEvent(&event))
+                {
+                    if (event.type == SDL_QUIT)
+                    {
+                        quit = true;
+                    }
+                }
+
+
+                /*************************************
+                *********** IMU PROCESSING ***********
+                *************************************/
+
+                double PI = M_PI;
+
+                // calculating orientation
+                float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
+                float compass = zerodir - yaw;
+                if (compass < 0) {
+                    compass += 360;
+                }
+
+                float room_orientation = 20; // compass direction of positive x-axis of the room
+                float theta = compass - room_orientation;
+                if (theta < 0) {
+                    theta += 360;
+                }
+
+                float rtheta = theta * PI / 180;
+
+
+                // Write location data to file
+                outFile << UWB_x[j] << ", " << UWB_y[j] << ", " << UWB_z[j] << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
+
+                /***************************************
+                *********** REALTIME DISPLAY ***********
+                ***************************************/
+
                 // Convert the object position from meters to pixels
-                int UWB_x_pixel = static_cast<int>(UWB_x[i] * screen_scale);
-                int UWB_y_pixel = static_cast<int>(UWB_y[i] * screen_scale);
+                int UWB_x_pixel = static_cast<int>(UWB_x[j] * screen_scale);
+                int UWB_y_pixel = static_cast<int>(UWB_y[j] * screen_scale);
 
                 // Calculate line for orientation, currently assuming that North is in the positive x direction
                 int draw_length = 75;
@@ -784,17 +773,18 @@ int main()
 
                 // Draw the object
                 SDL_Rect object_rect = { UWB_x_pixel - 4, UWB_y_pixel - 4, 8, 8 };
-                SDL_SetRenderDrawColor(renderer, colors[i].r, colors[i].g, colors[i].b, colors[i].a);
+                SDL_SetRenderDrawColor(renderer, colors[j].r, colors[j].g, colors[j].b, colors[j].a);
                 SDL_RenderFillRect(renderer, &object_rect);
 
                 // Draw line for orientation
                 SDL_RenderDrawLine(renderer, UWB_x_pixel, UWB_y_pixel, x_side_left, y_side_left);
                 SDL_RenderDrawLine(renderer, UWB_x_pixel, UWB_y_pixel, x_side_right, y_side_right);
                 SDL_RenderDrawLine(renderer, x_side_left, y_side_left, x_side_right, y_side_right);
-            }
 
-            // Presents the rendereer to the screen
-            SDL_RenderPresent(renderer);
+                // Presents the rendereer to the screen
+                SDL_RenderPresent(renderer);
+            } 
+
         }
     
     

@@ -51,7 +51,7 @@ SFE_MAX1704X lipo(MAX1704X_MAX17048); // Allow access to all the 17048 features
 
 //#define DEBUG // used for debugging
 #define TRANSMIT
-//#define PRINT
+#define PRINT
 //#define FUELGAUGE
 
 #ifdef USE_SPI
@@ -267,6 +267,23 @@ const char *Aiden_PC_LAN = "192.168.8.132";
 #endif
 }
 
+// Simulating random movement of tags
+std::vector<float> update_loc(std::vector<float> loc){ 
+  std::vector<float> nloc;
+  float mx = 12; // Maximum movement
+  float d = 5.08; // Dimension of simulated cube room
+  float dc; // Displacement from center
+  for (const auto& el : loc){
+    if (abs(el-d/2) < 0.1){
+      nloc.push_back(el + random(-mx*mx,mx*mx)/100.0);
+    } else {
+      dc = (el - d/2) / (d/2);
+      nloc.push_back(el + random(-dc*mx,-dc*mx+mx)/100.0);
+    }
+  }
+  return nloc;
+}
+
 float roll = 0;
 float pitch = 0;
 float yaw = 0;
@@ -274,6 +291,10 @@ float accX;
 float accY;
 float accZ;
 unsigned long dt;
+std::vector<float> loc_1{1,1,1};
+std::vector<float> loc_2{4,4,1};
+std::vector<float> loc_3{1,4,1};
+std::vector<float> loc_4{4,1,1};
 
 void loop()
 {
@@ -431,7 +452,8 @@ void loop()
     //SERIAL_PORT.printf("%f, %f, %f, %f, %f, %f", roll, pitch, yaw, accX-gx, accY-gy, accZ-gz);
     //SERIAL_PORT.printf("%f, %f, %f, %f, %f, %f, %f, %f, %f", roll, pitch, yaw, gx, gy, gz, accX, accY, accZ);
     //SERIAL_PORT.println();
-      
+}
+*/
 #ifdef PRINT
     bool formatted = false;
     if (formatted){
@@ -455,7 +477,7 @@ void loop()
       SERIAL_PORT.print(pitch, 2);
       SERIAL_PORT.print(sep);
       SERIAL_PORT.print(yaw, 2);
-      SERIAL_PORT.print(sep);
+      SERIAL_PORT.println(sep);
       // SERIAL_PORT.print(accX-gx, 2);
       // SERIAL_PORT.print(sep);
       // SERIAL_PORT.print(accY-gy, 2);
@@ -471,20 +493,35 @@ void loop()
     // // SERIAL_PORT.print(sensor->magZ()); //printFormattedFloat(sensor->magZ(), 5, 2);
     // // SERIAL_PORT.print(" ], Tmp (C) [ ");
 #endif
-  }
+
 #ifdef DEBUG
   else {
     SERIAL_PORT.println("Waiting for data");
     delay(0.1); }
 #endif
-*/
+
 
 #ifdef TRANSMIT
-  std::vector<std::vector<float>> all_data;
+  // Simulates position of tags and anchors
+  std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}, {0, 0, 2.54}, {0, 5.08, 2.54}, {5.08, 0, 2.54}, {5.08, 5.08, 2.54}, {2.54, 0, 2.54}, {0, 2.54, 2.54}};
+  loc_1 = update_loc(loc_1);
+  loc_2 = update_loc(loc_2);
+  loc_3 = update_loc(loc_3);
+  loc_4 = update_loc(loc_4);
+  // Initializes tag data vectors
   std::vector<float> tag_1{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
   std::vector<float> tag_2{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
   std::vector<float> tag_3{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
   std::vector<float> tag_4{1,1,1,1,1,1,1,1,1,1,1,1,roll,pitch,yaw};
+  // Calculates simulated distances
+  for (int i=0; i<12; i++){
+    tag_1[i] = sqrt( (anchors[i][0]-loc_1[0])*(anchors[i][0]-loc_1[0]) + (anchors[i][1]-loc_1[1])*(anchors[i][1]-loc_1[1]) + (anchors[i][2]-loc_1[2])*(anchors[i][2]-loc_1[2]) );
+    tag_2[i] = sqrt( (anchors[i][0]-loc_2[0])*(anchors[i][0]-loc_2[0]) + (anchors[i][1]-loc_2[1])*(anchors[i][1]-loc_2[1]) + (anchors[i][2]-loc_2[2])*(anchors[i][2]-loc_2[2]) );
+    tag_3[i] = sqrt( (anchors[i][0]-loc_3[0])*(anchors[i][0]-loc_3[0]) + (anchors[i][1]-loc_3[1])*(anchors[i][1]-loc_3[1]) + (anchors[i][2]-loc_3[2])*(anchors[i][2]-loc_3[2]) );
+    tag_4[i] = sqrt( (anchors[i][0]-loc_4[0])*(anchors[i][0]-loc_4[0]) + (anchors[i][1]-loc_4[1])*(anchors[i][1]-loc_4[1]) + (anchors[i][2]-loc_4[2])*(anchors[i][2]-loc_4[2]) );
+  }
+  // Creates matrix to be transmitted 
+  std::vector<std::vector<float>> all_data;
   all_data.push_back(tag_1);
   all_data.push_back(tag_2);
   all_data.push_back(tag_3);
@@ -521,8 +558,6 @@ void loop()
     udp.beginPacket(ip, port);
     udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
     udp.endPacket();
-    SERIAL_PORT.println();
-    SERIAL_PORT.println(jsonString);
 #ifdef DEBUG
     SERIAL_PORT.println("Json data sent");
     SERIAL_PORT.println(jsonString.length());
@@ -559,6 +594,7 @@ void loop()
 #endif
 
 }
+
 
 // // initializeDMP is a weak function. Let's overwrite it so we can increase the sample rate
 // ICM_20948_Status_e ICM_20948::initializeDMP(void)
