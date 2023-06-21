@@ -20,21 +20,6 @@ int num_tags = 4;
 bool firstRun;
 volatile bool reset_received = false;
 
-// IP Addresses
-const char *Aiden_laptop = "192.168.8.101";
-const char *Evan_laptop = "192.168.8.162";
-const char *Adam_laptop = "192.168.8.203";
-const char *Aiden_PC = "192.168.8.122";
-const char *Aiden_laptop_LAN = "192.168.8.219";
-const char *Adam_laptop_LAN = "192.168.8.148";
-const char *Aiden_PC_LAN = "192.168.8.132";
-
-// Wifi creds
-const char *ssid = "Vestigo-Router";
-const char *password = "Vestigo&2023";
-const char *host = Aiden_PC_LAN;
-const int port = 1233 + tag_id;
-
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
 *******************************************/
@@ -279,7 +264,7 @@ void twr_transmitter_mode(int key, double& tof)
   }
 
   /* Execute a delay between ranging exchanges. */
-  delayMicroseconds(750);
+  delayMicroseconds(700);
 }
  
 /******************************************
