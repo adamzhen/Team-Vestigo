@@ -65,13 +65,46 @@ extern dwt_txconfig_t txconfig_options;
 ************ ESP-NOW FUNCTIONS ************
 ******************************************/
 
+bool firstRun_check(int tag_id) {
+  if (tag_id == 1) {
+    return true;
+  } 
+  else {
+    return false
+  }
+}
+
+void sendUpdateToPeer() {
+  for (int i = 0; i < num_tags; i++) {
+    int nextTagID = (tag_id + i) % num_tags;
+    sendToPeer(macs[nextTagID], &myData);
+    waitForPacketSent();
+
+    if (packetSent) {  // If the packet was sent successfully
+      Serial.println("Next device activated");
+      break;
+    } else if (nextTagID == tag_id) {  // If it loops back to its own tag_id
+      myData.reset_chain = true;  // Send a reset command
+      sendToPeer(macs[num_tags], &myData);  // Send to the master IO device
+      waitForPacketSent();
+      myData.reset_chain = false;  // Reset the flag
+      Serial.println("Reset command sent to Master IO device");
+      break;
+    }
+  }
+}
+
+/******************************************
+************ ESP-NOW FUNCTIONS ************
+******************************************/
+
 // MAC addresses
 uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
   {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
   {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // GATEWAY
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // Master IO
 };
 
 // Global variable to indicate if ESP-NOW data was sent
@@ -164,21 +197,22 @@ void setup_esp_now() {
   }
 }
 
-void sendToPeer(uint8_t *peerMAC, struct_message *message) {
+void sendToPeer(uint8_t *peerMAC, struct_message *message, int retries = 3) {
   esp_err_t result;
-  
-  do {
+  for (int i = 0; i < retries; i++) {
     result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(struct_message));
     if (result == ESP_OK) {
       Serial.println("Sent message success");
       packetSent = false;  // Reset the flag
+      break;
     } else {
       Serial.println("Error sending the message");
-      delay(100);  // Delay before retry
+      if (i < retries - 1) {  // If it's not the last retry
+        delay(250);  // Delay before retry
+      }
     }
-  } while (result != ESP_OK);
+  }
 }
-
 void waitForPacketSent() {
   while(!packetSent) {
     // Wait for the packet to be sent
@@ -273,107 +307,100 @@ void twr_transmitter_mode(int key, double& tof)
 
 void advancedRanging()
 {
-  bool looping = true;
-
   // Distance reset        
   for (auto& key : keys) {
     key.second.clear();
   }
 
   // Loop between keys until exit conditions are met
-  while(looping)
+  for (int i = 0; i < 7; i++) 
   {
-    for (int i = 0; i < 7; i++) 
+    const auto& key = keys[i];
+    float distance = 0;
+    double tof = 0;
+
+    twr_transmitter_mode(key.first + 1, tof);                  
+    distance = tof * SPEED_OF_LIGHT;
+
+    if (distance != 0) 
     {
-      const auto& key = keys[i];
-      float distance = 0;
-      double tof = 0;
+      // Find the correct position in the keys vector for the current anchor
+      auto it = std::find_if(keys.begin(), keys.end(), [&](const std::pair<int, std::vector<float>>& element) {
+          return element.first == key.first;
+      });
 
-      twr_transmitter_mode(key.first + 1, tof);                  
-      distance = tof * SPEED_OF_LIGHT;
+      // If the anchor was found in the keys vector, append the distance
+      if (it != keys.end()) {
+          it->second.push_back(distance);
+      }
 
-      if (distance != 0) 
+      // counter
+      int unique_distance_counter = 0;
+      int total_distance_counter = 0;
+
+      for (int i = 0; i < 12; i++) 
       {
-        // Find the correct position in the keys vector for the current anchor
-        auto it = std::find_if(keys.begin(), keys.end(), [&](const std::pair<int, std::vector<float>>& element) {
-            return element.first == key.first;
+        if (keys[i].second.size() >= 2) 
+        {
+          unique_distance_counter += 1;
+        } 
+        if (keys[i].second.size() >= 1) {
+          total_distance_counter += 1;
+        }
+      }
+
+      // checks if there is enough data to send
+      if (unique_distance_counter >= 5) 
+      {
+        for (int i = 0; i < 12; ++i) {
+          if (!keys[i].second.empty()) {
+            float sum = 0;
+            for (float d : keys[i].second) {
+              sum += d;
+            }
+            // Replace the distance vector with its average
+            int key_size = keys[i].second.size();
+            keys[i].second.clear();
+            keys[i].second.push_back(sum / key_size);
+          } else {
+            keys[i].second.push_back(0);
+          }
+        }
+
+        // Separate Sort for Transmission
+        std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
+        std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
+          return a.first < b.first;
         });
 
-        // If the anchor was found in the keys vector, append the distance
-        if (it != keys.end()) {
-            it->second.push_back(distance);
+        for (int i = 0; i < sortedKeys.size(); i++) {
+          myData.data[i] = sortedKeys[i].second[0];
         }
 
-        // counter
-        int unique_distance_counter = 0;
-        int total_distance_counter = 0;
+        sendToPeer(macs[4], &myData);  // Assuming macs[4] is the gateway
 
-        for (int i = 0; i < 12; i++) 
-        {
-          if (keys[i].second.size() >= 2) 
-          {
-            unique_distance_counter += 1;
-          } 
-          if (keys[i].second.size() >= 1) {
-            total_distance_counter += 1;
-          }
-        }
+        // Sort Key Order
+        std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
+          // Since the second element of the pair is now the average, we can directly compare these values
+          return a.second[0] < b.second[0];
+        });
 
-        // checks if there is enough data to send
-        if (unique_distance_counter >= 5) 
-        {
+        // Move the first 5 elements to the end
+        std::rotate(keys.begin(), keys.begin() + (12 - total_distance_counter), keys.end());
 
-          for (int i = 0; i < 12; ++i) {
-            if (!keys[i].second.empty()) {
-              float sum = 0;
-              for (float d : keys[i].second) {
-                sum += d;
-              }
-              // Replace the distance vector with its average
-              int key_size = keys[i].second.size();
-              keys[i].second.clear();
-              keys[i].second.push_back(sum / key_size);
-            } else {
-              keys[i].second.push_back(0);
-            }
-          }
+        // Swap elements to allow for auto switching
+        // Save the original 8th element in a temporary variable
+        std::pair<int, std::vector<float>> temp_7 = keys[6];
+        std::pair<int, std::vector<float>> temp_8 = keys[7];
+        std::pair<int, std::vector<float>> temp_9 = keys[8];
 
-          // Separate Sort for Transmission
-          std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
-          std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
-            return a.first < b.first;
-          });
+        keys[6] = keys[5];
+        keys[8] = temp_7;
+        keys[5] = temp_8;
+        keys[7] = temp_9;
 
-          for (int i = 0; i < sortedKeys.size(); i++) {
-            myData.data[i] = sortedKeys[i].second[0];
-          }
-
-          sendToPeer(macs[4], &myData);  // Assuming macs[4] is the gateway
-
-          // Sort Key Order
-          std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
-            // Since the second element of the pair is now the average, we can directly compare these values
-            return a.second[0] < b.second[0];
-          });
-
-          // Move the first 5 elements to the end
-          std::rotate(keys.begin(), keys.begin() + (12 - total_distance_counter), keys.end());
-
-          // Swap elements to allow for auto switching
-          // Save the original 8th element in a temporary variable
-          std::pair<int, std::vector<float>> temp_7 = keys[6];
-          std::pair<int, std::vector<float>> temp_8 = keys[7];
-          std::pair<int, std::vector<float>> temp_9 = keys[8];
-
-          keys[6] = keys[5];
-          keys[8] = temp_7;
-          keys[5] = temp_8;
-          keys[7] = temp_9;
-
-          looping = false;
-          break;
-        }  
-      }
+        break;
+      }  
     }
   }
 }
@@ -440,14 +467,7 @@ void setup()
     keys.push_back(std::make_pair(i, std::vector<float>()));
   }  
 
-  if (tag_id == 1) {
-    firstRun = true;
-    Serial.println("First Run True");
-  }
-  else {
-    firstRun = false;
-    Serial.println("First Run False");
-  }
+  firstRun = firstRun_check(tag_id)
 
   myData.tag_id = tag_id - 1;
 
@@ -460,11 +480,15 @@ void setup()
 
 void loop() 
 {
-  if (firstRun || incomingReadings.run_ranging || reset_received) {
+  if (reset_received) {
+    firstRun = firstRun_check(tag_id);
+    reset_received = false;
+  }
+
+  if (firstRun || incomingReadings.run_ranging) {
     Serial.println("Read Data or First Run or Reset received");
     // Reset flags
     incomingReadings.run_ranging = false;
-    reset_received = false;  // Reset the reset_received flag here
 
     // Execute the advancedRanging function
     advancedRanging();
@@ -472,14 +496,9 @@ void loop()
 
     // Prepare and send an update to a different ESP32
     myData.run_ranging = true; // or whatever value you want to send
-    sendToPeer(macs[tag_id % 4], &myData);
-    waitForPacketSent();
-    Serial.println("Next device activated");
+    
   }
 
-  if (firstRun) {
-    firstRun = false;
-    Serial.println("First Run Reset");
-  }
+  firstRun = false;
 }
 
