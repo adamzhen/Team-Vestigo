@@ -62,7 +62,7 @@ static uint64_t resp_tx_ts;
 extern dwt_txconfig_t txconfig_options;
 
 /******************************************
-************ ESP-NOW FUNCTIONS ************
+************ GENERAL FUNCTIONS ************
 ******************************************/
 
 bool firstRun_check(int tag_id) {
@@ -82,14 +82,33 @@ void sendUpdateToPeer() {
 
     if (packetSent) {  // If the packet was sent successfully
       Serial.println("Next device activated");
-      break;
-    } else if (nextTagID == tag_id) {  // If it loops back to its own tag_id
-      myData.reset_chain = true;  // Send a reset command
-      sendToPeer(macs[num_tags], &myData);  // Send to the master IO device
-      waitForPacketSent();
-      myData.reset_chain = false;  // Reset the flag
-      Serial.println("Reset command sent to Master IO device");
-      break;
+      malfunctioning_tags[nextTagID] = false; // Clear this tag from the malfunctioning list
+    } else { // If not successful
+      if (nextTagID != tag_id) {  // Do not mark itself as malfunctioning
+        malfunctioning_tags[nextTagID] = true; // Mark this tag as malfunctioning
+      }
+      if (nextTagID == tag_id) {  // If it loops back to its own tag_id
+        // Send the list of malfunctioning tags to the Master IO device
+        memcpy(myData.failed_tags, malfunctioning_tags, sizeof(malfunctioning_tags));
+        for (int j = 0; j < num_tags; j++) {
+          if (malfunctioning_tags[j]) {
+            myData.tag_id = j; // Indicate the malfunctioning tag
+            sendToPeer(macs[num_tags], &myData);  // Send to the master IO device
+            waitForPacketSent();
+            Serial.println("Malfunctioning device reported to Master IO device");
+          }
+        }
+
+        myData.reset_chain = true;  // Send a reset command
+        sendToPeer(macs[num_tags], &myData);  // Send to the master IO device
+        waitForPacketSent();
+        myData.reset_chain = false;  // Reset the flag
+        Serial.println("Reset command sent to Master IO device");
+
+        // Clear the malfunctioning tags list
+        memset(malfunctioning_tags, false, sizeof(malfunctioning_tags));
+        break;
+      }
     }
   }
 }
@@ -110,6 +129,8 @@ uint8_t macs[][6] = {
 // Global variable to indicate if ESP-NOW data was sent
 volatile bool packetSent = false;
 
+bool malfunctioning_tags[4] = {false, false, false, false};
+
 // Structure example to send data
 // Must match the receiver structure
 typedef struct struct_message {
@@ -117,6 +138,7 @@ typedef struct struct_message {
   bool reset_chain;
   float data[13];  // Assuming there are 12 elements
   int tag_id = 0; 
+  bool failed_tags[4]; // Array to hold failure status of tags
 } struct_message;
 
 // Create a struct_message called myData
@@ -213,6 +235,7 @@ void sendToPeer(uint8_t *peerMAC, struct_message *message, int retries = 3) {
     }
   }
 }
+
 void waitForPacketSent() {
   while(!packetSent) {
     // Wait for the packet to be sent
@@ -224,8 +247,7 @@ void waitForPacketSent() {
 ************ TWR TRANSMISTTER MODE ************
 **********************************************/
 
-void twr_transmitter_mode(int key, double& tof)
-{
+void twr_transmitter_mode(int key, double& tof) {
   uint8_t frame_seq_nb = 0;
   uint8_t rx_buffer[20];
 
@@ -305,8 +327,7 @@ void twr_transmitter_mode(int key, double& tof)
 ************ ADVANCED RANGING ************
 ******************************************/
 
-void advancedRanging()
-{
+void advancedRanging() {
   // Distance reset        
   for (auto& key : keys) {
     key.second.clear();
@@ -409,8 +430,7 @@ void advancedRanging()
 ************ PROGRAM SETUP ************
 **************************************/
 
-void setup() 
-{
+void setup() {
   Serial.begin(115200);
 
   setup_esp_now();
@@ -478,8 +498,7 @@ void setup()
 ************ PROGRAM LOOP ************
 *************************************/
 
-void loop() 
-{
+void loop() {
   if (reset_received) {
     firstRun = firstRun_check(tag_id);
     reset_received = false;
@@ -496,7 +515,7 @@ void loop()
 
     // Prepare and send an update to a different ESP32
     myData.run_ranging = true; // or whatever value you want to send
-    
+    sendUpdateToPeer();
   }
 
   firstRun = false;

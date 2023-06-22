@@ -21,7 +21,7 @@ uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
   {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // GATEWAY
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // Master IO
 };
 
 // Global variable to indicate if ESP-NOW data was sent
@@ -41,6 +41,7 @@ typedef struct struct_message {
   bool reset_chain;
   float data[13];  // Assuming there are 12 elements
   int tag_id = 0; 
+  bool failed_tags[4];
 } struct_message;
 
 
@@ -88,6 +89,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       received[i] = false;
     }
   }
+
   // If myData.reset_chain is true, increment resetsConfirmed
   if (myData.reset_chain) {
     resetsConfirmed++;
@@ -96,6 +98,34 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       resetsConfirmed = 0;
     }
   }
+
+   // If incomingReadings.reset_chain is true, send a reset command to all devices
+  if (incomingReadings.reset_chain) {
+    Serial.println("Reset command received from network device");
+    sendReset();
+  }
+
+  // Check if there's any failed device
+  for (int i = 0; i < 4; i++) {
+    if (incomingReadings.failed_tags[i]) {
+      Serial.print("Tag ");
+      Serial.print(i);
+      Serial.println(" malfunctioning. Resetting this tag.");
+
+      // If the first tag is malfunctioning, reset the entire network
+      if (i == 0) {
+        Serial.println("First tag malfunctioning. Resetting entire network.");
+        sendReset();
+      } else {  // If it's another tag, reset only that tag
+        sendResetToTag(i);
+      }
+    }
+  }
+
+  // Update the last data received time
+  lastDataReceivedMillis = millis();
+}
+
   // Update the last data received time
   lastDataReceivedMillis = millis();
 }
@@ -124,12 +154,18 @@ void sendJson() {
 }
 
 void sendReset() {
-  // Prepare and send reset message to each device in the chain
   myData.reset_chain = true;
   for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {  // Start from the one before last, since the last one is Gateway.
     sendToPeer(macs[i], &myData);
     waitForPacketSent();
   }
+  myData.reset_chain = false;
+}
+
+void sendResetToTag(int tag_id) {
+  myData.reset_chain = true;
+  sendToPeer(macs[tag_id], &myData);
+  waitForPacketSent();
   myData.reset_chain = false;
 }
 
