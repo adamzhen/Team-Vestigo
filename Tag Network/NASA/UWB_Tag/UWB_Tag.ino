@@ -18,7 +18,6 @@ std::vector<float> averages;
 const int tag_id = 4;
 int num_tags = 4;
 bool firstRun;
-volatile bool reset_received = false;
 
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
@@ -179,7 +178,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
   if(incomingReadings.reset_chain) {
     Serial.println("Reset command received");
-    reset_received = true;
+    ESP.restart();
   }
 }
 
@@ -490,8 +489,6 @@ void setup() {
   firstRun = firstRun_check(tag_id)
 
   myData.tag_id = tag_id - 1;
-
-  reset_received = false;
 }
 
 /*************************************
@@ -499,13 +496,8 @@ void setup() {
 *************************************/
 
 void loop() {
-  if (reset_received) {
-    firstRun = firstRun_check(tag_id);
-    reset_received = false;
-  }
-
   if (firstRun || incomingReadings.run_ranging) {
-    Serial.println("Read Data or First Run or Reset received");
+    Serial.println("Read Data or First Run");
     // Reset flags
     incomingReadings.run_ranging = false;
 
