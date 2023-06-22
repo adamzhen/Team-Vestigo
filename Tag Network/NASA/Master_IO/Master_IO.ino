@@ -71,19 +71,18 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  if(incomingReadings.tag_id >= 0 && incomingReadings.tag_id <= 3 && !received[incomingReadings.tag_id]) {
-    memcpy(distances[incomingReadings.tag_id], incomingReadings.data, sizeof(incomingReadings.data));
-    received[incomingReadings.tag_id] = true;
+  memcpy(distances[incomingReadings.tag_id], incomingReadings.data, sizeof(incomingReadings.data));
+  received[incomingReadings.tag_id] = true;
 
-    // For debugging: print the received distances
-    Serial.println("Distances received:");
-    for (int i = 0; i < 13; i++) {
-      Serial.print(distances[incomingReadings.tag_id][i]);
-      Serial.print(" ");
-    }
-    Serial.println();
+  // For debugging: print the received distances
+  Serial.println("Distances received:");
+  for (int i = 0; i < 13; i++) {
+    Serial.print(distances[incomingReadings.tag_id][i]);
+    Serial.print(" ");
   }
-  if(received[0] && received[1] && received[2] && received[3]) {
+  Serial.println();
+
+  if(received[0] && received[1] && received[2] && received[3] && false) {
     sendJson();
     for(int i = 0; i < 4; i++) {
       received[i] = false;
@@ -121,10 +120,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       }
     }
   }
-
-  // Update the last data received time
-  lastDataReceivedMillis = millis();
-}
 
   // Update the last data received time
   lastDataReceivedMillis = millis();
