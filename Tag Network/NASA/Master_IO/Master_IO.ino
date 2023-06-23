@@ -24,7 +24,8 @@ IPAddress server(192, 168, 8, 132);
 unsigned int network_port = 1234; 
 unsigned int error_port = 1235;
 EthernetClient client;
-bool startNetworkSetup = false;
+EthernetClient errorClient;
+bool startNetworkSetupFlag = false;
 
 volatile bool packetSent = false;
 unsigned long lastDataReceivedMillis = 0;
@@ -81,58 +82,6 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   if (status == ESP_NOW_SEND_SUCCESS) {
     packetSent = true;
   }
-}
-
-void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  // Assuming the first byte in incomingData determines the type of data
-  uint8_t dataType = incomingData[0];
-
-  // If the data is rangingData
-  if (dataType == 0) {
-    memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
-    memcpy(distances[offDeviceRangingData.tag_id], offDeviceRangingData.data, sizeof(offDeviceRangingData.data));
-    received[offDeviceRangingData.tag_id] = true;
-
-    // For debugging: print the received distances
-    Serial.println("Distances received:");
-    for (int i = 0; i < 13; i++) {
-      Serial.print(distances[offDeviceRangingData.tag_id][i]);
-      Serial.print(" ");
-    }
-    Serial.println();
-
-    if(received[0] && received[1] && received[2] && received[3]) {
-      sendJson();
-      for(int i = 0; i < 4; i++) {
-        received[i] = false;
-      }
-    }
-  }
-
-  // If the data is networkData
-  else if (dataType == 1) {
-    memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
-  
-    // If offDeviceNetworkData.reset_chain is true, send a reset command to all devices
-    if (offDeviceNetworkData.reset_chain) {
-      Serial.println("Reset command received from network device");
-      sendResetGlobal();
-    }
-
-    // Check if there's any failed device
-    for (int i = 0; i < 4; i++) {
-      if (offDeviceNetworkData.failed_tags[i]) {
-        Serial.print("Tag ");
-        Serial.print(i);
-        Serial.println(" malfunctioning. Resetting this tag.");
-
-        sendResetToTag(i);
-        }
-      }
-    }
-  }
-
-  lastDataReceivedMillis = millis();
 }
 
 void sendJson() {
@@ -272,12 +221,12 @@ void startNetworkSetup() {
   }
 
   // Wait for the server to send "start"
-  while(!startNetworkSetup) {
+  while(!startNetworkSetupFlag) {
     if (client.available() > 0) {
       String serverMsg = client.readStringUntil('\n');
 
       if (serverMsg == "start") {
-        startNetworkSetup = true;
+        startNetworkSetupFlag = true;
         Serial.println("Received start message from server, starting network setup");
       }
     }
@@ -288,6 +237,63 @@ void startNetworkSetup() {
     checkTagsOnline();
     delay(10);
   }
+}
+
+void waitForPacketSent() {
+  while(!packetSent) {
+    delay(1);
+  }
+}
+
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  // Assuming the first byte in incomingData determines the type of data
+  uint8_t dataType = incomingData[0];
+
+  // If the data is rangingData
+  if (dataType == 0) {
+    memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
+    memcpy(distances[offDeviceRangingData.tag_id], offDeviceRangingData.data, sizeof(offDeviceRangingData.data));
+    received[offDeviceRangingData.tag_id] = true;
+
+    // For debugging: print the received distances
+    Serial.println("Distances received:");
+    for (int i = 0; i < 13; i++) {
+      Serial.print(distances[offDeviceRangingData.tag_id][i]);
+      Serial.print(" ");
+    }
+    Serial.println();
+
+    if(received[0] && received[1] && received[2] && received[3]) {
+      sendJson();
+      for(int i = 0; i < 4; i++) {
+        received[i] = false;
+      }
+    }
+  }
+
+  // If the data is networkData
+  else if (dataType == 1) {
+    memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
+  
+    // If offDeviceNetworkData.reset_chain is true, send a reset command to all devices
+    if (offDeviceNetworkData.reset_chain) {
+      Serial.println("Reset command received from network device");
+      sendResetGlobal();
+    }
+
+    // Check if there's any failed device
+    for (int i = 0; i < 4; i++) {
+      if (offDeviceNetworkData.failed_tags[i]) {
+        Serial.print("Tag ");
+        Serial.print(i);
+        Serial.println(" malfunctioning. Resetting this tag.");
+
+        sendResetToTag(i);
+      }
+    }
+  }
+
+  lastDataReceivedMillis = millis();
 }
 
 void setup_esp_now() {
