@@ -61,6 +61,8 @@ uint8_t macs[][6] = {
   {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 };
 
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+
 /******************************************
 ************ NETWORK FUNCTIONS ************
 ******************************************/
@@ -347,7 +349,7 @@ void setup() {
   
   // Start Ethernet
   Ethernet.init(ETH_PHY_POWER);   // power pin
-  Ethernet.begin(macs[sizeof(macs)/sizeof(macs[0]) - 1]);  // Use Gateway MAC for Ethernet.begin
+  Ethernet.begin(mac, server);
   delay(1000);
 
   // Check for Ethernet hardware present
