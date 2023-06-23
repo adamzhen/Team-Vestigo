@@ -14,12 +14,15 @@
 #define ETH_PHY_POWER   12
 
 float distances[4][13] = {0};
+bool online_tags[4] = {false};
 bool received[4] = {false};
+bool all_tags_online = false;
 
 IPAddress server(192, 168, 8, 132);
 unsigned int network_port = 1234; 
 unsigned int error_port = 1235;
 EthernetClient client;
+
 volatile bool packetSent = false;
 unsigned long lastDataReceivedMillis = 0;
 unsigned long dataTimeoutMillis = 3000;
@@ -120,12 +123,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
         Serial.print(i);
         Serial.println(" malfunctioning. Resetting this tag.");
 
-        // If the first tag is malfunctioning, reset the entire network
-        if (i == 0) {
-          Serial.println("First tag malfunctioning. Resetting entire network.");
-          sendResetGlobal();
-        } else {  // If it's another tag, reset only that tag
-          sendResetToTag(i);
+        sendResetToTag(i);
         }
       }
     }
@@ -198,6 +196,38 @@ void sendInitializationToTag(uint8_t *tag_mac) {
   onDeviceNetworkData.network_initialize = false;
 }
 
+void sendNetworkPoll(uint8_t *tag_mac) {
+  onDeviceNetworkData.network_initialize = false;
+  onDeviceNetworkData.reset_chain = false;
+
+  sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
+}
+
+void checkTagsOnline() {
+  uint8_t tag_poll_index = 0;
+  if (packetSent) {
+    online_tags[tag_poll_index] = true;
+
+    tag_poll_index++;
+
+    if (tag_poll_index >= 4) { 
+      tag_poll_index = 0;
+
+      all_tags_online = true;
+      for (int i = 0; i < 4; i++) {
+        if (!online_tags[i]) {
+          all_tags_online = false;
+          break;
+        }
+      }
+    }
+
+    if (!all_tags_online) {
+      sendNetworkPoll(macs[tag_poll_index]);
+    }
+  }
+}
+
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -260,6 +290,11 @@ void setup() {
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
+
+  while(!all_tags_online) {
+    checkTagsOnline();
+    delay(10);
+  }
 
   sendInitializationToTag(macs[0]);
 }
