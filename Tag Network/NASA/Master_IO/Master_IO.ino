@@ -22,7 +22,7 @@ bool all_tags_online = false;
 int attempts[4] = {0};
 bool startup_success = false;
 
-IPAddress server(192, 168, 8, 132);
+IPAddress server(192, 168, 1, 177);
 unsigned int network_port = 1234; 
 unsigned int error_port = 1235;
 EthernetClient client;
@@ -62,6 +62,8 @@ uint8_t macs[][6] = {
 };
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+IPAddress gateway(192, 168, 1, 1);
+IPAddress subnet(255, 255, 0, 0);
 
 /******************************************
 ************ NETWORK FUNCTIONS ************
@@ -101,14 +103,14 @@ void sendJson() {
   Serial.println("Sending JSON: ");
   Serial.println(jsonString);
 
-  // Connect to server
-  if (client.connect(server, network_port)) {
-    // Send JSON string
-    client.println(jsonString);
-    client.stop(); // Close the connection
-  } else {
-    Serial.println("Failed to connect to server");
-  }
+  // // Connect to server
+  // if (client.connect(server, network_port)) {
+  //   // Send JSON string
+  //   client.println(jsonString);
+  //   client.stop(); // Close the connection
+  // } else {
+  //   Serial.println("Failed to connect to server");
+  // }
 }
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
@@ -236,10 +238,10 @@ void checkTagsOnline() {
       }
       String output;
       serializeJson(doc, output);
-      if (client.connect(server, error_port)) {
-        client.println(output);
-        client.stop();
-      }
+      // if (client.connect(server, error_port)) {
+      //   client.println(output);
+      //   client.stop();
+      // }
   
       // Reset the number of attempts for all tags
       for (int i = 0; i < 4; i++) {
@@ -270,13 +272,16 @@ void checkTagsOnline() {
 }
 
 void startNetworkSetup() {
-  // Connect to the server
-  if (client.connect(server, error_port)) {
-    Serial.println("Connected to the server");
-  } else {
-    Serial.println("Failed to connect to the server");
-    return;  // If connection to the server failed, return from this function
-  }
+  // // Connect to the server
+  // if (client.connect(server, error_port)) {
+  //   Serial.println("Connected to the server");
+  // } else {
+  //   Serial.println("Failed to connect to the server");
+  //   return;  // If connection to the server failed, return from this function
+  // }
+
+  //TEMP VARIABLE SET
+  startNetworkSetupFlag = true;
 
   // Wait for the server to send "start"
   while(!startNetworkSetupFlag) {
@@ -347,21 +352,21 @@ void setup_esp_now() {
 void setup() {
   Serial.begin(115200);
   
-  // Start Ethernet
-  Ethernet.init(ETH_PHY_POWER);   // power pin
-  Ethernet.begin(mac, server);
-  delay(1000);
+  // // Start Ethernet
+  // Ethernet.init(ETH_PHY_POWER);   // power pin
+  // Ethernet.begin(mac, server, );
+  // delay(1000);
 
-  // Check for Ethernet hardware present
-  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    Serial.println("Ethernet shield was not found.");
-    while (true) {
-      delay(1); // do nothing, no point running without Ethernet hardware
-    }
-  }
-  if (Ethernet.linkStatus() == LinkOFF) {
-    Serial.println("Ethernet cable is not connected.");
-  }
+  // // Check for Ethernet hardware present
+  // if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+  //   Serial.println("Ethernet shield was not found.");
+  //   while (true) {
+  //     delay(1); // do nothing, no point running without Ethernet hardware
+  //   }
+  // }
+  // if (Ethernet.linkStatus() == LinkOFF) {
+  //   Serial.println("Ethernet cable is not connected.");
+  // }
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
@@ -380,11 +385,11 @@ void setup() {
 void loop() {
   // Add this part to maintain the Ethernet connection
   Serial.println("running");
-  if (Ethernet.linkStatus() == LinkOFF) {
-    Serial.println("Ethernet link has been lost, waiting for reconnection...");
-    delay(10);
-    return;
-  }
+  // if (Ethernet.linkStatus() == LinkOFF) {
+  //   Serial.println("Ethernet link has been lost, waiting for reconnection...");
+  //   delay(10);
+  //   return;
+  // }
 
   // Check if no data was received for more than dataTimeoutMillis milliseconds
   if (millis() - lastDataReceivedMillis > dataTimeoutMillis) {
@@ -392,11 +397,12 @@ void loop() {
     resetAttempts++;
     // If we've tried resetting 5 times with no success, send an error
     if (resetAttempts > 5) {
-      if (errorClient.connect(server, error_port)) {
-        errorClient.println("Error: Unable to reset devices after 5 attempts.");
-        errorClient.stop();
-        resetAttempts = 0;
-      }
+      // if (errorClient.connect(server, error_port)) {
+      //   errorClient.println("Error: Unable to reset devices after 5 attempts.");
+      //   errorClient.stop();
+      //   resetAttempts = 0;
+      // }
+      Serial.println("NETWORK ERROR");
     }
     // Reset lastDataReceivedMillis to avoid multiple reset commands
     lastDataReceivedMillis = millis();
