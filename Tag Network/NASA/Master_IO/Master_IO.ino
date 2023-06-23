@@ -346,7 +346,7 @@ void setup() {
   
   // Start Ethernet
   Ethernet.init(ETH_PHY_POWER);   // power pin
-  Ethernet.begin(macs[sizeof(macs)/sizeof(macs[0]) - 1], ETH_PHY_ADDR, ETH_CLK_MODE);  // Use Gateway MAC for Ethernet.begin
+  Ethernet.begin(macs[sizeof(macs)/sizeof(macs[0]) - 1]);  // Use Gateway MAC for Ethernet.begin
   delay(1000);
 
   // Check for Ethernet hardware present
