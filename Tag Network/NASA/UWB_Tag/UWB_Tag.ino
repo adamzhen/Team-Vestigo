@@ -8,16 +8,28 @@
 #include <SPI.h>
 #include <esp_now.h>
 
+/******************************************
+******** GEN VARIABLES AND STRUCTS ********
+******************************************/
 
-// Vector Variables
 std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
-// General Variables
 const int tag_id = 4;
 const int num_tags = 4;
 bool firstRun;
+
+typedef struct rangingData {
+  bool run_ranging;
+  float data[13];
+  int tag_id = 0; 
+} rangingData;
+
+typedef struct networkData {
+  bool reset_chain;
+  bool failed_tags[4];
+} networkData;
 
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
@@ -73,45 +85,6 @@ bool firstRun_check(int tag_id) {
   }
 }
 
-void sendUpdateToPeer() {
-  for (int i = 0; i < num_tags; i++) {
-    int nextTagID = (tag_id + i) % num_tags;
-    sendToPeer(macs[nextTagID], &myData);
-    waitForPacketSent();
-
-    if (packetSent) {  // If the packet was sent successfully
-      Serial.println("Next device activated");
-      malfunctioning_tags[nextTagID] = false; // Clear this tag from the malfunctioning list
-    } else { // If not successful
-      if (nextTagID != tag_id) {  // Do not mark itself as malfunctioning
-        malfunctioning_tags[nextTagID] = true; // Mark this tag as malfunctioning
-      }
-      if (nextTagID == tag_id) {  // If it loops back to its own tag_id
-        // Send the list of malfunctioning tags to the Master IO device
-        memcpy(myData.failed_tags, malfunctioning_tags, sizeof(malfunctioning_tags));
-        for (int j = 0; j < num_tags; j++) {
-          if (malfunctioning_tags[j]) {
-            myData.tag_id = j; // Indicate the malfunctioning tag
-            sendToPeer(macs[num_tags], &myData);  // Send to the master IO device
-            waitForPacketSent();
-            Serial.println("Malfunctioning device reported to Master IO device");
-          }
-        }
-
-        myData.reset_chain = true;  // Send a reset command
-        sendToPeer(macs[num_tags], &myData);  // Send to the master IO device
-        waitForPacketSent();
-        myData.reset_chain = false;  // Reset the flag
-        Serial.println("Reset command sent to Master IO device");
-
-        // Clear the malfunctioning tags list
-        memset(malfunctioning_tags, false, sizeof(malfunctioning_tags));
-        break;
-      }
-    }
-  }
-}
-
 void swapKeys() {
   if(keys.size() < 9) // check if we have enough elements to swap
     return;
@@ -152,10 +125,10 @@ void sendRangingData() {
   });
 
   for (int i = 0; i < sortedKeys.size(); i++) {
-    myData.data[i] = sortedKeys[i].second[0];
+    onDeviceRangingData.data[i] = sortedKeys[i].second[0];
   }
 
-  sendToPeer(macs[4], &myData);
+  sendToPeer(macs[4], &onDeviceRangingData);
 }
 
 /******************************************
@@ -176,21 +149,13 @@ volatile bool packetSent = false;
 
 bool malfunctioning_tags[4] = {false, false, false, false};
 
-// Structure example to send data
-// Must match the receiver structure
-typedef struct struct_message {
-  bool run_ranging;
-  bool reset_chain;
-  float data[13];  // Assuming there are 12 elements
-  int tag_id = 0; 
-  bool failed_tags[4]; // Array to hold failure status of tags
-} struct_message;
+rangingData onDeviceRangingData;
 
-// Create a struct_message called myData
-struct_message myData;
+rangingData offDeviceRangingData;
 
-// Create a struct_message to hold incoming readings
-struct_message incomingReadings;
+networkData onDeviceNetworkData;
+
+networkData offDeviceNetworkData;
 
 void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
   if(bufferSize < 18) {
@@ -216,15 +181,24 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  Serial.print("Bytes received: ");
-  Serial.println(len);
-  Serial.print("run_ranging: ");
-  Serial.println(incomingReadings.run_ranging);
+  // Assuming the first byte in incomingData determines the type of data
+  uint8_t dataType = incomingData[0];
 
-  if(incomingReadings.reset_chain) {
-    Serial.println("Reset command received");
-    ESP.restart();
+  // If the data is rangingData
+  if (dataType == 0) {
+    memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
+    Serial.print("Bytes received: ");
+    Serial.println(len);
+    Serial.print("run_ranging: ");
+    Serial.println(offDeviceRangingData.run_ranging);
+  }
+  // If the data is networkData
+  else if (dataType == 1) {
+    memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
+    if(offDeviceNetworkData.reset_chain) {
+      Serial.println("Reset command received");
+      ESP.restart();
+    }
   }
 }
 
@@ -264,18 +238,74 @@ void setup_esp_now() {
   }
 }
 
-void sendToPeer(uint8_t *peerMAC, struct_message *message, int retries = 3) {
+void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
   esp_err_t result;
   for (int i = 0; i < retries; i++) {
-    result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(struct_message));
+    result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(rangingData));
     if (result == ESP_OK) {
-      Serial.println("Sent message success");
+      Serial.println("Sent rangingData success");
       packetSent = false;  // Reset the flag
       break;
     } else {
-      Serial.println("Error sending the message");
+      Serial.println("Error sending the rangingData");
       if (i < retries - 1) {  // If it's not the last retry
         delay(250);  // Delay before retry
+      }
+    }
+  }
+}
+
+void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
+  esp_err_t result;
+  for (int i = 0; i < retries; i++) {
+    result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(networkData));
+    if (result == ESP_OK) {
+      Serial.println("Sent networkData success");
+      packetSent = false;  // Reset the flag
+      break;
+    } else {
+      Serial.println("Error sending the networkData");
+      if (i < retries - 1) {  // If it's not the last retry
+        delay(250);  // Delay before retry
+      }
+    }
+  }
+}
+
+void sendUpdateToPeer() {
+  for (int i = 0; i < num_tags; i++) {
+    int nextTagID = (tag_id + i) % num_tags;
+    sendToPeer(macs[nextTagID], &onDeviceRangingData);
+    waitForPacketSent();
+
+    if (packetSent) {  // If the packet was sent successfully
+      Serial.println("Next device activated");
+      malfunctioning_tags[nextTagID] = false; // Clear this tag from the malfunctioning list
+    } else { // If not successful
+      if (nextTagID != tag_id) {  // Do not mark itself as malfunctioning
+        malfunctioning_tags[nextTagID] = true; // Mark this tag as malfunctioning
+      }
+      if (nextTagID == tag_id) {  // If it loops back to its own tag_id
+        // Send the list of malfunctioning tags to the Master IO device
+        memcpy(onDeviceNetworkData.failed_tags, malfunctioning_tags, sizeof(malfunctioning_tags));
+        for (int j = 0; j < num_tags; j++) {
+          if (malfunctioning_tags[j]) {
+            onDeviceRangingData.tag_id = j; // Indicate the malfunctioning tag
+            sendToPeer(macs[num_tags], &onDeviceRangingData);  // Send to the master IO device
+            waitForPacketSent();
+            Serial.println("Malfunctioning device reported to Master IO device");
+          }
+        }
+
+        onDeviceNetworkData.reset_chain = true;  // Send a reset command
+        sendToPeerNetwork(macs[num_tags], &onDeviceNetworkData);  // Send to the master IO device
+        waitForPacketSent();
+        onDeviceNetworkData.reset_chain = false;  // Reset the flag
+        Serial.println("Reset command sent to Master IO device");
+
+        // Clear the malfunctioning tags list
+        memset(malfunctioning_tags, false, sizeof(malfunctioning_tags));
+        break;
       }
     }
   }
@@ -495,7 +525,7 @@ void setup() {
 
   firstRun = firstRun_check(tag_id)
 
-  myData.tag_id = tag_id - 1;
+  onDeviceRangingData.tag_id = tag_id - 1;
 }
 
 /*************************************
@@ -503,17 +533,17 @@ void setup() {
 *************************************/
 
 void loop() {
-  if (firstRun || incomingReadings.run_ranging) {
+  if (firstRun || offDeviceRangingData.run_ranging) {
     Serial.println("Read Data or First Run");
     // Reset flags
-    incomingReadings.run_ranging = false;
+    offDeviceRangingData.run_ranging = false;
 
     // Execute the advancedRanging function
     advancedRanging();
     Serial.println("Ranging Data Gathered");
 
     // Prepare and send an update to a different ESP32
-    myData.run_ranging = true; // or whatever value you want to send
+    onDeviceRangingData.run_ranging = true;
     sendUpdateToPeer();
   }
 
