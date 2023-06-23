@@ -376,6 +376,7 @@ void setup() {
 
 void loop() {
   // Add this part to maintain the Ethernet connection
+  Serial.println("running");
   if (Ethernet.linkStatus() == LinkOFF) {
     Serial.println("Ethernet link has been lost, waiting for reconnection...");
     delay(10);
