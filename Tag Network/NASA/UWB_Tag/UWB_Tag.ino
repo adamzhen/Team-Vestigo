@@ -15,10 +15,12 @@
 std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
+bool malfunctioning_tags[4] = {false, false, false, false};
 
 const int tag_id = 4;
 const int num_tags = 4;
 bool firstRun;
+volatile bool packetSent = false;
 
 typedef struct rangingData {
   bool run_ranging;
@@ -30,6 +32,20 @@ typedef struct networkData {
   bool reset_chain;
   bool failed_tags[4];
 } networkData;
+
+rangingData onDeviceRangingData;
+rangingData offDeviceRangingData;
+
+networkData onDeviceNetworkData;
+networkData offDeviceNetworkData;
+
+uint8_t macs[][6] = {
+  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
+  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
+  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // Master IO
+};
 
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
@@ -134,28 +150,6 @@ void sendRangingData() {
 /******************************************
 ************ NETWORK FUNCTIONS ************
 ******************************************/
-
-// MAC addresses
-uint8_t macs[][6] = {
-  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
-  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
-  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // Master IO
-};
-
-// Global variable to indicate if ESP-NOW data was sent
-volatile bool packetSent = false;
-
-bool malfunctioning_tags[4] = {false, false, false, false};
-
-rangingData onDeviceRangingData;
-
-rangingData offDeviceRangingData;
-
-networkData onDeviceNetworkData;
-
-networkData offDeviceNetworkData;
 
 void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
   if(bufferSize < 18) {
