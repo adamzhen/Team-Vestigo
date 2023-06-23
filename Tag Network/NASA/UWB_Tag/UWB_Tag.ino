@@ -269,8 +269,7 @@ void sendUpdateToPeer() {
 
 void waitForPacketSent() {
   while(!packetSent) {
-    // Wait for the packet to be sent
-    delay(10);  // Non-busy wait
+    delay(1);
   }
 }
 
