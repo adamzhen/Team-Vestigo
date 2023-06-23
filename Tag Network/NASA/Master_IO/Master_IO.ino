@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
 #include <Ethernet.h>
+#include <SPI.h>
 
 /******************************************
 ******** GEN VARIABLES AND STRUCTS ********
