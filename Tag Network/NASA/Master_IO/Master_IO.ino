@@ -17,11 +17,14 @@ float distances[4][13] = {0};
 bool online_tags[4] = {false};
 bool received[4] = {false};
 bool all_tags_online = false;
+int attempts[4] = {0};
+bool startup_success = false;
 
 IPAddress server(192, 168, 8, 132);
 unsigned int network_port = 1234; 
 unsigned int error_port = 1235;
 EthernetClient client;
+bool startNetworkSetup = false;
 
 volatile bool packetSent = false;
 unsigned long lastDataReceivedMillis = 0;
@@ -204,27 +207,86 @@ void sendNetworkPoll(uint8_t *tag_mac) {
 }
 
 void checkTagsOnline() {
-  uint8_t tag_poll_index = 0;
+  static uint8_t tag_poll_index = 0;
+  
   if (packetSent) {
     online_tags[tag_poll_index] = true;
 
+    // If the tag responded, reset the number of attempts for this tag and move to the next tag
+    attempts[tag_poll_index] = 0;
     tag_poll_index++;
 
     if (tag_poll_index >= 4) { 
       tag_poll_index = 0;
+    }
+  } else {
+    // If the tag didn't respond, increase the number of attempts for this tag
+    attempts[tag_poll_index]++;
 
-      all_tags_online = true;
+    // If we've tried 5 times without success, report this to the server
+    if (attempts[tag_poll_index] > 5) {
+      DynamicJsonDocument doc(64);
+      doc["tag_failures"] = attempts;
+      String output;
+      serializeJson(doc, output);
+      if (client.connect(server, error_port)) {
+        client.println(output);
+        client.stop();
+      }
+
+      // Reset the number of attempts for all tags
       for (int i = 0; i < 4; i++) {
-        if (!online_tags[i]) {
-          all_tags_online = false;
-          break;
-        }
+        attempts[i] = 0;
+        online_tags[i] = false;  // Reset all tags to offline
+      }
+
+      return;
+    }
+  }
+
+  // Check if all tags are online
+  all_tags_online = true;
+  for (int i = 0; i < 4; i++) {
+    if (!online_tags[i]) {
+      all_tags_online = false;
+      break;
+    }
+  }
+
+  // If not all tags are online, continue polling
+  if (!all_tags_online) {
+    sendNetworkPoll(macs[tag_poll_index]);
+  } else {
+    // If all tags are online, set startup_success to true
+    startup_success = true;
+  }
+}
+
+void startNetworkSetup() {
+  // Connect to the server
+  if (client.connect(server, error_port)) {
+    Serial.println("Connected to the server");
+  } else {
+    Serial.println("Failed to connect to the server");
+    return;  // If connection to the server failed, return from this function
+  }
+
+  // Wait for the server to send "start"
+  while(!startNetworkSetup) {
+    if (client.available() > 0) {
+      String serverMsg = client.readStringUntil('\n');
+
+      if (serverMsg == "start") {
+        startNetworkSetup = true;
+        Serial.println("Received start message from server, starting network setup");
       }
     }
+    delay(10);
+  }
 
-    if (!all_tags_online) {
-      sendNetworkPoll(macs[tag_poll_index]);
-    }
+  while(!all_tags_online) {
+    checkTagsOnline();
+    delay(10);
   }
 }
 
@@ -291,11 +353,10 @@ void setup() {
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
 
-  while(!all_tags_online) {
-    checkTagsOnline();
-    delay(10);
+  while (!startup_success) {
+    startNetworkSetup();
   }
-
+  
   sendInitializationToTag(macs[0]);
 }
 
