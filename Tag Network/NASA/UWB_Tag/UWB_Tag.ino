@@ -130,7 +130,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   }
   // If the data is networkData
   else if (dataType == 1) {
-    Serial.print("Network Data Received");
+    Serial.println("Network Data Received");
     memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
     if(offDeviceNetworkData.reset_chain) {
       Serial.println("Reset command received");
@@ -472,6 +472,10 @@ void sendRangingData() {
 
 void setup() {
   Serial.begin(115200);
+
+  Serial.println("");
+  Serial.println("NEW RUN NEW RUN NEW RUN");
+  Serial.println("");
 
   setup_esp_now();
 
