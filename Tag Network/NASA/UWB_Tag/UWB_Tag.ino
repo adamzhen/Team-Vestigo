@@ -89,56 +89,6 @@ static uint64_t resp_tx_ts;
 extern dwt_txconfig_t txconfig_options;
 
 /******************************************
-************ GENERAL FUNCTIONS ************
-******************************************/
-
-void swapKeys() {
-  if(keys.size() < 9) // check if we have enough elements to swap
-    return;
-
-  // Save the original elements in temporary variables
-  std::pair<int, std::vector<float>> temp_7 = keys[6];
-  std::pair<int, std::vector<float>> temp_8 = keys[7];
-  std::pair<int, std::vector<float>> temp_9 = keys[8];
-
-  keys[6] = keys[5];
-  keys[8] = temp_7;
-  keys[5] = temp_8;
-  keys[7] = temp_9;
-}
-
-void averageDistanceData() {
-  for (auto& key : keys) {
-    if (!keys[i].second.empty()) {
-      float sum = 0;
-      for (float d : keys[i].second) {
-        sum += d;
-      }
-
-      // Replace the distance vector with its average
-      int key_size = keys[i].second.size();
-      keys[i].second.clear();
-      keys[i].second.push_back(sum / key_size);
-    } else {
-      keys[i].second.push_back(0);
-    }
-  }
-}
-
-void sendRangingData() {
-  std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
-  std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
-    return a.first < b.first;
-  });
-
-  for (int i = 0; i < sortedKeys.size(); i++) {
-    onDeviceRangingData.data[i] = sortedKeys[i].second[0];
-  }
-
-  sendToPeer(macs[4], &onDeviceRangingData);
-}
-
-/******************************************
 ************ NETWORK FUNCTIONS ************
 ******************************************/
 
@@ -433,7 +383,7 @@ void advancedRanging() {
       // checks if there is enough data to send
       if (unique_distance_counter >= 5) 
       {
-        averageDistanceData();
+        averageDistanceData(i);
 
         sendRangingData();
 
@@ -451,6 +401,56 @@ void advancedRanging() {
       }  
     }
   }
+}
+
+/******************************************
+************ GENERAL FUNCTIONS ************
+******************************************/
+
+void swapKeys() {
+  if(keys.size() < 9) // check if we have enough elements to swap
+    return;
+
+  // Save the original elements in temporary variables
+  std::pair<int, std::vector<float>> temp_7 = keys[6];
+  std::pair<int, std::vector<float>> temp_8 = keys[7];
+  std::pair<int, std::vector<float>> temp_9 = keys[8];
+
+  keys[6] = keys[5];
+  keys[8] = temp_7;
+  keys[5] = temp_8;
+  keys[7] = temp_9;
+}
+
+void averageDistanceData(int i) {
+  for (auto& key : keys) {
+    if (!keys[i].second.empty()) {
+      float sum = 0;
+      for (float d : keys[i].second) {
+        sum += d;
+      }
+
+      // Replace the distance vector with its average
+      int key_size = keys[i].second.size();
+      keys[i].second.clear();
+      keys[i].second.push_back(sum / key_size);
+    } else {
+      keys[i].second.push_back(0);
+    }
+  }
+}
+
+void sendRangingData() {
+  std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
+  std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
+    return a.first < b.first;
+  });
+
+  for (int i = 0; i < sortedKeys.size(); i++) {
+    onDeviceRangingData.data[i] = sortedKeys[i].second[0];
+  }
+
+  sendToPeer(macs[4], &onDeviceRangingData);
 }
 
 /**************************************
