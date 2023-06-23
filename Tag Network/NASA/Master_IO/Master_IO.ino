@@ -343,6 +343,17 @@ void setup_esp_now() {
 
 void setup() {
   Serial.begin(115200);
+
+  Note: Connect WiFi or Ethernet before this
+  WiFi.begin("Vestigo-Router", "Vestigo&2023");
+  while (WiFi.status() != WL_CONNECTED) {
+  delay(1000);
+  Serial.println("Connecting to WiFi...");
+  }
+
+  String mac = WiFi.macAddress();
+  Serial.println(mac);
+
   
   // Start Ethernet
   Ethernet.init(ETH_PHY_POWER);   // power pin
