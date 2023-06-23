@@ -5,17 +5,44 @@
 #include <WiFiUdp.h>
 #include <Ethernet.h>
 
+/******************************************
+******** GEN VARIABLES AND STRUCTS ********
+******************************************/
+
 // PHY config
 #define ETH_CLK_MODE    ETH_CLOCK_GPIO17_OUT
 #define ETH_PHY_POWER   12
 
-// Add your server's IP address
+float distances[4][13] = {0};
+bool received[4] = {false};
+
 IPAddress server(192, 168, 8, 132);
-unsigned int port = 1234; // Replace with your port
-
+unsigned int network_port = 1234; 
+unsigned int error_port = 1235;
 EthernetClient client;
+volatile bool packetSent = false;
+unsigned long lastDataReceivedMillis = 0;
+unsigned long dataTimeoutMillis = 3000;
+unsigned int resetAttempts = 0;
+unsigned int resetsConfirmed = 0;
 
-// MAC addresses
+typedef struct rangingData {
+  bool run_ranging;
+  float data[13];
+  int tag_id = 0; 
+} rangingData;
+
+typedef struct networkData {
+  bool reset_chain;
+  bool failed_tags[4];
+} networkData;
+
+rangingData onDeviceRangingData;
+rangingData offDeviceRangingData;
+
+networkData onDeviceNetworkData;
+networkData offDeviceNetworkData;
+
 uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
   {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
@@ -24,36 +51,16 @@ uint8_t macs[][6] = {
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // Master IO
 };
 
-// Global variable to indicate if ESP-NOW data was sent
-volatile bool packetSent = false;
+/******************************************
+************ NETWORK FUNCTIONS ************
+******************************************/
 
-unsigned long lastDataReceivedMillis = 0;
-unsigned long dataTimeoutMillis = 3000; // Set timeout to 3 seconds
-
-// Variables to keep track of reset attempts
-unsigned int resetAttempts = 0;
-unsigned int resetsConfirmed = 0;
-
-// Structure example to send data
-// Must match the receiver structure
-typedef struct struct_message {
-  bool run_ranging;
-  bool reset_chain;
-  float data[13];  // Assuming there are 12 elements
-  int tag_id = 0; 
-  bool failed_tags[4];
-} struct_message;
-
-
-// Arrays to hold the distances
-float distances[4][13] = {0};
-bool received[4] = {false};
-
-// Create a struct_message called myData
-struct_message myData;
-
-// Create a struct_message to hold incoming readings
-struct_message incomingReadings;
+void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
+  if(bufferSize < 18) {
+    return;
+  }
+  sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
@@ -70,58 +77,59 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  memcpy(distances[incomingReadings.tag_id], incomingReadings.data, sizeof(incomingReadings.data));
-  received[incomingReadings.tag_id] = true;
+  // Assuming the first byte in incomingData determines the type of data
+  uint8_t dataType = incomingData[0];
 
-  // For debugging: print the received distances
-  Serial.println("Distances received:");
-  for (int i = 0; i < 13; i++) {
-    Serial.print(distances[incomingReadings.tag_id][i]);
-    Serial.print(" ");
-  }
-  Serial.println();
+  // If the data is rangingData
+  if (dataType == 0) {
+    memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
+    memcpy(distances[offDeviceRangingData.tag_id], offDeviceRangingData.data, sizeof(offDeviceRangingData.data));
+    received[offDeviceRangingData.tag_id] = true;
 
-  if(received[0] && received[1] && received[2] && received[3] && false) {
-    sendJson();
-    for(int i = 0; i < 4; i++) {
-      received[i] = false;
+    // For debugging: print the received distances
+    Serial.println("Distances received:");
+    for (int i = 0; i < 13; i++) {
+      Serial.print(distances[offDeviceRangingData.tag_id][i]);
+      Serial.print(" ");
     }
-  }
+    Serial.println();
 
-  // If myData.reset_chain is true, increment resetsConfirmed
-  if (myData.reset_chain) {
-    resetsConfirmed++;
-    if (resetsConfirmed == (sizeof(macs)/sizeof(macs[0]))-1) { // if all devices have been reset
-      resetAttempts = 0;
-      resetsConfirmed = 0;
-    }
-  }
-
-   // If incomingReadings.reset_chain is true, send a reset command to all devices
-  if (incomingReadings.reset_chain) {
-    Serial.println("Reset command received from network device");
-    sendReset();
-  }
-
-  // Check if there's any failed device
-  for (int i = 0; i < 4; i++) {
-    if (incomingReadings.failed_tags[i]) {
-      Serial.print("Tag ");
-      Serial.print(i);
-      Serial.println(" malfunctioning. Resetting this tag.");
-
-      // If the first tag is malfunctioning, reset the entire network
-      if (i == 0) {
-        Serial.println("First tag malfunctioning. Resetting entire network.");
-        sendReset();
-      } else {  // If it's another tag, reset only that tag
-        sendResetToTag(i);
+    if(received[0] && received[1] && received[2] && received[3]) {
+      sendJson();
+      for(int i = 0; i < 4; i++) {
+        received[i] = false;
       }
     }
   }
 
-  // Update the last data received time
+  // If the data is networkData
+  else if (dataType == 1) {
+    memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
+  
+    // If offDeviceNetworkData.reset_chain is true, send a reset command to all devices
+    if (offDeviceNetworkData.reset_chain) {
+      Serial.println("Reset command received from network device");
+      sendResetGlobal();
+    }
+
+    // Check if there's any failed device
+    for (int i = 0; i < 4; i++) {
+      if (offDeviceNetworkData.failed_tags[i]) {
+        Serial.print("Tag ");
+        Serial.print(i);
+        Serial.println(" malfunctioning. Resetting this tag.");
+
+        // If the first tag is malfunctioning, reset the entire network
+        if (i == 0) {
+          Serial.println("First tag malfunctioning. Resetting entire network.");
+          sendResetGlobal();
+        } else {  // If it's another tag, reset only that tag
+          sendResetToTag(i);
+        }
+      }
+    }
+  }
+
   lastDataReceivedMillis = millis();
 }
 
@@ -139,7 +147,7 @@ void sendJson() {
   Serial.println(jsonString);
 
   // Connect to server
-  if (client.connect(server, port)) {
+  if (client.connect(server, network_port)) {
     // Send JSON string
     client.println(jsonString);
     client.stop(); // Close the connection
@@ -148,24 +156,64 @@ void sendJson() {
   }
 }
 
-void sendReset() {
-  myData.reset_chain = true;
-  for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {  // Start from the one before last, since the last one is Gateway.
-    sendToPeer(macs[i], &myData);
+void sendResetGlobal() {
+  onDeviceNetworkData.reset_chain = true;
+  for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {
+    sendToPeerNetwork(macs[i], &onDeviceNetworkData);
     waitForPacketSent();
   }
-  myData.reset_chain = false;
+  onDeviceNetworkData.reset_chain = false;
 }
 
 void sendResetToTag(int tag_id) {
-  myData.reset_chain = true;
-  sendToPeer(macs[tag_id], &myData);
+  onDeviceNetworkData.reset_chain = true;
+  sendToPeerNetwork(macs[tag_id], &onDeviceNetworkData);
   waitForPacketSent();
-  myData.reset_chain = false;
+  onDeviceNetworkData.reset_chain = false;
 }
 
-void setup() 
-{
+void setup_esp_now() {
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  // Init ESPNow with a fallback logic
+  WiFi.disconnect();
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESPNow Init Failed");
+    ESP.restart();
+  }
+  Serial.println("ESPNow Init Success");
+
+  // Once ESPNow is successfully Init, we will register for Send CB to
+  // get the status of Transmitted packet
+  esp_now_register_send_cb(OnDataSent);
+
+  // Register for Receive CB to get incoming data
+  esp_now_register_recv_cb(OnDataRecv);
+
+  // Register peers
+  for(int i=0; i<sizeof(macs)/sizeof(macs[0]); i++) {
+    esp_now_peer_info_t peerInfo;
+    memcpy(peerInfo.peer_addr, macs[i], 6);
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+
+    peerInfo.ifidx = WIFI_IF_STA;
+
+    // Add peer        
+    if (esp_now_add_peer(&peerInfo) != ESP_OK){
+      Serial.println("Failed to add peer");
+      return;
+    }
+  }
+}
+
+
+/**************************************
+************ PROGRAM SETUP ************
+**************************************/
+
+void setup() {
   Serial.begin(115200);
   
   // Start Ethernet
@@ -188,8 +236,11 @@ void setup()
   esp_now_register_recv_cb(OnDataRecv);
 }
 
-void loop() 
-{
+/*************************************
+************ PROGRAM LOOP ************
+*************************************/
+
+void loop() {
   // Add this part to maintain the Ethernet connection
   if (Ethernet.linkStatus() == LinkOFF) {
     Serial.println("Ethernet link has been lost, waiting for reconnection...");
@@ -203,7 +254,7 @@ void loop()
     resetAttempts++;
     // If we've tried resetting 5 times with no success, send an error
     if (resetAttempts > 5) {
-      if (errorClient.connect(server, 1235)) {
+      if (errorClient.connect(server, error_port)) {
         errorClient.println("Error: Unable to reset devices after 5 attempts.");
         errorClient.stop();
         resetAttempts = 0;

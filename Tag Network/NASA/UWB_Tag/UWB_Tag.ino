@@ -196,42 +196,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   }
 }
 
-void setup_esp_now() {
-  // Set device as a Wi-Fi Station
-  WiFi.mode(WIFI_STA);
-
-  // Init ESPNow with a fallback logic
-  WiFi.disconnect();
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("ESPNow Init Failed");
-    ESP.restart();
-  }
-  Serial.println("ESPNow Init Success");
-
-  // Once ESPNow is successfully Init, we will register for Send CB to
-  // get the status of Transmitted packet
-  esp_now_register_send_cb(OnDataSent);
-
-  // Register for Receive CB to get incoming data
-  esp_now_register_recv_cb(OnDataRecv);
-
-  // Register peers
-  for(int i=0; i<sizeof(macs)/sizeof(macs[0]); i++) {
-    esp_now_peer_info_t peerInfo;
-    memcpy(peerInfo.peer_addr, macs[i], 6);
-    peerInfo.channel = 0;
-    peerInfo.encrypt = false;
-
-    peerInfo.ifidx = WIFI_IF_STA;
-
-    // Add peer        
-    if (esp_now_add_peer(&peerInfo) != ESP_OK){
-      Serial.println("Failed to add peer");
-      return;
-    }
-  }
-}
-
 void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
   esp_err_t result;
   for (int i = 0; i < retries; i++) {
@@ -309,6 +273,42 @@ void waitForPacketSent() {
   while(!packetSent) {
     // Wait for the packet to be sent
     delay(10);  // Non-busy wait
+  }
+}
+
+void setup_esp_now() {
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  // Init ESPNow with a fallback logic
+  WiFi.disconnect();
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESPNow Init Failed");
+    ESP.restart();
+  }
+  Serial.println("ESPNow Init Success");
+
+  // Once ESPNow is successfully Init, we will register for Send CB to
+  // get the status of Transmitted packet
+  esp_now_register_send_cb(OnDataSent);
+
+  // Register for Receive CB to get incoming data
+  esp_now_register_recv_cb(OnDataRecv);
+
+  // Register peers
+  for(int i=0; i<sizeof(macs)/sizeof(macs[0]); i++) {
+    esp_now_peer_info_t peerInfo;
+    memcpy(peerInfo.peer_addr, macs[i], 6);
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+
+    peerInfo.ifidx = WIFI_IF_STA;
+
+    // Add peer        
+    if (esp_now_add_peer(&peerInfo) != ESP_OK){
+      Serial.println("Failed to add peer");
+      return;
+    }
   }
 }
 
