@@ -22,7 +22,7 @@ bool all_tags_online = false;
 int attempts[4] = {0};
 bool startup_success = false;
 
-IPAddress server(192, 168, 8, 132);
+IPAddress server(192, 168, 1, 177);
 unsigned int network_port = 1234; 
 unsigned int error_port = 1235;
 EthernetClient client;
