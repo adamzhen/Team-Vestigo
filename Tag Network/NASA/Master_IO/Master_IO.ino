@@ -35,6 +35,7 @@ typedef struct rangingData {
 typedef struct networkData {
   bool reset_chain;
   bool failed_tags[4];
+  bool network_initialize;
 } networkData;
 
 rangingData onDeviceRangingData;
@@ -156,6 +157,23 @@ void sendJson() {
   }
 }
 
+void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
+  esp_err_t result;
+  for (int i = 0; i < retries; i++) {
+    result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(networkData));
+    if (result == ESP_OK) {
+      Serial.println("Sent networkData success");
+      packetSent = false;  // Reset the flag
+      break;
+    } else {
+      Serial.println("Error sending the networkData");
+      if (i < retries - 1) {
+        delay(250);
+      }
+    }
+  }
+}
+
 void sendResetGlobal() {
   onDeviceNetworkData.reset_chain = true;
   for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {
@@ -170,6 +188,14 @@ void sendResetToTag(int tag_id) {
   sendToPeerNetwork(macs[tag_id], &onDeviceNetworkData);
   waitForPacketSent();
   onDeviceNetworkData.reset_chain = false;
+}
+
+void sendInitializationToTag(uint8_t *tag_mac) {
+  onDeviceNetworkData.network_initialize = true;
+
+  sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
+
+  onDeviceNetworkData.network_initialize = false;
 }
 
 void setup_esp_now() {
@@ -234,6 +260,8 @@ void setup() {
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
+
+  sendInitializationToTag(macs[0]);
 }
 
 /*************************************

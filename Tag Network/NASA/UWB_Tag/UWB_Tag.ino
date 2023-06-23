@@ -19,7 +19,6 @@ bool malfunctioning_tags[4] = {false, false, false, false};
 
 const int tag_id = 4;
 const int num_tags = 4;
-bool firstRun;
 volatile bool packetSent = false;
 
 typedef struct rangingData {
@@ -31,6 +30,7 @@ typedef struct rangingData {
 typedef struct networkData {
   bool reset_chain;
   bool failed_tags[4];
+  bool network_initialize = false;
 } networkData;
 
 rangingData onDeviceRangingData;
@@ -91,15 +91,6 @@ extern dwt_txconfig_t txconfig_options;
 /******************************************
 ************ GENERAL FUNCTIONS ************
 ******************************************/
-
-bool firstRun_check(int tag_id) {
-  if (tag_id == 1) {
-    return true;
-  } 
-  else {
-    return false
-  }
-}
 
 void swapKeys() {
   if(keys.size() < 9) // check if we have enough elements to swap
@@ -193,6 +184,13 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       Serial.println("Reset command received");
       ESP.restart();
     }
+
+    // If network initialization command received
+    if(offDeviceNetworkData.network_initialize) {
+      Serial.println("Network initialization command received");
+      offDeviceRangingData.run_ranging = true;
+      offDeviceNetworkData.network_initialize = false;
+    }
   }
 }
 
@@ -223,8 +221,8 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
       break;
     } else {
       Serial.println("Error sending the networkData");
-      if (i < retries - 1) {  // If it's not the last retry
-        delay(250);  // Delay before retry
+      if (i < retries - 1) {
+        delay(250);
       }
     }
   }
@@ -517,8 +515,6 @@ void setup() {
     keys.push_back(std::make_pair(i, std::vector<float>()));
   }  
 
-  firstRun = firstRun_check(tag_id)
-
   onDeviceRangingData.tag_id = tag_id - 1;
 }
 
@@ -527,20 +523,16 @@ void setup() {
 *************************************/
 
 void loop() {
-  if (firstRun || offDeviceRangingData.run_ranging) {
+  if (offDeviceRangingData.run_ranging) {
     Serial.println("Read Data or First Run");
-    // Reset flags
+
     offDeviceRangingData.run_ranging = false;
 
-    // Execute the advancedRanging function
     advancedRanging();
     Serial.println("Ranging Data Gathered");
 
-    // Prepare and send an update to a different ESP32
     onDeviceRangingData.run_ranging = true;
     sendUpdateToPeer();
   }
-
-  firstRun = false;
 }
 
