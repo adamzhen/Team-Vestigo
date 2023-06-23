@@ -57,7 +57,7 @@ uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
   {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // Master IO
+  {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 };
 
 /******************************************
@@ -343,17 +343,6 @@ void setup_esp_now() {
 
 void setup() {
   Serial.begin(115200);
-
-  Note: Connect WiFi or Ethernet before this
-  WiFi.begin("Vestigo-Router", "Vestigo&2023");
-  while (WiFi.status() != WL_CONNECTED) {
-  delay(1000);
-  Serial.println("Connecting to WiFi...");
-  }
-
-  String mac = WiFi.macAddress();
-  Serial.println(mac);
-
   
   // Start Ethernet
   Ethernet.init(ETH_PHY_POWER);   // power pin
