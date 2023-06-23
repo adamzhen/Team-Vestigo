@@ -166,8 +166,13 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
 void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
   esp_err_t result;
+
+  uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
+  buf[0] = 1;  // NetworkData type identifier
+  memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
+
   for (int i = 0; i < retries; i++) {
-    result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(networkData));
+    result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent networkData success");
       packetSent = false;  // Reset the flag
