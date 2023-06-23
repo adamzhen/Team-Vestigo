@@ -182,27 +182,39 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 }
 
 void sendResetGlobal() {
+  Serial.println("sendResetGlobal");
+
   onDeviceNetworkData.reset_chain = true;
   for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {
     sendToPeerNetwork(macs[i], &onDeviceNetworkData);
     waitForPacketSent();
   }
   onDeviceNetworkData.reset_chain = false;
+
+  Serial.println("sendResetGlobal Success");
 }
 
 void sendResetToTag(int tag_id) {
+  Serial.println("sendResetToTag");
+
   onDeviceNetworkData.reset_chain = true;
   sendToPeerNetwork(macs[tag_id], &onDeviceNetworkData);
   waitForPacketSent();
   onDeviceNetworkData.reset_chain = false;
+
+  Serial.println("sendResetToTag Success");
 }
 
 void sendInitializationToTag(uint8_t *tag_mac) {
+  Serial.println("sendInitializationToTag");
+
   onDeviceNetworkData.network_initialize = true;
 
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
 
   onDeviceNetworkData.network_initialize = false;
+
+  Serial.println("sendInitializationToTag Success");
 }
 
 void sendNetworkPoll(uint8_t *tag_mac) {
@@ -210,6 +222,8 @@ void sendNetworkPoll(uint8_t *tag_mac) {
   onDeviceNetworkData.reset_chain = false;
 
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
+
+  Serial.println("sendNetworkPoll");
 }
 
 void checkTagsOnline() {
@@ -264,10 +278,12 @@ void checkTagsOnline() {
 
   // If not all tags are online, continue polling
   if (!all_tags_online) {
+    Serial.println("Tag Setup Poll");
     sendNetworkPoll(macs[tag_poll_index]);
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
+    Serial.println("All Tags Online");
   }
 }
 
@@ -351,6 +367,10 @@ void setup_esp_now() {
 
 void setup() {
   Serial.begin(115200);
+
+  Serial.println("");
+  Serial.println("NEW RUN NEW RUN NEW RUN");
+  Serial.println("");
   
   // // Start Ethernet
   // Ethernet.init(ETH_PHY_POWER);   // power pin
@@ -376,6 +396,8 @@ void setup() {
   }
   
   sendInitializationToTag(macs[0]);
+
+  Serial.println("Initialized");
 }
 
 /*************************************
@@ -384,29 +406,27 @@ void setup() {
 
 void loop() {
   // Add this part to maintain the Ethernet connection
-  Serial.println("running");
   // if (Ethernet.linkStatus() == LinkOFF) {
   //   Serial.println("Ethernet link has been lost, waiting for reconnection...");
   //   delay(10);
   //   return;
   // }
 
-  // Check if no data was received for more than dataTimeoutMillis milliseconds
-  if (millis() - lastDataReceivedMillis > dataTimeoutMillis) {
-    sendResetGlobal();
-    resetAttempts++;
-    // If we've tried resetting 5 times with no success, send an error
-    if (resetAttempts > 5) {
-      // if (errorClient.connect(server, error_port)) {
-      //   errorClient.println("Error: Unable to reset devices after 5 attempts.");
-      //   errorClient.stop();
-      //   resetAttempts = 0;
-      // }
-      Serial.println("NETWORK ERROR");
-    }
-    // Reset lastDataReceivedMillis to avoid multiple reset commands
-    lastDataReceivedMillis = millis();
-  }
-
+  // // Check if no data was received for more than dataTimeoutMillis milliseconds
+  // if (millis() - lastDataReceivedMillis > dataTimeoutMillis) {
+  //   sendResetGlobal();
+  //   resetAttempts++;
+  //   // If we've tried resetting 5 times with no success, send an error
+  //   if (resetAttempts > 5) {
+  //     // if (errorClient.connect(server, error_port)) {
+  //     //   errorClient.println("Error: Unable to reset devices after 5 attempts.");
+  //     //   errorClient.stop();
+  //     //   resetAttempts = 0;
+  //     // }
+  //     Serial.println("NETWORK ERROR");
+  //   }
+  //   // Reset lastDataReceivedMillis to avoid multiple reset commands
+  //   lastDataReceivedMillis = millis();
+  // }
   delay(10);  // Delay before checking the condition again
 }

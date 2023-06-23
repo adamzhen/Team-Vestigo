@@ -17,7 +17,7 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 bool malfunctioning_tags[4] = {false, false, false, false};
 
-const int tag_id = 4;
+const int tag_id = 1;
 const int num_tags = 4;
 volatile bool packetSent = false;
 
@@ -121,6 +121,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
   // If the data is rangingData
   if (dataType == 0) {
+    Serial.println("Ranging Data Received");
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
     Serial.print("Bytes received: ");
     Serial.println(len);
@@ -129,6 +130,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   }
   // If the data is networkData
   else if (dataType == 1) {
+    Serial.print("Network Data Received");
     memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
     if(offDeviceNetworkData.reset_chain) {
       Serial.println("Reset command received");
