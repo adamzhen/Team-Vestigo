@@ -192,15 +192,14 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 void sendUpdateToPeer() {
   bool allTagsMalfunctioning = true;  // Variable to check if all tags are malfunctioning
 
-  for (int i = 0; i <= num_tags - 1; i++) {
+  for (int i = 0; i <= num_tags - 2; i++) {
     int nextTagID = (tag_id + i) % num_tags;
 
     // Update the networkData struct to run ranging
     onDeviceNetworkData.run_ranging = true;
     sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
-    waitForPacketSent();
-
-    if (packetSent) {  // If the packet was sent successfully
+    
+    if (waitForPacketSent()) {  // If the packet was sent successfully
       Serial.println("Next device activated");
       onDeviceNetworkData.failed_tags[nextTagID] = false; // Clear this tag from the malfunctioning list
       allTagsMalfunctioning = false; // If any tag is functioning, set allTagsMalfunctioning to false
@@ -229,18 +228,19 @@ void sendUpdateToPeer() {
   }
 }
 
-void waitForPacketSent() {
+bool waitForPacketSent() {
   unsigned long startMillis = millis(); // current time
   while(!packetSent) {
     delay(10);
     // If waiting more than 3 seconds
     if (millis() - startMillis > 3000) {
       Serial.println("Failed to send packet");
-      return; // break the infinite loop
+      return false; // packet was not sent
     }
   }
-  packetSent = false; // reset flag after packet has been sent
+  return true; // packet was sent
 }
+
 
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
