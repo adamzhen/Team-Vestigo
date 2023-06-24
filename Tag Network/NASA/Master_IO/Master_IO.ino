@@ -173,8 +173,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
 void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
   esp_err_t result;
-  Serial.print("Initialization Flag: ");
-  Serial.println(message->network_initialize);  // Print the value from the message directly
   uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
   buf[0] = 1;  // NetworkData type identifier
   memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
@@ -218,15 +216,11 @@ void sendResetToTag(int tag_id) {
 }
 
 void sendInitializationToTag(uint8_t *tag_mac) {
-  Serial.println("sendInitializationToTag");
-
   onDeviceNetworkData.network_initialize = true;
 
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
 
   onDeviceNetworkData.network_initialize = false;
-
-  Serial.println("sendInitializationToTag Success");
 }
 
 void sendNetworkPoll(uint8_t *tag_mac) {
@@ -234,8 +228,6 @@ void sendNetworkPoll(uint8_t *tag_mac) {
   onDeviceNetworkData.reset_chain = false;
 
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
-
-  Serial.println("sendNetworkPoll");
 }
 
 void checkTagsOnline() {
@@ -290,13 +282,11 @@ void checkTagsOnline() {
 
   // If not all tags are online, continue polling
   if (!all_tags_online) {
-    Serial.println("Tag Setup Poll");
     sendNetworkPoll(macs[tag_poll_index]);
     waitForPacketSent();
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
-    Serial.println("All Tags Online");
   }
 }
 
@@ -403,8 +393,6 @@ void setup() {
   }
   
   sendInitializationToTag(macs[0]);
-
-  Serial.println("Initialized");
 }
 
 /*************************************
