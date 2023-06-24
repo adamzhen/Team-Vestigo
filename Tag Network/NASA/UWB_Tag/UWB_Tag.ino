@@ -8,6 +8,24 @@
 #include <SPI.h>
 #include <esp_now.h>
 
+void printKeysAndDistances() {
+  for (const auto& key : keys) {
+    Serial.print("Key: ");
+    Serial.print(key.first);
+    Serial.print(", Distances: ");
+
+    if (key.second.empty()) {
+      Serial.println("No distances recorded");
+    } else {
+      for (const auto& distance : key.second) {
+        Serial.print(distance);
+        Serial.print(" ");
+      }
+      Serial.println();
+    }
+  }
+}
+
 /******************************************
 ******** GEN VARIABLES AND STRUCTS ********
 ******************************************/
@@ -402,6 +420,8 @@ void advancedRanging() {
       if (it != keys.end()) {
           it->second.push_back(distance);
       }
+
+      printKeysAndDistances();
 
       // counter
       int unique_distance_counter = 0;
