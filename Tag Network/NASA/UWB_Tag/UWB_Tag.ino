@@ -405,12 +405,13 @@ void advancedRanging() {
 
       // counter
       int unique_distance_counter = 0;
-      int total_distance_counter = 0;
+      int total_distance_counter = 0;      
 
-      for (int i = 0; i < 12; i++) 
-      {
-        if (keys[i].second.size() >= 2) 
-        {
+      Serial.print("Unique Counter: ");
+      Serial.println(unique_distance_counter);
+
+      for (int i = 0; i < 12; i++) {
+        if (keys[i].second.size() >= 2) {
           unique_distance_counter += 1;
         } 
         if (keys[i].second.size() >= 1) {
@@ -419,11 +420,34 @@ void advancedRanging() {
       }
 
       // checks if there is enough data to send
-      if (unique_distance_counter >= 5) 
-      {
-        averageDistanceData(i);
+      if (unique_distance_counter >= 5) {
+        for (auto& key : keys) {
+          if (!keys[i].second.empty()) {
+            float sum = 0;
+            for (float d : keys[i].second) {
+              sum += d;
+            }
 
-        sendRangingData();
+            // Replace the distance vector with its average
+            int key_size = keys[i].second.size();
+            keys[i].second.clear();
+            keys[i].second.push_back(sum / key_size);
+          } else {
+            keys[i].second.push_back(0);
+          }
+        }
+
+        std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
+        std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
+          return a.first < b.first;
+        });
+
+        for (int i = 0; i < sortedKeys.size(); i++) {
+          onDeviceRangingData.data[i] = sortedKeys[i].second[0];
+        }
+
+        Serial.println("Send Ranging Data to MIO");
+        sendToPeer(MIOmac, &onDeviceRangingData);
 
         // Sort Key Order
         std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
@@ -433,63 +457,23 @@ void advancedRanging() {
         // Move the first 5 elements to the end
         std::rotate(keys.begin(), keys.begin() + (12 - total_distance_counter), keys.end());
 
-        swapKeys();
+        if(keys.size() < 9) // check if we have enough elements to swap
+        return;
+
+        // Save the original elements in temporary variables
+        std::pair<int, std::vector<float>> temp_7 = keys[6];
+        std::pair<int, std::vector<float>> temp_8 = keys[7];
+        std::pair<int, std::vector<float>> temp_9 = keys[8];
+
+        keys[6] = keys[5];
+        keys[8] = temp_7;
+        keys[5] = temp_8;
+        keys[7] = temp_9;
 
         break;
       }  
     }
   }
-}
-
-/******************************************
-************ GENERAL FUNCTIONS ************
-******************************************/
-
-void swapKeys() {
-  if(keys.size() < 9) // check if we have enough elements to swap
-    return;
-
-  // Save the original elements in temporary variables
-  std::pair<int, std::vector<float>> temp_7 = keys[6];
-  std::pair<int, std::vector<float>> temp_8 = keys[7];
-  std::pair<int, std::vector<float>> temp_9 = keys[8];
-
-  keys[6] = keys[5];
-  keys[8] = temp_7;
-  keys[5] = temp_8;
-  keys[7] = temp_9;
-}
-
-void averageDistanceData(int i) {
-  for (auto& key : keys) {
-    if (!keys[i].second.empty()) {
-      float sum = 0;
-      for (float d : keys[i].second) {
-        sum += d;
-      }
-
-      // Replace the distance vector with its average
-      int key_size = keys[i].second.size();
-      keys[i].second.clear();
-      keys[i].second.push_back(sum / key_size);
-    } else {
-      keys[i].second.push_back(0);
-    }
-  }
-}
-
-void sendRangingData() {
-  std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
-  std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
-    return a.first < b.first;
-  });
-
-  for (int i = 0; i < sortedKeys.size(); i++) {
-    onDeviceRangingData.data[i] = sortedKeys[i].second[0];
-  }
-
-  Serial.println("Send Ranging Data to MIO");
-  sendToPeer(MIOmac, &onDeviceRangingData);
 }
 
 /**************************************
