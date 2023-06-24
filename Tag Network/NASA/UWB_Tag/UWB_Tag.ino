@@ -21,7 +21,7 @@ const int tag_id = 1;
 const int num_tags = 4;
 volatile bool packetSent = false;
 
-typedef struct rangingData {
+typedef struct __attribute__((packed)) rangingData {
   float data[13];
   int tag_id = 0; 
 } rangingData;

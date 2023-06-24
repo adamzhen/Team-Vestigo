@@ -35,11 +35,11 @@ unsigned long dataTimeoutMillis = 3000;
 unsigned int resetAttempts = 0;
 unsigned int resetsConfirmed = 0;
 
-typedef struct rangingData {
-  bool run_ranging;
+typedef struct __attribute__((packed)) rangingData {
   float data[13];
   int tag_id = 0; 
 } rangingData;
+
 
 typedef struct __attribute__((packed)) networkData {
   bool run_ranging;
