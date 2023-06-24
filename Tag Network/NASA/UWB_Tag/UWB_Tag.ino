@@ -232,8 +232,7 @@ bool waitForPacketSent() {
   unsigned long startMillis = millis(); // current time
   while(!packetSent) {
     delay(10);
-    // If waiting more than 3 seconds
-    if (millis() - startMillis > 3000) {
+    if (millis() - startMillis > 100) {
       Serial.println("Failed to send packet");
       return false; // packet was not sent
     }
