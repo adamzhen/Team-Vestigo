@@ -76,6 +76,12 @@ void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
   sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
+void waitForPacketSent() {
+  while(!packetSent) {
+    delay(10);
+  }
+}
+
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
   formatMacAddress(mac_addr, macStr, 18);
@@ -173,7 +179,6 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 
   for (int i = 0; i < retries; i++) {
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
-    waitForPacketSent()
     if (result == ESP_OK) {
       Serial.println("Sent networkData success");
       packetSent = false;  // Reset the flag
@@ -286,6 +291,7 @@ void checkTagsOnline() {
   if (!all_tags_online) {
     Serial.println("Tag Setup Poll");
     sendNetworkPoll(macs[tag_poll_index]);
+    waitForPacketSent();
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
@@ -320,12 +326,6 @@ void startNetworkSetup() {
 
   while(!all_tags_online) {
     checkTagsOnline();
-    delay(10);
-  }
-}
-
-void waitForPacketSent() {
-  while(!packetSent) {
     delay(10);
   }
 }
