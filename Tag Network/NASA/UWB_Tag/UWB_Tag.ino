@@ -27,6 +27,7 @@ typedef struct rangingData {
 } rangingData;
 
 typedef struct __attribute__((packed)) networkData {
+  bool run_ranging;
   bool reset_chain;
   bool failed_tags[4];
   bool network_initialize;
