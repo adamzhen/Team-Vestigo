@@ -192,7 +192,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 void sendUpdateToPeer() {
   bool allTagsMalfunctioning = true;  // Variable to check if all tags are malfunctioning
 
-  for (int i = 0; i <= num_tags; i++) {  // Loop starting from 1 as we don't want to check itself
+  for (int i = 0; i <= num_tags - 1; i++) {  // Loop starting from 1 as we don't want to check itself
     int nextTagID = (tag_id + i) % num_tags;
 
     // Update the networkData struct to run ranging
