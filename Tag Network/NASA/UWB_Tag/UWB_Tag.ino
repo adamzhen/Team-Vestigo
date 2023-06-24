@@ -381,113 +381,119 @@ void advancedRanging() {
     key.second.clear();
   }
 
+  int iteration = 0;
+
   // Loop between keys until exit conditions are met
-  for (int i = 0; i < 7; i++) 
-  {
-    const auto& key = keys[i];
-    float distance = 0;
-    double tof = 0;
-
-    twr_transmitter_mode(key.first + 1, tof);                  
-    distance = tof * SPEED_OF_LIGHT;
-
-    if (distance != 0) 
+  while(iteration < 70) {
+    for (int i = 0; i < 7; i++) 
     {
-      // Find the correct position in the keys vector for the current anchor
-      auto it = std::find_if(keys.begin(), keys.end(), [&](const std::pair<int, std::vector<float>>& element) {
-          return element.first == key.first;
-      });
+      const auto& key = keys[i];
+      float distance = 0;
+      double tof = 0;
 
-      // If the anchor was found in the keys vector, append the distance
-      if (it != keys.end()) {
-          it->second.push_back(distance);
-      }
+      twr_transmitter_mode(key.first + 1, tof);                  
+      distance = tof * SPEED_OF_LIGHT;
 
-      for (const auto& key : keys) {
-        Serial.print("Key: ");
-        Serial.print(key.first);
-        Serial.print(", Distances: ");
+      if (distance != 0) 
+      {
+        // Find the correct position in the keys vector for the current anchor
+        auto it = std::find_if(keys.begin(), keys.end(), [&](const std::pair<int, std::vector<float>>& element) {
+            return element.first == key.first;
+        });
 
-        if (key.second.empty()) {
-          Serial.println("No distances recorded");
-        } else {
-          for (const auto& distance : key.second) {
-            Serial.print(distance);
-            Serial.print(" ");
-          }
-          Serial.println();
+        // If the anchor was found in the keys vector, append the distance
+        if (it != keys.end()) {
+            it->second.push_back(distance);
         }
-      }
 
-      // counter
-      int unique_distance_counter = 0;
-      int total_distance_counter = 0;      
+        for (const auto& key : keys) {
+          Serial.print("Key: ");
+          Serial.print(key.first);
+          Serial.print(", Distances: ");
 
-      Serial.print("Unique Counter: ");
-      Serial.println(unique_distance_counter);
-
-      for (int i = 0; i < 12; i++) {
-        if (keys[i].second.size() >= 2) {
-          unique_distance_counter += 1;
-        } 
-        if (keys[i].second.size() >= 1) {
-          total_distance_counter += 1;
-        }
-      }
-
-      // checks if there is enough data to send
-      if (unique_distance_counter >= 5) {
-        for (auto& key : keys) {
-          if (!keys[i].second.empty()) {
-            float sum = 0;
-            for (float d : keys[i].second) {
-              sum += d;
-            }
-
-            // Replace the distance vector with its average
-            int key_size = keys[i].second.size();
-            keys[i].second.clear();
-            keys[i].second.push_back(sum / key_size);
+          if (key.second.empty()) {
+            Serial.println("No distances recorded");
           } else {
-            keys[i].second.push_back(0);
+            for (const auto& distance : key.second) {
+              Serial.print(distance);
+              Serial.print(" ");
+            }
+            Serial.println();
           }
         }
 
-        std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
-        std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
-          return a.first < b.first;
-        });
+        // counter
+        int unique_distance_counter = 0;
+        int total_distance_counter = 0;      
 
-        for (int i = 0; i < sortedKeys.size(); i++) {
-          onDeviceRangingData.data[i] = sortedKeys[i].second[0];
+        Serial.print("Unique Counter: ");
+        Serial.println(unique_distance_counter);
+
+        for (int i = 0; i < 12; i++) {
+          if (keys[i].second.size() >= 2) {
+            unique_distance_counter += 1;
+          } 
+          if (keys[i].second.size() >= 1) {
+            total_distance_counter += 1;
+          }
         }
 
-        Serial.println("Send Ranging Data to MIO");
-        sendToPeer(MIOmac, &onDeviceRangingData);
+        // checks if there is enough data to send
+        if (unique_distance_counter >= 5) {
+          for (auto& key : keys) {
+            if (!keys[i].second.empty()) {
+              float sum = 0;
+              for (float d : keys[i].second) {
+                sum += d;
+              }
 
-        // Sort Key Order
-        std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
-          return a.second[0] < b.second[0];
-        });
+              // Replace the distance vector with its average
+              int key_size = keys[i].second.size();
+              keys[i].second.clear();
+              keys[i].second.push_back(sum / key_size);
+            } else {
+              keys[i].second.push_back(0);
+            }
+          }
 
-        // Move the first 5 elements to the end
-        std::rotate(keys.begin(), keys.begin() + (12 - total_distance_counter), keys.end());
+          std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
+          std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
+            return a.first < b.first;
+          });
 
-        if(keys.size() < 9) // check if we have enough elements to swap
-        return;
+          for (int i = 0; i < sortedKeys.size(); i++) {
+            onDeviceRangingData.data[i] = sortedKeys[i].second[0];
+          }
 
-        // Save the original elements in temporary variables
-        std::pair<int, std::vector<float>> temp_7 = keys[6];
-        std::pair<int, std::vector<float>> temp_8 = keys[7];
-        std::pair<int, std::vector<float>> temp_9 = keys[8];
+          Serial.println("Send Ranging Data to MIO");
+          sendToPeer(MIOmac, &onDeviceRangingData);
 
-        keys[6] = keys[5];
-        keys[8] = temp_7;
-        keys[5] = temp_8;
-        keys[7] = temp_9;
+          // Sort Key Order
+          std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
+            return a.second[0] < b.second[0];
+          });
 
-        break;
-      }  
+          // Move the first 5 elements to the end
+          std::rotate(keys.begin(), keys.begin() + (12 - total_distance_counter), keys.end());
+
+          if(keys.size() < 9) // check if we have enough elements to swap
+          return;
+
+          // Save the original elements in temporary variables
+          std::pair<int, std::vector<float>> temp_7 = keys[6];
+          std::pair<int, std::vector<float>> temp_8 = keys[7];
+          std::pair<int, std::vector<float>> temp_9 = keys[8];
+
+          keys[6] = keys[5];
+          keys[8] = temp_7;
+          keys[5] = temp_8;
+          keys[7] = temp_9;
+
+          break;
+        }  
+      }
+
+      iteration++;
     }
   }
 }
