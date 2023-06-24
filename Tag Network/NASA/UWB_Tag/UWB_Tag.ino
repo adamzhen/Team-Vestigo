@@ -236,7 +236,7 @@ void sendUpdateToPeer() {
 
 void waitForPacketSent() {
   while(!packetSent) {
-    delay(1);
+    delay(10);
   }
 }
 
