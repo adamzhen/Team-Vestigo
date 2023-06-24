@@ -46,7 +46,7 @@ uint8_t macs[][6] = {
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
 };
 
-byte MIOmac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
+byte MIOmac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
 
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
@@ -126,8 +126,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
     Serial.print("Bytes received: ");
     Serial.println(len);
-    Serial.print("run_ranging: ");
-    Serial.println(offDeviceRangingData.run_ranging);
   }
   // If the data is networkData
   else if (dataType == 1) {
@@ -141,7 +139,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     // If network initialization command received
     if(offDeviceNetworkData.network_initialize) {
       Serial.println("Network initialization command received");
-      offDeviceRangingData.run_ranging = true;
+      offDeviceNetworkData.run_ranging = true;
       offDeviceNetworkData.network_initialize = false;
     }
   }
@@ -555,15 +553,15 @@ void setup() {
 *************************************/
 
 void loop() {
-  if (offDeviceRangingData.run_ranging) {
+  if (offDeviceNetworkData.run_ranging) {
     Serial.println("Read Data or First Run");
 
-    offDeviceRangingData.run_ranging = false;
+    offDeviceNetworkData.run_ranging = false;
 
     advancedRanging();
     Serial.println("Ranging Data Gathered");
 
-    onDeviceRangingData.run_ranging = true;
+    onDeviceNetworkData.run_ranging = true;
     sendUpdateToPeer();
   }
 }
