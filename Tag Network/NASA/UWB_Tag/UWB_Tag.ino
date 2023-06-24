@@ -375,16 +375,18 @@ void twr_transmitter_mode(int key, double& tof) {
 ************ ADVANCED RANGING ************
 ******************************************/
 
-void advancedRanging() {
+void advancedRanging()
+{
+  bool looping = true;
+
   // Distance reset        
   for (auto& key : keys) {
     key.second.clear();
   }
 
-  int iteration = 0;
-
   // Loop between keys until exit conditions are met
-  while(iteration < 70) {
+  while(looping)
+  {
     for (int i = 0; i < 7; i++) 
     {
       const auto& key = keys[i];
@@ -406,31 +408,14 @@ void advancedRanging() {
             it->second.push_back(distance);
         }
 
-        for (const auto& key : keys) {
-          Serial.print("Key: ");
-          Serial.print(key.first);
-          Serial.print(", Distances: ");
-
-          if (key.second.empty()) {
-            Serial.println("No distances recorded");
-          } else {
-            for (const auto& distance : key.second) {
-              Serial.print(distance);
-              Serial.print(" ");
-            }
-            Serial.println();
-          }
-        }
-
         // counter
         int unique_distance_counter = 0;
-        int total_distance_counter = 0;      
+        int total_distance_counter = 0;
 
-        Serial.print("Unique Counter: ");
-        Serial.println(unique_distance_counter);
-
-        for (int i = 0; i < 12; i++) {
-          if (keys[i].second.size() >= 2) {
+        for (int i = 0; i < 12; i++) 
+        {
+          if (keys[i].second.size() >= 2) 
+          {
             unique_distance_counter += 1;
           } 
           if (keys[i].second.size() >= 1) {
@@ -439,14 +424,15 @@ void advancedRanging() {
         }
 
         // checks if there is enough data to send
-        if (unique_distance_counter >= 5) {
-          for (auto& key : keys) {
+        if (unique_distance_counter >= 5) 
+        {
+
+          for (int i = 0; i < 12; ++i) {
             if (!keys[i].second.empty()) {
               float sum = 0;
               for (float d : keys[i].second) {
                 sum += d;
               }
-
               // Replace the distance vector with its average
               int key_size = keys[i].second.size();
               keys[i].second.clear();
@@ -460,6 +446,8 @@ void advancedRanging() {
           std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
             return a.first < b.first;
           });
+
+          Serial.println("Attempt to Convert Keys to RangingData");
 
           for (int i = 0; i < sortedKeys.size(); i++) {
             onDeviceRangingData.data[i] = sortedKeys[i].second[0];
