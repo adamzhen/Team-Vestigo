@@ -173,6 +173,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 
   for (int i = 0; i < retries; i++) {
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
+    waitForPacketSent()
     if (result == ESP_OK) {
       Serial.println("Sent networkData success");
       packetSent = false;  // Reset the flag
@@ -325,7 +326,7 @@ void startNetworkSetup() {
 
 void waitForPacketSent() {
   while(!packetSent) {
-    delay(1);
+    delay(10);
   }
 }
 
