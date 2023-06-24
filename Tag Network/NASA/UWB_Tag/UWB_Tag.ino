@@ -404,16 +404,19 @@ void advancedRanging() {
       }
 
       // counter
-      int unique_distance_counter = std::count_if(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& element) {
-        return element.second.size() >= 2;
-      });
+      int unique_distance_counter = 0;
+      int total_distance_counter = 0;
 
-      Serial.print("Unique Counter: ");
-      Serial.println(unique_distance_counter);
-
-      int total_distance_counter = std::count_if(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& element) {
-        return !element.second.empty();
-      });
+      for (int i = 0; i < 12; i++) 
+      {
+        if (keys[i].second.size() >= 2) 
+        {
+          unique_distance_counter += 1;
+        } 
+        if (keys[i].second.size() >= 1) {
+          total_distance_counter += 1;
+        }
+      }
 
       // checks if there is enough data to send
       if (unique_distance_counter >= 5) 
