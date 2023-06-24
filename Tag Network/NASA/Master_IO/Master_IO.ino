@@ -173,11 +173,10 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
   esp_err_t result;
   Serial.print("Initialization Flag: ");
-  Serial.println(onDeviceNetworkData.network_initialize);
+  Serial.println(message->network_initialize);  // Print the value from the message directly
   uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
   buf[0] = 1;  // NetworkData type identifier
   memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
-  Serial.println(buf[-1]);
   for (int i = 0; i < retries; i++) {
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {

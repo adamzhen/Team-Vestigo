@@ -117,6 +117,13 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  //testing
+  Serial.println("Received data:");
+  for (int i = 0; i < len; i++) {
+    Serial.printf("%02X ", incomingData[i]);
+  }
+  Serial.println();
+
   // Assuming the first byte in incomingData determines the type of data
   uint8_t dataType = incomingData[0];
 
