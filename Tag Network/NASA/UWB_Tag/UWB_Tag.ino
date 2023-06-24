@@ -117,13 +117,6 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  //testing
-  Serial.println("Received data:");
-  for (int i = 0; i < len; i++) {
-    Serial.printf("%02X ", incomingData[i]);
-  }
-  Serial.println();
-
   // Assuming the first byte in incomingData determines the type of data
   uint8_t dataType = incomingData[0];
 
@@ -131,16 +124,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   if (dataType == 0) {
     Serial.println("Ranging Data Received");
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
-    Serial.print("Bytes received: ");
-    Serial.println(len);
   }
   // If the data is networkData
   else if (dataType == 1) {
     Serial.println("Network Data Received");
     memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
-
-    Serial.print("Initialization Flag: ");
-    Serial.println(offDeviceNetworkData.network_initialize);
 
     if(offDeviceNetworkData.reset_chain) {
       Serial.println("Reset command received");
@@ -488,6 +476,7 @@ void sendRangingData() {
     onDeviceRangingData.data[i] = sortedKeys[i].second[0];
   }
 
+  Serial.println("Send Ranging Data to MIO");
   sendToPeer(MIOmac, &onDeviceRangingData);
 }
 
@@ -565,12 +554,10 @@ void setup() {
 
 void loop() {
   if (offDeviceNetworkData.run_ranging) {
-    Serial.println("Read Data or First Run");
 
     offDeviceNetworkData.run_ranging = false;
 
     advancedRanging();
-    Serial.println("Ranging Data Gathered");
 
     onDeviceNetworkData.run_ranging = true;
     sendUpdateToPeer();
