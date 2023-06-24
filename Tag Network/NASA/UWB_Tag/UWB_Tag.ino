@@ -408,6 +408,9 @@ void advancedRanging() {
         return element.second.size() >= 2;
       });
 
+      Serial.print("Unique Counter: ");
+      Serial.println(unique_distance_counter);
+
       int total_distance_counter = std::count_if(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& element) {
         return !element.second.empty();
       });
