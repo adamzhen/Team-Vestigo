@@ -131,6 +131,10 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   else if (dataType == 1) {
     Serial.println("Network Data Received");
     memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
+
+    Serial.print("Initialization Flag: ");
+    Serial.println(offDeviceNetworkData.network_initialize);
+
     if(offDeviceNetworkData.reset_chain) {
       Serial.println("Reset command received");
       ESP.restart();
