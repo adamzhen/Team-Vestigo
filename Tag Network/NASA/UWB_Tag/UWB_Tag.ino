@@ -22,12 +22,12 @@ const int num_tags = 4;
 volatile bool packetSent = false;
 
 typedef struct rangingData {
-  bool run_ranging;
   float data[13];
   int tag_id = 0; 
 } rangingData;
 
 typedef struct networkData {
+  bool run_ranging;
   bool reset_chain;
   bool failed_tags[4];
   bool network_initialize = false;
@@ -44,8 +44,9 @@ uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
   {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-  {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 };
+
+byte MIOmac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
@@ -192,41 +193,42 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 
 
 void sendUpdateToPeer() {
-  for (int i = 0; i < num_tags; i++) {
+  bool allTagsMalfunctioning = true;  // Variable to check if all tags are malfunctioning
+
+  for (int i = 1; i <= num_tags; i++) {  // Loop starting from 1 as we don't want to check itself
     int nextTagID = (tag_id + i) % num_tags;
-    sendToPeer(macs[nextTagID], &onDeviceRangingData);
+
+    // Update the networkData struct to run ranging
+    onDeviceNetworkData.run_ranging = true;
+    sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
     waitForPacketSent();
 
     if (packetSent) {  // If the packet was sent successfully
       Serial.println("Next device activated");
-      malfunctioning_tags[nextTagID] = false; // Clear this tag from the malfunctioning list
+      onDeviceNetworkData.failed_tags[nextTagID] = false; // Clear this tag from the malfunctioning list
+      allTagsMalfunctioning = false; // If any tag is functioning, set allTagsMalfunctioning to false
+      return;
     } else { // If not successful
-      if (nextTagID != tag_id) {  // Do not mark itself as malfunctioning
-        malfunctioning_tags[nextTagID] = true; // Mark this tag as malfunctioning
-      }
-      if (nextTagID == tag_id) {  // If it loops back to its own tag_id
-        // Send the list of malfunctioning tags to the Master IO device
-        memcpy(onDeviceNetworkData.failed_tags, malfunctioning_tags, sizeof(malfunctioning_tags));
-        for (int j = 0; j < num_tags; j++) {
-          if (malfunctioning_tags[j]) {
-            onDeviceRangingData.tag_id = j; // Indicate the malfunctioning tag
-            sendToPeer(macs[num_tags], &onDeviceRangingData);  // Send to the master IO device
-            waitForPacketSent();
-            Serial.println("Malfunctioning device reported to Master IO device");
-          }
-        }
-
-        onDeviceNetworkData.reset_chain = true;  // Send a reset command
-        sendToPeerNetwork(macs[num_tags], &onDeviceNetworkData);  // Send to the master IO device
-        waitForPacketSent();
-        onDeviceNetworkData.reset_chain = false;  // Reset the flag
-        Serial.println("Reset command sent to Master IO device");
-
-        // Clear the malfunctioning tags list
-        memset(malfunctioning_tags, false, sizeof(malfunctioning_tags));
-        break;
-      }
+      onDeviceNetworkData.failed_tags[nextTagID] = true; // Mark this tag as malfunctioning
     }
+    
+    // Reset the run_ranging flag for the next iteration
+    onDeviceNetworkData.run_ranging = false;
+  }
+
+  // If all tags are malfunctioning, send a reset command to MIO
+  if (allTagsMalfunctioning) {
+    onDeviceNetworkData.reset_chain = true;
+  }
+
+  // Send the updated networkData to MIO
+  sendToPeerNetwork(macs[num_tags], &onDeviceNetworkData);
+  waitForPacketSent();
+  onDeviceNetworkData.reset_chain = false;  // Reset the flag
+
+  // Reset the failed_tags array for the next round
+  for (int i = 0; i < num_tags; i++) {
+    onDeviceNetworkData.failed_tags[i] = false;
   }
 }
 
@@ -269,6 +271,20 @@ void setup_esp_now() {
       Serial.println("Failed to add peer");
       return;
     }
+  }
+
+  // Register MIO
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, MIOmac, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  peerInfo.ifidx = WIFI_IF_STA;
+
+  // Add peer        
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer");
+    return;
   }
 }
 
@@ -463,7 +479,7 @@ void sendRangingData() {
     onDeviceRangingData.data[i] = sortedKeys[i].second[0];
   }
 
-  sendToPeer(macs[4], &onDeviceRangingData);
+  sendToPeer(MIOmac, &onDeviceRangingData);
 }
 
 /**************************************
