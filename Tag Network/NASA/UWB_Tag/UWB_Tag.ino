@@ -447,13 +447,10 @@ void advancedRanging()
             return a.first < b.first;
           });
 
-          Serial.println("Attempt to Convert Keys to RangingData");
-
           for (int i = 0; i < sortedKeys.size(); i++) {
             onDeviceRangingData.data[i] = sortedKeys[i].second[0];
           }
 
-          Serial.println("Send Ranging Data to MIO");
           sendToPeer(MIOmac, &onDeviceRangingData);
 
           // Sort Key Order
@@ -477,11 +474,10 @@ void advancedRanging()
           keys[5] = temp_8;
           keys[7] = temp_9;
 
+          looping = false;
           break;
         }  
       }
-
-      iteration++;
     }
   }
 }
