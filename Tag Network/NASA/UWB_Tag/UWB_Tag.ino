@@ -229,10 +229,11 @@ void sendUpdateToPeer() {
   // If all tags are malfunctioning, send a reset command to MIO
   if (allTagsMalfunctioning) {
     onDeviceNetworkData.reset_chain = true;
+    sendToPeerNetwork(MIOmac, &onDeviceNetworkData);
   }
 
   // Send the updated networkData to MIO
-  sendToPeerNetwork(macs[num_tags], &onDeviceNetworkData);
+  sendToPeerNetwork(MIOmac, &onDeviceNetworkData);
   onDeviceNetworkData.reset_chain = false;  // Reset the flag
 
   // Reset the failed_tags array for the next round
