@@ -17,7 +17,7 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 bool malfunctioning_tags[4] = {false, false, false, false};
 
-const int tag_id = 4;
+const int tag_id = 1;
 const int num_tags = 4;
 volatile bool ackReceived = false;
 
@@ -104,7 +104,7 @@ void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
   sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-void sendAck(uint8_t *peerMAC) {
+void sendAck(const uint8_t *peerMAC) {
   ackData message;
   message.ack = true;
 
@@ -127,9 +127,6 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  uint8_t mac_copy[6];
-  memcpy(mac_copy, mac, 6);
-  
   uint8_t dataType = incomingData[0];
 
   // If the data is rangingData
