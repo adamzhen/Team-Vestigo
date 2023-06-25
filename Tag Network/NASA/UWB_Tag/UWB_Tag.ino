@@ -17,7 +17,7 @@ std::vector<float> clock_offset;
 std::vector<float> averages;
 bool malfunctioning_tags[4] = {false, false, false, false};
 
-const int tag_id = 1;
+const int tag_id = 4;
 const int num_tags = 4;
 volatile bool packetSent = false;
 
@@ -232,6 +232,7 @@ bool waitForPacketSent() {
   unsigned long startMillis = millis(); // current time
   while(!packetSent) {
     delay(10);
+    Serial.println("Wait for packet send");
     if (millis() - startMillis > 100) {
       Serial.println("Failed to send packet");
       return false; // packet was not sent
