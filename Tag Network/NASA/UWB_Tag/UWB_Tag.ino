@@ -152,10 +152,10 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
   memcpy(&buf[1], message, sizeof(rangingData));  // Copy rangingData to buffer
 
   for (int i = 0; i < retries; i++) {
+    packetSent = false;  // Reset the flag at the beginning of each attempt
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent rangingData success");
-      packetSent = false;  // Reset the flag
       break;
     } else {
       Serial.println("Error sending the rangingData");
