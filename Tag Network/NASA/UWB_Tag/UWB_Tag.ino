@@ -19,7 +19,7 @@ bool malfunctioning_tags[4] = {false, false, false, false};
 
 const int tag_id = 4;
 const int num_tags = 4;
-volatile bool packetSent = false;
+volatile bool ackReceived = false;
 
 typedef struct __attribute__((packed)) rangingData {
   float data[13];
@@ -32,6 +32,10 @@ typedef struct __attribute__((packed)) networkData {
   bool failed_tags[4];
   bool network_initialize;
 } networkData;
+
+typedef struct __attribute__((packed)) ackData {
+  bool ack;
+} ackData;
 
 rangingData onDeviceRangingData;
 rangingData offDeviceRangingData;
@@ -100,6 +104,17 @@ void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
   sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
+void sendAck(uint8_t *peerMAC) {
+  ackData message;
+  message.ack = true;
+
+  uint8_t buf[sizeof(ackData) + 1];
+  buf[0] = 2;  // ackData type identifier
+  memcpy(&buf[1], &message, sizeof(ackData));
+
+  esp_now_send(peerMAC, buf, sizeof(buf));
+}
+
 // Callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
@@ -108,11 +123,6 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.println(macStr);
   Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-
-  // If the packet was sent successfully, set the flag to true
-  if (status == ESP_NOW_SEND_SUCCESS) {
-    packetSent = true;
-  }
 }
 
 // Callback when data is received
@@ -124,11 +134,13 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   if (dataType == 0) {
     Serial.println("Ranging Data Received");
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
+    sendAck(mac);
   }
   // If the data is networkData
   else if (dataType == 1) {
     Serial.println("Network Data Received");
     memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
+    sendAck(mac);
 
     if(offDeviceNetworkData.reset_chain) {
       Serial.println("Reset command received");
@@ -142,6 +154,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       offDeviceNetworkData.network_initialize = false;
     }
   }
+  // If the data is ackData
+  else if (dataType == 2) {
+    Serial.println("Acknowledgement received");
+    ackReceived = true;
+  }
 }
 
 void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
@@ -152,7 +169,6 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
   memcpy(&buf[1], message, sizeof(rangingData));  // Copy rangingData to buffer
 
   for (int i = 0; i < retries; i++) {
-    packetSent = false;  // Reset the flag at the beginning of each attempt
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent rangingData success");
@@ -177,7 +193,6 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent networkData success");
-      packetSent = false;  // Reset the flag
       break;
     } else {
       Serial.println("Error sending the networkData");
@@ -199,7 +214,7 @@ void sendUpdateToPeer() {
     onDeviceNetworkData.run_ranging = true;
     sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
     
-    if (waitForPacketSent()) {  // If the packet was sent successfully
+    if (waitForAck()) {  // If the packet was sent successfully
       Serial.println("Next device activated");
       onDeviceNetworkData.failed_tags[nextTagID] = false; // Clear this tag from the malfunctioning list
       allTagsMalfunctioning = false; // If any tag is functioning, set allTagsMalfunctioning to false
@@ -219,7 +234,6 @@ void sendUpdateToPeer() {
 
   // Send the updated networkData to MIO
   sendToPeerNetwork(macs[num_tags], &onDeviceNetworkData);
-  waitForPacketSent();
   onDeviceNetworkData.reset_chain = false;  // Reset the flag
 
   // Reset the failed_tags array for the next round
@@ -228,17 +242,17 @@ void sendUpdateToPeer() {
   }
 }
 
-bool waitForPacketSent() {
-  unsigned long startMillis = millis(); // current time
-  while(!packetSent) {
+bool waitForAck() {
+  unsigned long startMillis = millis();
+  while(!ackReceived) {
     delay(10);
-    Serial.println("Wait for packet send");
-    if (millis() - startMillis > 100) {
-      Serial.println("Failed to send packet");
-      return false; // packet was not sent
+    if (millis() - startMillis > 2000) {  // Adjust timeout as needed
+      Serial.println("Failed to receive acknowledgement");
+      return false;
     }
   }
-  return true; // packet was sent
+  ackReceived = false;  // Reset the flag for the next transmission
+  return true;
 }
 
 
