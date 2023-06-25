@@ -29,7 +29,7 @@ EthernetClient client;
 EthernetClient errorClient;
 bool startNetworkSetupFlag = false;
 
-volatile bool packetSent = false;
+volatile bool ackReceived = false;
 unsigned long lastDataReceivedMillis = 0;
 unsigned long dataTimeoutMillis = 3000;
 unsigned int resetAttempts = 0;
@@ -47,6 +47,10 @@ typedef struct __attribute__((packed)) networkData {
   bool failed_tags[4];
   bool network_initialize;
 } networkData;
+
+typedef struct __attribute__((packed)) ackData {
+  bool ack;
+} ackData;
 
 rangingData onDeviceRangingData;
 rangingData offDeviceRangingData;
@@ -77,8 +81,23 @@ void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
   sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-void waitForPacketSent() {
-  while(!packetSent) {
+void sendAck(const uint8_t *peerMAC) {
+  esp_err_t result;
+  ackData ack;
+  ack.ack = true;
+  uint8_t buf[sizeof(ackData) + 1];
+  buf[0] = 2;
+  memcpy(&buf[1], &ack, sizeof(ackData));
+  result = esp_now_send(peerMAC, buf, sizeof(buf));
+  if (result == ESP_OK) {
+    Serial.println("Ack sent");
+  } else {
+    Serial.println("Error sending ack");
+  }
+}
+
+void waitForAck() {
+  while(!ackReceived) {
     delay(10);
   }
 }
@@ -90,11 +109,6 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.println(macStr);
   Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-
-  // If the packet was sent successfully, set the flag to true
-  if (status == ESP_NOW_SEND_SUCCESS) {
-    packetSent = true;
-  }
 }
 
 void sendJson() {
@@ -169,6 +183,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       }
     }
   }
+  
+  else if (dataType == 2) {
+    Serial.println("Acknowledgement received");
+    ackReceived = true;
+  }
 
   lastDataReceivedMillis = millis();
 }
@@ -182,7 +201,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent networkData success");
-      packetSent = false;  // Reset the flag
+      ackReceived = false;
       break;
     } else {
       Serial.println("Error sending the networkData");
@@ -191,6 +210,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
       }
     }
   }
+  waitForAck();
 }
 
 void sendResetGlobal() {
@@ -199,7 +219,6 @@ void sendResetGlobal() {
   onDeviceNetworkData.reset_chain = true;
   for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {
     sendToPeerNetwork(macs[i], &onDeviceNetworkData);
-    waitForPacketSent();
   }
   onDeviceNetworkData.reset_chain = false;
 
@@ -211,7 +230,6 @@ void sendResetToTag(int tag_id) {
 
   onDeviceNetworkData.reset_chain = true;
   sendToPeerNetwork(macs[tag_id], &onDeviceNetworkData);
-  waitForPacketSent();
   onDeviceNetworkData.reset_chain = false;
 
   Serial.println("sendResetToTag Success");
@@ -219,23 +237,20 @@ void sendResetToTag(int tag_id) {
 
 void sendInitializationToTag(uint8_t *tag_mac) {
   onDeviceNetworkData.network_initialize = true;
-
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
-
   onDeviceNetworkData.network_initialize = false;
 }
 
 void sendNetworkPoll(uint8_t *tag_mac) {
   onDeviceNetworkData.network_initialize = false;
   onDeviceNetworkData.reset_chain = false;
-
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
 }
 
 void checkTagsOnline() {
   static uint8_t tag_poll_index = 0;
   
-  if (packetSent) {
+  if (ackReceived) {
     online_tags[tag_poll_index] = true;
 
     // If the tag responded, reset the number of attempts for this tag and move to the next tag
@@ -285,7 +300,8 @@ void checkTagsOnline() {
   // If not all tags are online, continue polling
   if (!all_tags_online) {
     sendNetworkPoll(macs[tag_poll_index]);
-    waitForPacketSent();
+    ackReceived = false;
+    waitForAck();
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
