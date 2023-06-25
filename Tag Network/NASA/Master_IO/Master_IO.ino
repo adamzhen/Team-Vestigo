@@ -131,6 +131,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     received[offDeviceRangingData.tag_id] = true;
 
     // For debugging: print the received distances
+    Serial.print("Tag ID: ");
+    Serial.println(offDeviceRangingData.tag_id + 1);
     Serial.println("Distances received:");
     for (int i = 0; i < 13; i++) {
       Serial.print(distances[offDeviceRangingData.tag_id][i]);
