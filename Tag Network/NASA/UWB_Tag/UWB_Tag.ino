@@ -119,9 +119,9 @@ void sendAck(const uint8_t *peerMAC) {
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
   formatMacAddress(mac_addr, macStr, 18);
-  Serial.print("Last Packet Sent to: ");
+  // Serial.print("Last Packet Sent to: ");
   Serial.println(macStr);
-  Serial.print("Last Packet Send Status: ");
+  // Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
 
@@ -155,7 +155,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   }
   // If the data is ackData
   else if (dataType == 2) {
-    Serial.println("Acknowledgement received");
+    // Serial.println("Acknowledgement received");
     ackReceived = true;
   }
 }
@@ -170,7 +170,7 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
   for (int i = 0; i < retries; i++) {
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
-      Serial.println("Sent rangingData success");
+      // Serial.println("Sent rangingData success");
       break;
     } else {
       Serial.println("Error sending the rangingData");
