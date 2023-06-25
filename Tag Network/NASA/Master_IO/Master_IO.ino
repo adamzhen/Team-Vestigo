@@ -96,10 +96,16 @@ void sendAck(const uint8_t *peerMAC) {
   }
 }
 
-void waitForAck() {
-  while(!ackReceived) {
+bool waitForAck(uint8_t retries) {
+  ackReceived = false;  // Reset the acknowledgement flag
+
+  while (retries--) {
     delay(10);
+    if (ackReceived) {
+      return true;
+    }
   }
+  return false;
 }
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -197,11 +203,12 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
   uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
   buf[0] = 1;  // NetworkData type identifier
   memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
+
   for (int i = 0; i < retries; i++) {
+    ackReceived = false; // Reset ackReceived before sending the message
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent networkData success");
-      ackReceived = false;
       break;
     } else {
       Serial.println("Error sending the networkData");
@@ -210,7 +217,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
       }
     }
   }
-  waitForAck();
+  waitForAck(1);
 }
 
 void sendResetGlobal() {
@@ -249,12 +256,17 @@ void sendNetworkPoll(uint8_t *tag_mac) {
 
 void checkTagsOnline() {
   static uint8_t tag_poll_index = 0;
-  
+
   if (ackReceived) {
+    Serial.println("Acknowledgement received from tag " + String(tag_poll_index));
     online_tags[tag_poll_index] = true;
 
-    // If the tag responded, reset the number of attempts for this tag and move to the next tag
+    ackReceived = false;
+
+    // If the tag responded, reset the number of attempts for this tag
     attempts[tag_poll_index] = 0;
+
+    // Move to the next tag
     tag_poll_index++;
 
     if (tag_poll_index >= 4) { 
@@ -262,10 +274,11 @@ void checkTagsOnline() {
     }
   } else {
     // If the tag didn't respond, increase the number of attempts for this tag
+    Serial.println("No acknowledgement from tag " + String(tag_poll_index));
     attempts[tag_poll_index]++;
-
+  
     // If we've tried 5 times without success, report this to the server
-    if (attempts[tag_poll_index] > 5) {
+    if (attempts[tag_poll_index] >= 5) {
       DynamicJsonDocument doc(64);
       JsonArray array = doc.createNestedArray("tag_failures");
       for(int i = 0; i < 4; i++){
@@ -277,11 +290,18 @@ void checkTagsOnline() {
       //   client.println(output);
       //   client.stop();
       // }
-  
+
       // Reset the number of attempts for all tags
       for (int i = 0; i < 4; i++) {
         attempts[i] = 0;
         online_tags[i] = false;  // Reset all tags to offline
+      }
+  
+      // Move to the next tag
+      tag_poll_index++;
+
+      if (tag_poll_index >= 4) { 
+        tag_poll_index = 0;
       }
 
       return;
@@ -297,16 +317,29 @@ void checkTagsOnline() {
     }
   }
 
+  // Debug: Print the online status of all tags and the value of all_tags_online
+  for (int i = 0; i < 4; i++) {
+    Serial.print("Tag ");
+    Serial.print(i);
+    Serial.print(" online status: ");
+    Serial.println(online_tags[i] ? "Online" : "Offline");
+  }
+  Serial.print("All tags online: ");
+  Serial.println(all_tags_online ? "Yes" : "No");
+
   // If not all tags are online, continue polling
   if (!all_tags_online) {
+    Serial.println("Sending polling request to tag " + String(tag_poll_index));
     sendNetworkPoll(macs[tag_poll_index]);
     ackReceived = false;
-    waitForAck();
+    waitForAck(2);
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
   }
 }
+
+
 
 void startNetworkSetup() {
   // // Connect to the server
