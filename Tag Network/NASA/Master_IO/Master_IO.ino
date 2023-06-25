@@ -128,7 +128,7 @@ void sendJson() {
   String jsonString;
   serializeJson(doc, jsonString);
   Serial.println("Sending JSON: ");
-  Serial.println(jsonString);
+  // Serial.println(jsonString);
 
   // // Connect to server
   // if (client.connect(server, network_port)) {
@@ -153,12 +153,12 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     // For debugging: print the received distances
     Serial.print("Tag ID: ");
     Serial.println(offDeviceRangingData.tag_id + 1);
-    Serial.println("Distances received:");
-    for (int i = 0; i < 13; i++) {
-      Serial.print(distances[offDeviceRangingData.tag_id][i]);
-      Serial.print(" ");
-    }
-    Serial.println();
+    // Serial.println("Distances received:");
+    // for (int i = 0; i < 13; i++) {
+    //   Serial.print(distances[offDeviceRangingData.tag_id][i]);
+    //   Serial.print(" ");
+    // }
+    // Serial.println();
 
     if(received[0] && received[1] && received[2] && received[3]) {
       sendJson();
@@ -317,15 +317,15 @@ void checkTagsOnline() {
     }
   }
 
-  // Debug: Print the online status of all tags and the value of all_tags_online
-  for (int i = 0; i < 4; i++) {
-    Serial.print("Tag ");
-    Serial.print(i);
-    Serial.print(" online status: ");
-    Serial.println(online_tags[i] ? "Online" : "Offline");
-  }
-  Serial.print("All tags online: ");
-  Serial.println(all_tags_online ? "Yes" : "No");
+  // // Debug: Print the online status of all tags and the value of all_tags_online
+  // for (int i = 0; i < 4; i++) {
+  //   Serial.print("Tag ");
+  //   Serial.print(i);
+  //   Serial.print(" online status: ");
+  //   Serial.println(online_tags[i] ? "Online" : "Offline");
+  // }
+  // Serial.print("All tags online: ");
+  // Serial.println(all_tags_online ? "Yes" : "No");
 
   // If not all tags are online, continue polling
   if (!all_tags_online) {
