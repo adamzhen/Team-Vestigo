@@ -175,7 +175,7 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
     } else {
       Serial.println("Error sending the rangingData");
       if (i < retries - 1) {  // If it's not the last retry
-        delay(250);  // Delay before retry
+        delay(50);  // Delay before retry
       }
     }
   }
@@ -196,7 +196,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
     } else {
       Serial.println("Error sending the networkData");
       if (i < retries - 1) {
-        delay(250);
+        delay(50);
       }
     }
   }
@@ -244,8 +244,8 @@ void sendUpdateToPeer() {
 bool waitForAck() {
   unsigned long startMillis = millis();
   while(!ackReceived) {
-    delay(10);
-    if (millis() - startMillis > 2000) {  // Adjust timeout as needed
+    delay(5);
+    if (millis() - startMillis > 100) {  // Adjust timeout as needed
       Serial.println("Failed to receive acknowledgement");
       return false;
     }
