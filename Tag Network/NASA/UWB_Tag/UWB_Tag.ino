@@ -127,7 +127,9 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  // Assuming the first byte in incomingData determines the type of data
+  uint8_t mac_copy[6];
+  memcpy(mac_copy, mac, 6);
+  
   uint8_t dataType = incomingData[0];
 
   // If the data is rangingData
