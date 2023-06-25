@@ -19,7 +19,7 @@ bool malfunctioning_tags[4] = {false, false, false, false};
 
 const int tag_id = 4;
 const int num_tags = 4;
-volatile bool ackReceived = false;
+volatile bool packetSent = false;
 
 typedef struct __attribute__((packed)) rangingData {
   float data[13];
@@ -32,10 +32,6 @@ typedef struct __attribute__((packed)) networkData {
   bool failed_tags[4];
   bool network_initialize;
 } networkData;
-
-typedef struct __attribute__((packed)) ackData {
-  bool ack;
-} ackData;
 
 rangingData onDeviceRangingData;
 rangingData offDeviceRangingData;
@@ -128,10 +124,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   if (dataType == 0) {
     Serial.println("Ranging Data Received");
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
-
-    ackData ackMessage;
-    ackMessage.ack = true;
-    sendToPeer(mac, &ackMessage);
   }
   // If the data is networkData
   else if (dataType == 1) {
@@ -149,15 +141,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       offDeviceNetworkData.run_ranging = true;
       offDeviceNetworkData.network_initialize = false;
     }
-
-    ackData ackMessage;
-    ackMessage.ack = true;
-    sendToPeer(mac, &ackMessage);
-  }
-  // If the data is acknowledge
-  else if (dataType == 2) {
-    Serial.println("Ack Received");
-    ackReceived = true;
   }
 }
 
@@ -170,17 +153,10 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
 
   for (int i = 0; i < retries; i++) {
     packetSent = false;  // Reset the flag at the beginning of each attempt
-    ackReceived = false; // Reset the ack flag at the beginning of each attempt
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent rangingData success");
-      bool ack = waitForAck(); // Wait for the acknowledgement
-      if (ack) {
-        Serial.println("Acknowledgement received");
-        break;
-      } else {
-        Serial.println("No acknowledgement received");
-      }
+      break;
     } else {
       Serial.println("Error sending the rangingData");
       if (i < retries - 1) {  // If it's not the last retry
@@ -198,22 +174,15 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
   memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
 
   for (int i = 0; i < retries; i++) {
-    packetSent = false;  // Reset the flag at the beginning of each attempt
-    ackReceived = false; // Reset the ack flag at the beginning of each attempt
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
       Serial.println("Sent networkData success");
-      bool ack = waitForAck(); // Wait for the acknowledgement
-      if (ack) {
-        Serial.println("Acknowledgement received");
-        break;
-      } else {
-        Serial.println("No acknowledgement received");
-      }
+      packetSent = false;  // Reset the flag
+      break;
     } else {
       Serial.println("Error sending the networkData");
-      if (i < retries - 1) {  // If it's not the last retry
-        delay(250);  // Delay before retry
+      if (i < retries - 1) {
+        delay(250);
       }
     }
   }
@@ -259,17 +228,17 @@ void sendUpdateToPeer() {
   }
 }
 
-bool waitForAck() {
-  unsigned long startMillis = millis();
-  while(true) {
+bool waitForPacketSent() {
+  unsigned long startMillis = millis(); // current time
+  while(!packetSent) {
     delay(10);
-    if (ackReceived) {
-      return true;
-    }
-    if (millis() - startMillis > 300) {
-      return false;
+    Serial.println("Wait for packet send");
+    if (millis() - startMillis > 100) {
+      Serial.println("Failed to send packet");
+      return false; // packet was not sent
     }
   }
+  return true; // packet was sent
 }
 
 
