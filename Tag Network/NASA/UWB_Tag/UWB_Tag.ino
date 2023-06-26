@@ -127,6 +127,17 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   uint8_t dataType = incomingData[0];
 
+  char macStr[18];
+  snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  Serial.print("Data received from: ");
+  Serial.println(macStr);
+
+  // Add a self-check to ignore data from self
+  if(memcmp(mac, macs[tag_id - 1], sizeof(macs[tag_id - 1])) == 0) {
+    Serial.println("Ignoring data from self");
+    return;
+  }
+
   // If the data is rangingData
   if (dataType == 0) {
     Serial.println("Ranging Data Received");
@@ -202,6 +213,8 @@ void sendNetworkPoll(uint8_t *tag_mac) {
 
 
 void sendUpdateToPeer() {
+  bool pollAckReceived = false; // introduce a flag to track poll acknowledgement separately
+  
   for (int i = 0; i <= num_tags - 2; i++) {
     int nextTagID = (tag_id + i) % num_tags;
     int prevTagID = (tag_id + num_tags - 2) % num_tags;
@@ -222,12 +235,13 @@ void sendUpdateToPeer() {
 
       // After 2 seconds, if we haven't received an ack from previous tag
       if (ackReceived == false) {
-        Serial.println("No signal from previous device within 5 seconds, attempting to poll");
+        Serial.println("No signal from previous device within 2 seconds, attempting to poll");
 
         // Attempt to poll the previous device
         sendNetworkPoll(macs[prevTagID]);
         if (waitForAck(1)) {
           Serial.println("Previous device responded to poll, it is functional");
+          pollAckReceived = true;
         } else {
           Serial.println("Previous device did not respond to poll, it may be malfunctioning. Activating self");
           onDeviceNetworkData.run_ranging = true;
@@ -235,6 +249,14 @@ void sendUpdateToPeer() {
         }
       }
       
+      if (pollAckReceived == false) { // if no poll ack received yet
+        // Wait for poll ack specifically
+        unsigned long startMillis = millis(); // reset start timestamp
+        while (millis() - startMillis < 2000 && pollAckReceived == false) {
+          delay(10); // delay a bit to allow other tasks to run
+        }
+      }
+
       return;
     } else { // If not successful
       Serial.println("Device Activation Failed");
@@ -245,6 +267,7 @@ void sendUpdateToPeer() {
   }
   Serial.println("Exiting sendUpdateToPeer");
 }
+
 
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
