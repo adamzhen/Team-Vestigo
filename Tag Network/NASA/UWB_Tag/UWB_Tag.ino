@@ -16,8 +16,8 @@ std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
-const int tag_id = 4;
-const int num_tags = 1;
+const int tag_id = 1;
+const int num_tags = 4;
 volatile bool ackReceived = false;
 
 typedef struct __attribute__((packed)) rangingData {
@@ -103,6 +103,18 @@ void sendAck(const uint8_t *peerMAC) {
   memcpy(&buf[1], &message, sizeof(ackData));
 
   esp_now_send(peerMAC, buf, sizeof(buf));
+}
+
+bool waitForAck(uint8_t retries) {
+  ackReceived = false;  // Reset the acknowledgement flag
+
+  while (retries--) {
+    delay(10);
+    if (ackReceived) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Callback when data is sent
@@ -197,10 +209,10 @@ void sendUpdateToPeer() {
     // Update the networkData struct to run ranging
     onDeviceNetworkData.run_ranging = true;
     sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
-    
-    if (waitForAck()) {  // If the packet was sent successfully
+
+    if (waitForAck(1)) {  // If the packet was sent successfully
       Serial.println("Next device activated");
-      
+
       unsigned long startMillis = millis(); // set a start timestamp when the next device is activated
 
       // Wait until either we get an ack or 2 seconds elapse
@@ -211,10 +223,10 @@ void sendUpdateToPeer() {
       // After 2 seconds, if we haven't received an ack from previous tag
       if (ackReceived == false) {
         Serial.println("No signal from previous device within 5 seconds, attempting to poll");
-        
+
         // Attempt to poll the previous device
         sendNetworkPoll(macs[prevTagID]);
-        if (waitForAck()) {
+        if (waitForAck(1)) {
           Serial.println("Previous device responded to poll, it is functional");
         } else {
           Serial.println("Previous device did not respond to poll, it may be malfunctioning. Activating self");
@@ -231,8 +243,8 @@ void sendUpdateToPeer() {
     // Reset the run_ranging flag for the next iteration
     onDeviceNetworkData.run_ranging = false;
   }
+  Serial.println("Exiting sendUpdateToPeer");
 }
-
 
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
