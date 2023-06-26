@@ -240,7 +240,7 @@ void sendUpdateToPeer() {
       unsigned long startMillis = millis();
 
       // Wait for run_ranging flag update from previous tag
-      while(!onDeviceNetworkData.run_ranging) {
+      while(!offDeviceNetworkData.run_ranging) {
         // If 2 seconds have passed without receiving the update
         if (millis() - startMillis > 2000) {
           Serial.println("No update from previous tag within 2 seconds. The current device will activate itself.");
