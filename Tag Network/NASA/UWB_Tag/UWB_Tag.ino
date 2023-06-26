@@ -207,8 +207,8 @@ void sendUpdateToPeer() {
 bool waitForAck() {
   unsigned long startMillis = millis();
   while(!ackReceived) {
-    delay(10);
-    if (millis() - startMillis > 2000) {  // Adjust timeout as needed
+    delay(5);
+    if (millis() - startMillis > 100) {  // Adjust timeout as needed
       Serial.println("Failed to receive acknowledgement");
       return false;
     }
