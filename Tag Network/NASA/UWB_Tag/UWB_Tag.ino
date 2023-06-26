@@ -133,7 +133,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.println(macStr);
 
   // Add a self-check to ignore data from self
-  if(memcmp(mac, macs[tag_id - 1], sizeof(macs[tag_id - 1])) == 0) {
+  if(memcmp(mac, macs[tag_id - 1], 6) == 0) {
     Serial.println("Ignoring data from self");
     return;
   }
