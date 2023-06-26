@@ -230,6 +230,8 @@ void sendUpdateToPeer() {
     // Update the networkData struct to run ranging
     onDeviceNetworkData.run_ranging = true;
     sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
+    // Reset the run_ranging flag
+    onDeviceNetworkData.run_ranging = false;
     
     if (waitForAck()) {  // If the packet was sent successfully
       Serial.println("Next device activated");
@@ -250,9 +252,6 @@ void sendUpdateToPeer() {
         delay(10);
       }
 
-      // Reset the run_ranging flag
-      onDeviceNetworkData.run_ranging = false;
-      
       // Check if the previous tag is working properly by sending a polling request
       if (!pollPreviousTag()) {
         Serial.println("Previous tag malfunctioning. The current device will activate itself.");
