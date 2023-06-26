@@ -132,12 +132,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.print("Data received from: ");
   Serial.println(macStr);
 
-  // Add a self-check to ignore data from self
-  if(memcmp(mac, macs[tag_id - 1], 6) == 0) {
-    Serial.println("Ignoring data from self");
-    return;
-  }
-
   // If the data is rangingData
   if (dataType == 0) {
     Serial.println("Ranging Data Received");
@@ -205,67 +199,67 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
   }
 }
 
-void sendNetworkPoll(uint8_t *tag_mac) {
-  onDeviceNetworkData.network_initialize = false;
-  onDeviceNetworkData.run_ranging = false;
-  sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
+bool pollPreviousTag() {
+  int prevTagID = (tag_id - 2 + num_tags) % num_tags;  // Calculate previous tag ID considering cyclic nature of the tags
+  networkData pollingMessage;  // Create a networkData instance for polling
+  pollingMessage.run_ranging = false;  // This is just a polling message, so no need to set run_ranging to true
+  pollingMessage.network_initialize = false;  // This is not a network initialization message, so this remains false
+
+  uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
+  buf[0] = 1;  // NetworkData type identifier
+  memcpy(&buf[1], &pollingMessage, sizeof(networkData));  // Copy networkData to buffer
+
+  esp_err_t result = esp_now_send(macs[prevTagID], buf, sizeof(buf));  // Send the buffer
+  if (result != ESP_OK) {
+    Serial.println("Error sending the polling message to previous tag");
+    return false;
+  }
+
+  // Wait for acknowledgement from the previous tag. If we don't receive an acknowledgement within a specific duration, return false
+  return waitForAck(1);
 }
 
 
 void sendUpdateToPeer() {
-  bool pollAckReceived = false; // introduce a flag to track poll acknowledgement separately
-  
   for (int i = 0; i <= num_tags - 2; i++) {
     int nextTagID = (tag_id + i) % num_tags;
-    int prevTagID = (tag_id + num_tags - 2) % num_tags;
 
     // Update the networkData struct to run ranging
     onDeviceNetworkData.run_ranging = true;
     sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
-
-    if (waitForAck(1)) {  // If the packet was sent successfully
+    
+    if (waitForAck()) {  // If the packet was sent successfully
       Serial.println("Next device activated");
+      
+      // Start timer
+      unsigned long startMillis = millis();
 
-      unsigned long startMillis = millis(); // set a start timestamp when the next device is activated
-
-      // Wait until either we get an ack or 2 seconds elapse
-      while (millis() - startMillis < 2000 && ackReceived == false) {
-        delay(10); // delay a bit to allow other tasks to run
-      }
-
-      // After 2 seconds, if we haven't received an ack from previous tag
-      if (ackReceived == false) {
-        Serial.println("No signal from previous device within 2 seconds, attempting to poll");
-
-        // Attempt to poll the previous device
-        sendNetworkPoll(macs[prevTagID]);
-        if (waitForAck(1)) {
-          Serial.println("Previous device responded to poll, it is functional");
-          pollAckReceived = true;
-        } else {
-          Serial.println("Previous device did not respond to poll, it may be malfunctioning. Activating self");
-          onDeviceNetworkData.run_ranging = true;
+      // Wait for run_ranging flag update from previous tag
+      while(!onDeviceNetworkData.run_ranging) {
+        // If 2 seconds have passed without receiving the update
+        if (millis() - startMillis > 2000) {
+          Serial.println("No update from previous tag within 2 seconds. The current device will activate itself.");
+          
+          // Stop waiting and activate the current device
+          offDeviceNetworkData.run_ranging = true;
           return;
         }
+        delay(10);
       }
+
+      // Reset the run_ranging flag
+      onDeviceNetworkData.run_ranging = false;
       
-      if (pollAckReceived == false) { // if no poll ack received yet
-        // Wait for poll ack specifically
-        unsigned long startMillis = millis(); // reset start timestamp
-        while (millis() - startMillis < 2000 && pollAckReceived == false) {
-          delay(10); // delay a bit to allow other tasks to run
-        }
+      // Check if the previous tag is working properly by sending a polling request
+      if (!pollPreviousTag()) {
+        Serial.println("Previous tag malfunctioning. The current device will activate itself.");
       }
 
       return;
     } else { // If not successful
       Serial.println("Device Activation Failed");
     }
-    
-    // Reset the run_ranging flag for the next iteration
-    onDeviceNetworkData.run_ranging = false;
   }
-  Serial.println("Exiting sendUpdateToPeer");
 }
 
 
@@ -584,6 +578,7 @@ void setup() {
 
 void loop() {
   if (offDeviceNetworkData.run_ranging) {
+    Serial.println("Run Ranging Process");
 
     offDeviceNetworkData.run_ranging = false;
 
