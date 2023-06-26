@@ -110,7 +110,6 @@ bool waitForAck() {
   while(!ackReceived) {
     delay(5);
     if (millis() - startMillis > 100) {  // Adjust timeout as needed
-      Serial.println("Failed to receive acknowledgement");
       return false;
     }
   }
@@ -118,42 +117,27 @@ bool waitForAck() {
   return true;
 }
 
-// Callback when data is sent
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.print("Last Packet Send Status: ");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-}
-
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   uint8_t dataType = incomingData[0];
 
-  char macStr[18];
-  snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  Serial.print("Data received from: ");
-  Serial.println(macStr);
-
   // If the data is rangingData
   if (dataType == 0) {
-    Serial.println("Ranging Data Received");
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
     sendAck(mac);
   }
   // If the data is networkData
   else if (dataType == 1) {
-    Serial.println("Network Data Received");
     memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
     sendAck(mac);
 
     if(offDeviceNetworkData.network_initialize) {
-      Serial.println("Network initialization command received");
       offDeviceNetworkData.run_ranging = true;
       offDeviceNetworkData.network_initialize = false;
     }
   }
   // If the data is ackData
   else if (dataType == 2) {
-    Serial.println("Acknowledgement received");
     ackReceived = true;
   }
 }
@@ -168,10 +152,8 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
   for (int i = 0; i < retries; i++) {
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
-      Serial.println("Sent rangingData success");
       break;
     } else {
-      Serial.println("Error sending the rangingData");
       if (i < retries - 1) {  // If it's not the last retry
         delay(50);  // Delay before retry
       }
@@ -189,10 +171,8 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
   for (int i = 0; i < retries; i++) {
     result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
     if (result == ESP_OK) {
-      Serial.println("Sent networkData success");
       break;
     } else {
-      Serial.println("Error sending the networkData");
       if (i < retries - 1) {
         delay(50);
       }
@@ -201,9 +181,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 }
 
 bool pollPreviousTag() {
-  Serial.print("Polling Previous Tag: ");
   int prevTagID = (tag_id - 2 + num_tags) % num_tags;  // Calculate previous tag ID considering cyclic nature of the tags
-  Serial.println(prevTagID);
   networkData pollingMessage;  // Create a networkData instance for polling
   pollingMessage.run_ranging = false;  // This is just a polling message, so no need to set run_ranging to true
   pollingMessage.network_initialize = false;  // This is not a network initialization message, so this remains false
@@ -214,7 +192,6 @@ bool pollPreviousTag() {
 
   esp_err_t result = esp_now_send(macs[prevTagID], buf, sizeof(buf));  // Send the buffer
   if (result != ESP_OK) {
-    Serial.println("Error sending the polling message to previous tag");
     return false;
   }
 
@@ -233,32 +210,25 @@ void sendUpdateToPeer() {
     // Reset the run_ranging flag
     onDeviceNetworkData.run_ranging = false;
     
-    if (waitForAck()) {  // If the packet was sent successfully
-      Serial.println("Next device activated");
-      
+    if (waitForAck()) {  // If the packet was sent successfully    
       // Start timer
       unsigned long startMillis = millis();
 
       // Wait for run_ranging flag update from previous tag
       while(!offDeviceNetworkData.run_ranging) {
         if (millis() - startMillis > 600) {
-          Serial.println("No update from previous tag within 2 seconds. The current device will activate itself.");
-          
-          // Stop waiting and activate the current device
-          offDeviceNetworkData.run_ranging = true;
-          return;
+          if (!pollPreviousTag()) {
+            // Stop waiting and activate the current device
+            offDeviceNetworkData.run_ranging = true;
+            return;
+          } else {
+            return;
+          }
         }
         delay(10);
       }
 
-      // Check if the previous tag is working properly by sending a polling request
-      if (!pollPreviousTag()) {
-        Serial.println("Previous tag malfunctioning. The current device will activate itself.");
-      }
-
       return;
-    } else { // If not successful
-      Serial.println("Device Activation Failed");
     }
   }
 }
@@ -271,10 +241,8 @@ void setup_esp_now() {
   // Init ESPNow with a fallback logic
   WiFi.disconnect();
   if (esp_now_init() != ESP_OK) {
-    Serial.println("ESPNow Init Failed");
     ESP.restart();
   }
-  Serial.println("ESPNow Init Success");
 
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Transmitted packet
@@ -294,7 +262,6 @@ void setup_esp_now() {
 
     // Add peer        
     if (esp_now_add_peer(&peerInfo) != ESP_OK){
-      Serial.println("Failed to add peer");
       return;
     }
   }
@@ -309,7 +276,6 @@ void setup_esp_now() {
 
   // Add MIO      
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
     return;
   }
 }
@@ -510,12 +476,6 @@ void advancedRanging()
 **************************************/
 
 void setup() {
-  Serial.begin(115200);
-
-  Serial.println("");
-  Serial.println("NEW RUN NEW RUN NEW RUN");
-  Serial.println("");
-
   setup_esp_now();
 
   UART_init();
@@ -579,8 +539,6 @@ void setup() {
 
 void loop() {
   if (offDeviceNetworkData.run_ranging) {
-    Serial.println("Run Ranging Process");
-
     offDeviceNetworkData.run_ranging = false;
 
     advancedRanging();
