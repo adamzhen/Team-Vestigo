@@ -246,7 +246,6 @@ void setup_esp_now() {
 
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Transmitted packet
-  esp_now_register_send_cb(OnDataSent);
 
   // Register for Receive CB to get incoming data
   esp_now_register_recv_cb(OnDataRecv);
