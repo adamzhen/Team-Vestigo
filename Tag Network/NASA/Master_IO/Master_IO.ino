@@ -180,6 +180,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
     // Check if there's any failed device
     for (int i = 0; i < 4; i++) {
+      Serial.println("Check for Bad Tags");
       if (offDeviceNetworkData.failed_tags[i]) {
         Serial.print("Tag ");
         Serial.print(i);
