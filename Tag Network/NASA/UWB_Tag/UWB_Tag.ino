@@ -192,6 +192,7 @@ void sendNetworkPoll(uint8_t *tag_mac) {
 void sendUpdateToPeer() {
   for (int i = 0; i <= num_tags - 2; i++) {
     int nextTagID = (tag_id + i) % num_tags;
+    int prevTagID = (tag_id + num_tags - 2) % num_tags;
 
     // Update the networkData struct to run ranging
     onDeviceNetworkData.run_ranging = true;
@@ -199,6 +200,29 @@ void sendUpdateToPeer() {
     
     if (waitForAck()) {  // If the packet was sent successfully
       Serial.println("Next device activated");
+      
+      unsigned long startMillis = millis(); // set a start timestamp when the next device is activated
+
+      // Wait until either we get an ack or 2 seconds elapse
+      while (millis() - startMillis < 2000 && ackReceived == false) {
+        delay(10); // delay a bit to allow other tasks to run
+      }
+
+      // After 2 seconds, if we haven't received an ack from previous tag
+      if (ackReceived == false) {
+        Serial.println("No signal from previous device within 5 seconds, attempting to poll");
+        
+        // Attempt to poll the previous device
+        sendNetworkPoll(macs[prevTagID]);
+        if (waitForAck()) {
+          Serial.println("Previous device responded to poll, it is functional");
+        } else {
+          Serial.println("Previous device did not respond to poll, it may be malfunctioning. Activating self");
+          onDeviceNetworkData.run_ranging = true;
+          return;
+        }
+      }
+      
       return;
     } else { // If not successful
       Serial.println("Device Activation Failed");
@@ -207,19 +231,6 @@ void sendUpdateToPeer() {
     // Reset the run_ranging flag for the next iteration
     onDeviceNetworkData.run_ranging = false;
   }
-}
-
-bool waitForAck() {
-  unsigned long startMillis = millis();
-  while(!ackReceived) {
-    delay(5);
-    if (millis() - startMillis > 100) {  // Adjust timeout as needed
-      Serial.println("Failed to receive acknowledgement");
-      return false;
-    }
-  }
-  ackReceived = false;  // Reset the flag for the next transmission
-  return true;
 }
 
 
