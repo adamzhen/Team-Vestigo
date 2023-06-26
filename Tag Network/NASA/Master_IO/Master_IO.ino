@@ -30,8 +30,6 @@ EthernetClient errorClient;
 bool startNetworkSetupFlag = false;
 
 volatile bool ackReceived = false;
-unsigned long lastDataReceivedMillis = 0;
-unsigned long dataTimeoutMillis = 3000;
 unsigned int resetAttempts = 0;
 unsigned int resetsConfirmed = 0;
 
@@ -43,8 +41,6 @@ typedef struct __attribute__((packed)) rangingData {
 
 typedef struct __attribute__((packed)) networkData {
   bool run_ranging;
-  bool reset_chain;
-  bool failed_tags[4];
   bool network_initialize;
 } networkData;
 
@@ -74,13 +70,6 @@ IPAddress subnet(255, 255, 0, 0);
 ************ NETWORK FUNCTIONS ************
 ******************************************/
 
-void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
-  if(bufferSize < 18) {
-    return;
-  }
-  sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-}
-
 void sendAck(const uint8_t *peerMAC) {
   esp_err_t result;
   ackData ack;
@@ -109,10 +98,6 @@ bool waitForAck(uint8_t retries) {
 }
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  char macStr[18];
-  formatMacAddress(mac_addr, macStr, 18);
-  Serial.print("Last Packet Sent to: ");
-  Serial.println(macStr);
   Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
@@ -168,35 +153,15 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     }
   }
 
-  // If the data is networkData
+  // If the data is networkData (potentially not necessary)
   else if (dataType == 1) {
     memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
-  
-    // If offDeviceNetworkData.reset_chain is true, send a reset command to all devices
-    if (offDeviceNetworkData.reset_chain) {
-      Serial.println("Reset command received from network device");
-      sendResetGlobal();
-    }
-
-    // Check if there's any failed device
-    for (int i = 0; i < 4; i++) {
-      Serial.println("Check for Bad Tags");
-      if (offDeviceNetworkData.failed_tags[i]) {
-        Serial.print("Tag ");
-        Serial.print(i);
-        Serial.println(" malfunctioning. Resetting this tag.");
-
-        sendResetToTag(i);
-      }
-    }
   }
   
   else if (dataType == 2) {
     Serial.println("Acknowledgement received");
     ackReceived = true;
   }
-
-  lastDataReceivedMillis = millis();
 }
 
 void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
@@ -221,28 +186,6 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
   waitForAck(1);
 }
 
-void sendResetGlobal() {
-  Serial.println("sendResetGlobal");
-
-  onDeviceNetworkData.reset_chain = true;
-  for(int i=(sizeof(macs)/sizeof(macs[0]))-2; i>=0; i--) {
-    sendToPeerNetwork(macs[i], &onDeviceNetworkData);
-  }
-  onDeviceNetworkData.reset_chain = false;
-
-  Serial.println("sendResetGlobal Success");
-}
-
-void sendResetToTag(int tag_id) {
-  Serial.println("sendResetToTag");
-
-  onDeviceNetworkData.reset_chain = true;
-  sendToPeerNetwork(macs[tag_id], &onDeviceNetworkData);
-  onDeviceNetworkData.reset_chain = false;
-
-  Serial.println("sendResetToTag Success");
-}
-
 void sendInitializationToTag(uint8_t *tag_mac) {
   onDeviceNetworkData.network_initialize = true;
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
@@ -251,7 +194,6 @@ void sendInitializationToTag(uint8_t *tag_mac) {
 
 void sendNetworkPoll(uint8_t *tag_mac) {
   onDeviceNetworkData.network_initialize = false;
-  onDeviceNetworkData.reset_chain = false;
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
 }
 
@@ -457,23 +399,6 @@ void loop() {
   //   Serial.println("Ethernet link has been lost, waiting for reconnection...");
   //   delay(10);
   //   return;
-  // }
-
-  // // Check if no data was received for more than dataTimeoutMillis milliseconds
-  // if (millis() - lastDataReceivedMillis > dataTimeoutMillis) {
-  //   sendResetGlobal();
-  //   resetAttempts++;
-  //   // If we've tried resetting 5 times with no success, send an error
-  //   if (resetAttempts > 5) {
-  //     // if (errorClient.connect(server, error_port)) {
-  //     //   errorClient.println("Error: Unable to reset devices after 5 attempts.");
-  //     //   errorClient.stop();
-  //     //   resetAttempts = 0;
-  //     // }
-  //     Serial.println("NETWORK ERROR");
-  //   }
-  //   // Reset lastDataReceivedMillis to avoid multiple reset commands
-  //   lastDataReceivedMillis = millis();
   // }
   delay(10);  // Delay before checking the condition again
 }
