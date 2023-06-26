@@ -194,6 +194,7 @@ void sendInitializationToTag(uint8_t *tag_mac) {
 
 void sendNetworkPoll(uint8_t *tag_mac) {
   onDeviceNetworkData.network_initialize = false;
+  onDeviceNetworkData.run_ranging = false;
   sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
 }
 

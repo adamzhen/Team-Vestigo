@@ -15,10 +15,9 @@
 std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
-bool malfunctioning_tags[4] = {false, false, false, false};
 
 const int tag_id = 4;
-const int num_tags = 4;
+const int num_tags = 1;
 volatile bool ackReceived = false;
 
 typedef struct __attribute__((packed)) rangingData {
@@ -183,6 +182,12 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
   }
 }
 
+void sendNetworkPoll(uint8_t *tag_mac) {
+  onDeviceNetworkData.network_initialize = false;
+  onDeviceNetworkData.run_ranging = false;
+  sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
+}
+
 
 void sendUpdateToPeer() {
   for (int i = 0; i <= num_tags - 2; i++) {
@@ -261,7 +266,7 @@ void setup_esp_now() {
 
   peerInfo.ifidx = WIFI_IF_STA;
 
-  // Add peer        
+  // Add MIO      
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
     Serial.println("Failed to add peer");
     return;
