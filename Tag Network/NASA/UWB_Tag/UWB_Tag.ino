@@ -200,7 +200,9 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
 }
 
 bool pollPreviousTag() {
+  Serial.print("Polling Previous Tag: ");
   int prevTagID = (tag_id - 2 + num_tags) % num_tags;  // Calculate previous tag ID considering cyclic nature of the tags
+  Serial.println(prevTagID);
   networkData pollingMessage;  // Create a networkData instance for polling
   pollingMessage.run_ranging = false;  // This is just a polling message, so no need to set run_ranging to true
   pollingMessage.network_initialize = false;  // This is not a network initialization message, so this remains false
@@ -228,7 +230,7 @@ void sendUpdateToPeer() {
     onDeviceNetworkData.run_ranging = true;
     sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
     
-    if (waitForAck()) {  // If the packet was sent successfully
+    if (waitForAck(1)) {  // If the packet was sent successfully
       Serial.println("Next device activated");
       
       // Start timer
