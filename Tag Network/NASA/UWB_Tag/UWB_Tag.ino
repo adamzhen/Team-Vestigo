@@ -105,16 +105,17 @@ void sendAck(const uint8_t *peerMAC) {
   esp_now_send(peerMAC, buf, sizeof(buf));
 }
 
-bool waitForAck(uint8_t retries) {
-  ackReceived = false;  // Reset the acknowledgement flag
-
-  while (retries--) {
-    delay(10);
-    if (ackReceived) {
-      return true;
+bool waitForAck() {
+  unsigned long startMillis = millis();
+  while(!ackReceived) {
+    delay(5);
+    if (millis() - startMillis > 100) {  // Adjust timeout as needed
+      Serial.println("Failed to receive acknowledgement");
+      return false;
     }
   }
-  return false;
+  ackReceived = false;  // Reset the flag for the next transmission
+  return true;
 }
 
 // Callback when data is sent
@@ -218,7 +219,7 @@ bool pollPreviousTag() {
   }
 
   // Wait for acknowledgement from the previous tag. If we don't receive an acknowledgement within a specific duration, return false
-  return waitForAck(1);
+  return waitForAck();
 }
 
 
@@ -230,7 +231,7 @@ void sendUpdateToPeer() {
     onDeviceNetworkData.run_ranging = true;
     sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
     
-    if (waitForAck(1)) {  // If the packet was sent successfully
+    if (waitForAck()) {  // If the packet was sent successfully
       Serial.println("Next device activated");
       
       // Start timer
