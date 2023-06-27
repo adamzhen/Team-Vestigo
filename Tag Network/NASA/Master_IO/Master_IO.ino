@@ -133,24 +133,29 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   if (dataType == 0) {
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
     memcpy(distances[offDeviceRangingData.tag_id], offDeviceRangingData.data, sizeof(offDeviceRangingData.data));
-    received[offDeviceRangingData.tag_id] = true;
 
-    // For debugging: print the received distances
     Serial.print("Tag ID: ");
     Serial.println(offDeviceRangingData.tag_id + 1);
+
+    if (!received[offDeviceRangingData.tag_id]) {
+      Serial.print("Update Received: ");
+      Serial.println(offDeviceRangingData.tag_id + 1);
+      received[offDeviceRangingData.tag_id] = true;
+    } else {
+      Serial.println("Cycle Detected");
+      sendJson();
+      for(int i = 0; i < 4; i++) {
+        received[i] = false;
+      }
+    }
+
+    // For debugging: print the received distances
     // Serial.println("Distances received:");
     // for (int i = 0; i < 13; i++) {
     //   Serial.print(distances[offDeviceRangingData.tag_id][i]);
     //   Serial.print(" ");
     // }
     // Serial.println();
-
-    if(received[0] && received[1] && received[2] && received[3]) {
-      sendJson();
-      for(int i = 0; i < 4; i++) {
-        received[i] = false;
-      }
-    }
   }
 
   // If the data is networkData (potentially not necessary)
@@ -183,7 +188,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
       }
     }
   }
-  waitForAck(1);
+  waitForAck(20);
 }
 
 void sendInitializationToTag(uint8_t *tag_mac) {
@@ -276,7 +281,7 @@ void checkTagsOnline() {
     Serial.println("Sending polling request to tag " + String(tag_poll_index));
     sendNetworkPoll(macs[tag_poll_index]);
     ackReceived = false;
-    waitForAck(2);
+    waitForAck(20);
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
