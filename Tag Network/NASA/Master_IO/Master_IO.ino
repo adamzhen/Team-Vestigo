@@ -34,7 +34,7 @@ unsigned int resetAttempts = 0;
 unsigned int resetsConfirmed = 0;
 
 typedef struct __attribute__((packed)) rangingData {
-  float data[13];
+  float data[13] = {0};
   int tag_id = 0; 
 } rangingData;
 
@@ -62,7 +62,7 @@ uint8_t macs[][6] = {
   {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 };
 
-byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 0, 0);
 
@@ -134,15 +134,9 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
     memcpy(distances[offDeviceRangingData.tag_id], offDeviceRangingData.data, sizeof(offDeviceRangingData.data));
 
-    Serial.print("Tag ID: ");
-    Serial.println(offDeviceRangingData.tag_id + 1);
-
     if (!received[offDeviceRangingData.tag_id]) {
-      Serial.print("Update Received: ");
-      Serial.println(offDeviceRangingData.tag_id + 1);
       received[offDeviceRangingData.tag_id] = true;
     } else {
-      Serial.println("Cycle Detected");
       sendJson();
       for(int i = 0; i < 4; i++) {
         received[i] = false;
@@ -188,7 +182,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
       }
     }
   }
-  waitForAck(20);
+  waitForAck(1);
 }
 
 void sendInitializationToTag(uint8_t *tag_mac) {
@@ -281,7 +275,7 @@ void checkTagsOnline() {
     Serial.println("Sending polling request to tag " + String(tag_poll_index));
     sendNetworkPoll(macs[tag_poll_index]);
     ackReceived = false;
-    waitForAck(20);
+    waitForAck(2);
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
@@ -388,11 +382,40 @@ void setup() {
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
 
-  while (!startup_success) {
-    startNetworkSetup();
+  unsigned long initCheck = millis();
+  bool didBreak = false;
+  bool isEmpty = true;
+
+  while (millis() - initCheck < 1000) {
+    // Check if empty
+    for(int i = 0; i < 4; ++i) {
+      for(int j = 0; j < 13; ++j) {
+        if(distances[i][j] != 0.0f) {
+          isEmpty = false;
+          break;
+        }
+      }
+
+      if(!isEmpty) {
+        break;
+      }
+    }
+
+    if(!isEmpty) {
+      break;
+    }
+
+    delay(10);
+    
   }
-  
-  sendInitializationToTag(macs[0]);
+
+  // init network if no data received yet
+  if (isEmpty) {
+    while (!startup_success) {
+      startNetworkSetup();
+    }
+    sendInitializationToTag(macs[0]);
+  }
 }
 
 /*************************************
