@@ -136,11 +136,14 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
     if (!received[offDeviceRangingData.tag_id]) {
       received[offDeviceRangingData.tag_id] = true;
-    } else {
+    } else {   
       sendJson();
       for(int i = 0; i < 4; i++) {
         received[i] = false;
-      }
+        for (int j = 0; i < 13; i++) {
+          distances[i][j] = 0;
+        }
+      } 
     }
 
     // For debugging: print the received distances
