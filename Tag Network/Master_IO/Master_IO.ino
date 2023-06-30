@@ -140,7 +140,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       sendJson();
       for(int i = 0; i < 4; i++) {
         received[i] = false;
-        for (int j = 0; i < 13; i++) {
+        for (int j = 0; j < 13; j++) {
           distances[i][j] = 0;
         }
       } 
