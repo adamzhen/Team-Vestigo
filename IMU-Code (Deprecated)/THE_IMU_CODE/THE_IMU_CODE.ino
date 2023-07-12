@@ -52,7 +52,7 @@ SFE_MAX1704X lipo(MAX1704X_MAX17048); // Allow access to all the 17048 features
 //#define DEBUG // used for debugging
 #define TRANSMIT
 //#define PRINT
-#define FUELGAUGE
+//#define FUELGAUGE
 
 #ifdef USE_SPI
 ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
@@ -66,8 +66,7 @@ const char *password;
 const char *host;  
 
 const int network = 0; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
-const int port = 1238;
-int ports[4] = {1238, 1239, 1240, 1241};
+const int port = 1234;
 
 void setup()
 {
@@ -278,9 +277,6 @@ unsigned long dt;
 
 void loop()
 {
-  for (int count = 0; count < 4; ++count)
-  {
-
   unsigned long startTime = micros(); // declare a variable to hold the start time
 
   // Read any DMP data waiting in the FIFO
@@ -389,7 +385,7 @@ void loop()
     SERIAL_PORT.println(F("_ ERROR: NO DATA RECEIVED _"));    
 #endif
   }
-
+/*
   if (myICM.dataReady()) {
     myICM.getAGMT();         // The values are only updated when you call 'getAGMT'
                             //    printRawAGMT( myICM.agmt );     // Uncomment this to see the raw values, taken directly from the agmt structure
@@ -481,20 +477,18 @@ void loop()
     SERIAL_PORT.println("Waiting for data");
     delay(0.1); }
 #endif
+*/
 
 #ifdef TRANSMIT
   std::vector<float> imu_data;
-  // roll, pitch, yaw, ax, ay, az, dt
+  // roll, pitch, yaw, dt
   imu_data.push_back(roll);
   imu_data.push_back(pitch);
   imu_data.push_back(yaw);
-  imu_data.push_back(accX);
-  imu_data.push_back(accY);
-  imu_data.push_back(accZ);
   imu_data.push_back(dt);
 
   // convert vector into Json array
-  const size_t capacity = JSON_ARRAY_SIZE(7);
+  const size_t capacity = JSON_ARRAY_SIZE(4);
   DynamicJsonDocument doc(capacity);
   JsonArray angle_data = doc.to<JsonArray>();
   for (int i = 0; i < imu_data.size(); i++){
@@ -509,11 +503,11 @@ void loop()
 
   // Create a UDP connection to the laptop
   WiFiUDP udp;
-  udp.begin(ports[count]);
+  udp.begin(port);
   IPAddress ip;
   if (WiFi.hostByName(host, ip)) {
     // Send the Json data over the socket connection
-    udp.beginPacket(ip, ports[count]);
+    udp.beginPacket(ip, port);
     udp.write((uint8_t*)jsonString.c_str(), jsonString.length());
     udp.endPacket();
 #ifdef DEBUG
@@ -550,7 +544,7 @@ void loop()
 
   Serial.println();
 #endif
-  }
+
 }
 
 // // initializeDMP is a weak function. Let's overwrite it so we can increase the sample rate

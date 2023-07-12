@@ -8,31 +8,46 @@
 #include <SPI.h>
 #include <esp_now.h>
 
+/******************************************
+******** GEN VARIABLES AND STRUCTS ********
+******************************************/
 
-// Vector Variables
 std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
-// General Variables
-const int tag_id = 4;
-int num_tags = 4;
-bool firstRun;
+const int tag_id = 1;
+const int num_tags = 4;
+volatile bool ackReceived = false;
 
-// IP Addresses
-const char *Aiden_laptop = "192.168.8.101";
-const char *Evan_laptop = "192.168.8.162";
-const char *Adam_laptop = "192.168.8.203";
-const char *Aiden_PC = "192.168.8.122";
-const char *Aiden_laptop_LAN = "192.168.8.219";
-const char *Adam_laptop_LAN = "192.168.8.148";
-const char *Aiden_PC_LAN = "192.168.8.132";
+typedef struct __attribute__((packed)) rangingData {
+  float data[13];
+  int tag_id = 0; 
+} rangingData;
 
-// Wifi creds
-const char *ssid = "Vestigo-Router";
-const char *password = "Vestigo&2023";
-const char *host = Aiden_PC_LAN;
-const int port = 1233 + tag_id;
+typedef struct __attribute__((packed)) networkData {
+  bool run_ranging;
+  bool network_initialize;
+} networkData;
+
+typedef struct __attribute__((packed)) ackData {
+  bool ack;
+} ackData;
+
+rangingData onDeviceRangingData;
+rangingData offDeviceRangingData;
+
+networkData onDeviceNetworkData;
+networkData offDeviceNetworkData;
+
+uint8_t macs[][6] = {
+  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
+  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
+  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
+  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
+};
+
+uint8_t MIOmac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
 
 /*******************************************
 ************ GEN CONFIG OPTIONS ************
@@ -76,65 +91,148 @@ static uint64_t resp_tx_ts;
 extern dwt_txconfig_t txconfig_options;
 
 /******************************************
-************ ESP-NOW FUNCTIONS ************
+************ NETWORK FUNCTIONS ************
 ******************************************/
 
-// MAC addresses
-uint8_t macs[][6] = {
-  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
-  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
-  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0xC0}  // GATEWAY
-};
+void sendAck(const uint8_t *peerMAC) {
+  ackData message;
+  message.ack = true;
 
-// Global variable to indicate if ESP-NOW data was sent
-volatile bool packetSent = false;
+  uint8_t buf[sizeof(ackData) + 1];
+  buf[0] = 2;  // ackData type identifier
+  memcpy(&buf[1], &message, sizeof(ackData));
 
-// Structure example to send data
-// Must match the receiver structure
-typedef struct struct_message {
-  bool run_ranging;
-  float data[13];
-  int tag_id;
-} struct_message;
-
-// Create a struct_message called myData
-struct_message myData;
-
-// Create a struct_message to hold incoming readings
-struct_message incomingReadings;
-
-void formatMacAddress(const uint8_t* mac, char* buffer, size_t bufferSize) {
-  if(bufferSize < 18) {
-    return; // Buffer is too small
-  }
-  sprintf(buffer, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  esp_now_send(peerMAC, buf, sizeof(buf));
 }
 
-// Callback when data is sent
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  char macStr[18];
-  formatMacAddress(mac_addr, macStr, 18);
-  Serial.print("Last Packet Sent to: ");
-  Serial.println(macStr);
-  Serial.print("Last Packet Send Status: ");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-
-  // If the packet was sent successfully, set the flag to true
-  if (status == ESP_NOW_SEND_SUCCESS) {
-    packetSent = true;
+bool waitForAck() {
+  unsigned long startMillis = millis();
+  while(!ackReceived) {
+    delay(5);
+    if (millis() - startMillis > 100) {  // Adjust timeout as needed
+      return false;
+    }
   }
+  ackReceived = false;  // Reset the flag for the next transmission
+  return true;
 }
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  Serial.print("Bytes received: ");
-  Serial.println(len);
-  Serial.print("run_ranging: ");
-  Serial.println(incomingReadings.run_ranging);
+  uint8_t dataType = incomingData[0];
+
+  // If the data is rangingData
+  if (dataType == 0) {
+    memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
+    sendAck(mac);
+  }
+  // If the data is networkData
+  else if (dataType == 1) {
+    memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
+    sendAck(mac);
+
+    if(offDeviceNetworkData.network_initialize) {
+      offDeviceNetworkData.run_ranging = true;
+      offDeviceNetworkData.network_initialize = false;
+    }
+  }
+  // If the data is ackData
+  else if (dataType == 2) {
+    ackReceived = true;
+  }
 }
+
+void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
+  esp_err_t result;
+
+  uint8_t buf[sizeof(rangingData) + 1];  // Buffer to hold type identifier and data
+  buf[0] = 0;  // rangingData type identifier
+  memcpy(&buf[1], message, sizeof(rangingData));  // Copy rangingData to buffer
+
+  for (int i = 0; i < retries; i++) {
+    result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
+    if (result == ESP_OK) {
+      break;
+    } else {
+      if (i < retries - 1) {  // If it's not the last retry
+        delay(50);  // Delay before retry
+      }
+    }
+  }
+}
+
+void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
+  esp_err_t result;
+
+  uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
+  buf[0] = 1;  // NetworkData type identifier
+  memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
+
+  for (int i = 0; i < retries; i++) {
+    result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
+    if (result == ESP_OK) {
+      break;
+    } else {
+      if (i < retries - 1) {
+        delay(50);
+      }
+    }
+  }
+}
+
+bool pollPreviousTag() {
+  int prevTagID = (tag_id - 2 + num_tags) % num_tags;  // Calculate previous tag ID considering cyclic nature of the tags
+  networkData pollingMessage;  // Create a networkData instance for polling
+  pollingMessage.run_ranging = false;  // This is just a polling message, so no need to set run_ranging to true
+  pollingMessage.network_initialize = false;  // This is not a network initialization message, so this remains false
+
+  uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
+  buf[0] = 1;  // NetworkData type identifier
+  memcpy(&buf[1], &pollingMessage, sizeof(networkData));  // Copy networkData to buffer
+
+  esp_err_t result = esp_now_send(macs[prevTagID], buf, sizeof(buf));  // Send the buffer
+  if (result != ESP_OK) {
+    return false;
+  }
+
+  // Wait for acknowledgement from the previous tag. If we don't receive an acknowledgement within a specific duration, return false
+  return waitForAck();
+}
+
+
+void sendUpdateToPeer() {
+  for (int i = 0; i <= num_tags - 2; i++) {
+    int nextTagID = (tag_id + i) % num_tags;
+
+    // Update the networkData struct to run ranging
+    onDeviceNetworkData.run_ranging = true;
+    sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
+    // Reset the run_ranging flag
+    onDeviceNetworkData.run_ranging = false;
+    
+    if (waitForAck()) {  // If the packet was sent successfully    
+      // Start timer
+      unsigned long startMillis = millis();
+
+      // Wait for run_ranging flag update from previous tag
+      while(!offDeviceNetworkData.run_ranging) {
+        if (millis() - startMillis > 600) {
+          if (!pollPreviousTag()) {
+            // Stop waiting and activate the current device
+            offDeviceNetworkData.run_ranging = true;
+            return;
+          } else {
+            return;
+          }
+        }
+        delay(10);
+      }
+
+      return;
+    }
+  }
+}
+
 
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
@@ -143,14 +241,11 @@ void setup_esp_now() {
   // Init ESPNow with a fallback logic
   WiFi.disconnect();
   if (esp_now_init() != ESP_OK) {
-    Serial.println("ESPNow Init Failed");
     ESP.restart();
   }
-  Serial.println("ESPNow Init Success");
 
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Transmitted packet
-  esp_now_register_send_cb(OnDataSent);
 
   // Register for Receive CB to get incoming data
   esp_now_register_recv_cb(OnDataRecv);
@@ -166,40 +261,29 @@ void setup_esp_now() {
 
     // Add peer        
     if (esp_now_add_peer(&peerInfo) != ESP_OK){
-      Serial.println("Failed to add peer");
       return;
     }
   }
-}
 
-void sendToPeer(uint8_t *peerMAC, struct_message *message) {
-  esp_err_t result;
-  
-  do {
-    result = esp_now_send(peerMAC, (uint8_t *)message, sizeof(struct_message));
-    if (result == ESP_OK) {
-      Serial.println("Sent message success");
-      packetSent = false;  // Reset the flag
-    } else {
-      Serial.println("Error sending the message");
-      delay(100);  // Delay before retry
-    }
-  } while (result != ESP_OK);
-}
+  // Register MIO
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, MIOmac, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
 
-void waitForPacketSent() {
-  while(!packetSent) {
-    // Wait for the packet to be sent
-    delay(10);  // Non-busy wait
+  peerInfo.ifidx = WIFI_IF_STA;
+
+  // Add MIO      
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    return;
   }
 }
 
-/**********************************************
-************ TWR TRANSMISTTER MODE ************
-**********************************************/
+/*****************************************
+************ TWR TRANSMISTTER ************
+*****************************************/
 
-void twr_transmitter_mode(int key, double& tof)
-{
+void twr_transmitter_mode(int key, double& tof) {
   uint8_t frame_seq_nb = 0;
   uint8_t rx_buffer[20];
 
@@ -272,7 +356,7 @@ void twr_transmitter_mode(int key, double& tof)
   }
 
   /* Execute a delay between ranging exchanges. */
-  delayMicroseconds(750);
+  delayMicroseconds(700);
 }
  
 /******************************************
@@ -346,29 +430,29 @@ void advancedRanging()
             }
           }
 
-          // Separate Sort for Transmission
           std::vector<std::pair<int, std::vector<float>>> sortedKeys = keys;
           std::sort(sortedKeys.begin(), sortedKeys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
             return a.first < b.first;
           });
 
           for (int i = 0; i < sortedKeys.size(); i++) {
-            myData.data[i] = sortedKeys[i].second[0];
+            onDeviceRangingData.data[i] = sortedKeys[i].second[0];
           }
 
-          sendToPeer(macs[4], &myData);  // Assuming macs[4] is the gateway
+          sendToPeer(MIOmac, &onDeviceRangingData);
 
           // Sort Key Order
           std::sort(keys.begin(), keys.end(), [](const std::pair<int, std::vector<float>>& a, const std::pair<int, std::vector<float>>& b) {
-            // Since the second element of the pair is now the average, we can directly compare these values
             return a.second[0] < b.second[0];
           });
 
           // Move the first 5 elements to the end
           std::rotate(keys.begin(), keys.begin() + (12 - total_distance_counter), keys.end());
 
-          // Swap elements to allow for auto switching
-          // Save the original 8th element in a temporary variable
+          if(keys.size() < 9) // check if we have enough elements to swap
+          return;
+
+          // Save the original elements in temporary variables
           std::pair<int, std::vector<float>> temp_7 = keys[6];
           std::pair<int, std::vector<float>> temp_8 = keys[7];
           std::pair<int, std::vector<float>> temp_9 = keys[8];
@@ -390,10 +474,7 @@ void advancedRanging()
 ************ PROGRAM SETUP ************
 **************************************/
 
-void setup() 
-{
-  Serial.begin(115200);
-
+void setup() {
   setup_esp_now();
 
   UART_init();
@@ -448,44 +529,21 @@ void setup()
     keys.push_back(std::make_pair(i, std::vector<float>()));
   }  
 
-  if (tag_id == 1) {
-    firstRun = true;
-    Serial.println("First Run True");
-  }
-  else {
-    firstRun = false;
-    Serial.println("First Run False");
-  }
-
-  myData.tag_id = tag_id - 1;
+  onDeviceRangingData.tag_id = tag_id - 1;
 }
 
 /*************************************
 ************ PROGRAM LOOP ************
 *************************************/
 
-void loop() 
-{
-  if (firstRun || incomingReadings.run_ranging) {
-    Serial.println("Read Data or First Run");
-    // Reset flag
-    incomingReadings.run_ranging = false;
+void loop() {
+  if (offDeviceNetworkData.run_ranging) {
+    offDeviceNetworkData.run_ranging = false;
 
-    // Execute the advancedRanging function
     advancedRanging();
-    Serial.println("Ranging Data Gathered");
 
-    // Prepare and send an update to a different ESP32
-    myData.run_ranging = true; // or whatever value you want to send
-    sendToPeer(macs[tag_id % 4], &myData);
-    waitForPacketSent();
-    Serial.println("Next device activated");
-  }
-
-  if (firstRun) {
-    firstRun = false;
-    Serial.println("First Run Reset");
+    onDeviceNetworkData.run_ranging = true;
+    sendUpdateToPeer();
   }
 }
-
 
