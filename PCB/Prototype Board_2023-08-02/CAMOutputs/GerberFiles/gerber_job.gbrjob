@@ -1,0 +1,24 @@
+{
+    "Header": {
+        "Comment": "All values are metric (mm)",
+        "CreationDate": "2023-08-02T16:09:12Z",
+        "GenerationSoftware": {
+            "Application": "EAGLE",
+            "Vendor": "Autodesk",
+            "Version": "9.6.2"
+        },
+        "Part": "Single"
+    },
+    "Overall": {
+        "BoardThickness": 1.5862,
+        "LayerNumber": 4,
+        "Name": {
+            "ProjectId": "Prototype Board"
+        },
+        "Owner": "Joey See <joeysee@tamu.edu>",
+        "Size": {
+            "X": 55.88,
+            "Y": 76.2
+        }
+    }
+}

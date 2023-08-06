@@ -5,9 +5,8 @@
 "2";"19-217/GHC-YR1S2/3T";"19-217/GHC-YR1S2/3T";"19-217/GHC-YR1S2/3T";"U$6, U$9";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "6";"20V/0.2A/8MHz/1.2Ω/1Vth";"MOSFET-NCH-RE1C002UN";"SOT-416FL";"Q2, Q5, Q6, Q7, Q8, Q10";"N-channel MOSFETs";"";"";"";"";"";"";"";"";"";"";"";"TRANS_14399";"";"20V/0.2A/8MHz/1.2Ω/1Vth";
 "1";"20V/4.2A/52mΩ/1.4W";"MOSFET_PCH-DMG2305UX-7";"SOT23-3@1";"Q3";"P-channel MOSFETs";"";"";"";"";"";"";"";"";"";"";"";"TRANS-14388";"";"20V/4.2A/52mΩ/1.4W";
-"1";"9DoF IMU";"ICM-20948";"QFN24-3X3";"U1";"ICM-20948 9 Degree of Freedom IMU";"";"";"";"";"";"";"";"";"";"";"";"IC-14247";"";"9DoF IMU";
 "1";"BAT60AE6327HTSA1";"BAT60AE6327HTSA1";"SOD2513X110N";"D1";"INFINEON - BAT60AE6327HTSA1 - RECTIFIER, SCHOTTKY, 3A, 10V, SOD-323";"INFINEON - BAT60AE6327HTSA1 - RECTIFIER, SCHOTTKY, 3A, 10V, SOD-323";"1.1mm";"";"";"";"";"";"Infineon";"BAT60AE6327HTSA1";"726-BAT60AE6327HTSA1";"https://www.mouser.co.uk/ProductDetail/Infineon-Technologies/BAT60AE6327HTSA1?qs=OwbwYO03UsIW3Y2lCXbs8Q%3D%3D";"";"";"";
-"1";"CH340C";"CH340C";"SO016";"U7";"";"";"";"";"";"";"";"";"";"";"";"";"IC-14038";"";"";
+"1";"CH340B";"CH340B";"SOP-16";"U$11";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "5";"C_100NF/50V_0603";"C_100NF/50V_0603";"C0603";"C3, C7, C10, C14, C15";"Capacitor General purpose SMD Capacitor";"";"";"https://datasheet.lcsc.com/lcsc/1809301912_YAGEO-CC0603KRX7R9BB104_C14663.pdf";"C14663";"";"0";"7111530";"";"";"";"";"";"50V 100nF X7R ±10% 0603  ROHS";"";
 "3";"C_10UF/10V_0603";"C_10UF/10V_0603";"C0603";"C2, C4, C11";"Capacitor General purpose SMD Capacitor";"";"";"https://datasheet.lcsc.com/lcsc/1810191219_Samsung-Electro-Mechanics-CL10A106KP8NNNC_C19702.pdf";"C19702";"";"0";"2089400";"";"";"";"";"";"10V 10uF X5R ±10% 0603  ROHS";"";
 "4";"C_2.2UF/16V_0603";"C_2.2UF/16V_0603";"C0603";"C1, C5, C12, C16";"Capacitor General purpose SMD Capacitor";"";"";"https://datasheet.lcsc.com/lcsc/1810271109_Samsung-Electro-Mechanics-CL10A225KO8NNNC_C23630.pdf";"C23630";"";"0";"1324345";"";"";"";"";"";"16V 2.2uF X5R ±10% 0603  ROHS";"";
@@ -15,6 +14,7 @@
 "1";"DWM1000";"DWM1000";"DWM1000";"U5";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "1";"ESP-WROOM-32";"ESP-WROOM-32";"ESP-WROOM-32";"U3";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "1";"HE9008M6R";"HE9008M6R";"HE9008M6R";"U$5";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
+"1";"ICM20948";"ICM20948";"ICM20948";"U$12";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "2";"K2-6639SP-C4SC-04_C83206";"K2-6639SP-C4SC-04_C83206";"K2-6639SP-C4SC-04";"U$1, U$3";"K2-6639SP-C4SC-04_C83206 button, https://datasheet.lcsc.com/lcsc/2108131530_Korean-Hroparts-Elec-K2-6639SP-C4SC-04_C83206.pdf";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "1";"MCP73831";"MCP73831";"SOT23-5";"U2";"MCP73831T Li-Ion, Li-Pol Controller";"";"";"";"";"";"";"";"";"";"";"";"IC-09995";"";"";
 "1";"MLF2012";"MLF2012";"MLF2012";"U$2";"MLF2012";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
@@ -28,6 +28,6 @@
 "2";"R_5.1K_0402";"R_5.1K_0402";"R0402";"R12, R27";"Resistor General purpose SMD Resistor";"";"";"https://datasheet.lcsc.com/lcsc/2110260030_UNI-ROYAL-Uniroyal-Elec-0402WGF5101TCE_C25905.pdf";"C25905";"";"0";"1228443";"";"";"";"";"";"±1% 1/16W Thick Film Resistors 50V ±100ppm -55°C~+155°C 5.1kOhm 0402  ROHS";"";
 "2";"S8050";"TRANSISTOR-NPN-SOT23";"SOT23";"Q1, Q4";"NPN audion";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "1";"SM02B_PASS_TB_LF";"SM02B_PASS_TB_LF";"SM02B_PASS_TB_LF";"U$8";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
-"1";"SMF05CT1G";"SMF05CT1G";"SOT65P210X110-6N";"IC1";"5-Line Transient Voltage Suppressor Array";"5-Line Transient Voltage Suppressor Array";"1.1mm";"";"";"";"";"";"onsemi";"SMF05CT1G";"863-SMF05CT1G";"https://www.mouser.co.uk/ProductDetail/onsemi/SMF05CT1G?qs=xZq1yRCsb1c8sZHBbx4IBw%3D%3D";"";"";"";
 "1";"TPS62202DBVR";"TPS62202DBVR";"TPS62202DBVR";"U$4";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
+"1";"TPSMF05CT1G";"TPSMF05CT1G";"TPSMF05CT1G";"U$7";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
 "1";"USBC19";"USBC19";"USBC19";"U$10";"";"";"";"";"";"";"";"";"";"";"";"";"";"";"";
