@@ -2,18 +2,11 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <ArduinoJson.h>
-#include <WiFiUdp.h>
-#include <Ethernet.h>
 #include <SPI.h>
 
 /******************************************
 ******** GEN VARIABLES AND STRUCTS ********
 ******************************************/
-
-// PHY config
-#define ETH_CLK_MODE 0
-#define ETH_PHY_POWER 12
-#define ETH_PHY_ADDR 0
 
 float distances[4][13] = {0};
 bool online_tags[4] = {false};
@@ -25,8 +18,6 @@ bool startup_success = false;
 IPAddress server(192, 168, 1, 177);
 unsigned int network_port = 1234; 
 unsigned int error_port = 1235;
-EthernetClient client;
-EthernetClient errorClient;
 bool startNetworkSetupFlag = false;
 
 volatile bool ackReceived = false;
@@ -63,8 +54,6 @@ uint8_t macs[][6] = {
 };
 
 uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress gateway(192, 168, 1, 1);
-IPAddress subnet(255, 255, 0, 0);
 
 /******************************************
 ************ NETWORK FUNCTIONS ************
@@ -85,16 +74,16 @@ void sendAck(const uint8_t *peerMAC) {
   }
 }
 
-bool waitForAck(uint8_t retries) {
-  ackReceived = false;  // Reset the acknowledgement flag
-
-  while (retries--) {
-    delay(10);
-    if (ackReceived) {
-      return true;
+bool waitForAck() {
+  unsigned long startMillis = millis();
+  while (!ackReceived) {
+    delay(5);
+    if (millis() - startMillis > 100) {
+      return false;
     }
   }
-  return false;
+  ackReceived = false;
+  return true;
 }
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -103,26 +92,20 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 void sendJson() {
-  DynamicJsonDocument doc(1024);
-  for(int tag_id = 0; tag_id < 4; tag_id++) {
-    JsonArray data = doc.createNestedArray(String(tag_id+1));
-    for(int i = 0; i < 13; i++) {
+  StaticJsonDocument<1024> doc;
+  for (int tag_id = 0; tag_id < 4; tag_id++) {
+    JsonArray data = doc.createNestedArray(String(tag_id + 1));
+    for (int i = 0; i < 13; i++) {
       data.add(distances[tag_id][i]);
     }
   }
-  String jsonString;
-  serializeJson(doc, jsonString);
-  Serial.println("Sending JSON: ");
-  // Serial.println(jsonString);
+  
+  Serial.println("Sending JSON:");
+  
+  byte buffer[1024];
+  size_t nBytes = serializeJson(doc, buffer, sizeof(buffer));
 
-  // // Connect to server
-  // if (client.connect(server, network_port)) {
-  //   // Send JSON string
-  //   client.println(jsonString);
-  //   client.stop(); // Close the connection
-  // } else {
-  //   Serial.println("Failed to connect to server");
-  // }
+  Serial.write(buffer, nBytes); // Write the raw JSON data
 }
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
@@ -163,6 +146,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   else if (dataType == 2) {
     Serial.println("Acknowledgement received");
     ackReceived = true;
+    Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
   }
 }
 
@@ -185,7 +169,7 @@ void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) 
       }
     }
   }
-  waitForAck(1);
+  waitForAck();
 }
 
 void sendInitializationToTag(uint8_t *tag_mac) {
@@ -202,6 +186,7 @@ void sendNetworkPoll(uint8_t *tag_mac) {
 
 void checkTagsOnline() {
   static uint8_t tag_poll_index = 0;
+  Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
 
   if (ackReceived) {
     Serial.println("Acknowledgement received from tag " + String(tag_poll_index));
@@ -263,22 +248,22 @@ void checkTagsOnline() {
     }
   }
 
-  // // Debug: Print the online status of all tags and the value of all_tags_online
-  // for (int i = 0; i < 4; i++) {
-  //   Serial.print("Tag ");
-  //   Serial.print(i);
-  //   Serial.print(" online status: ");
-  //   Serial.println(online_tags[i] ? "Online" : "Offline");
-  // }
-  // Serial.print("All tags online: ");
-  // Serial.println(all_tags_online ? "Yes" : "No");
+  // Debug: Print the online status of all tags and the value of all_tags_online
+  for (int i = 0; i < 4; i++) {
+    Serial.print("Tag ");
+    Serial.print(i);
+    Serial.print(" online status: ");
+    Serial.println(online_tags[i] ? "Online" : "Offline");
+  }
+  Serial.print("All tags online: ");
+  Serial.println(all_tags_online ? "Yes" : "No");
 
   // If not all tags are online, continue polling
   if (!all_tags_online) {
     Serial.println("Sending polling request to tag " + String(tag_poll_index));
     sendNetworkPoll(macs[tag_poll_index]);
     ackReceived = false;
-    waitForAck(2);
+    waitForAck();
   } else {
     // If all tags are online, set startup_success to true
     startup_success = true;
@@ -300,19 +285,20 @@ void startNetworkSetup() {
   startNetworkSetupFlag = true;
 
   // Wait for the server to send "start"
-  while(!startNetworkSetupFlag) {
-    if (client.available() > 0) {
-      String serverMsg = client.readStringUntil('\n');
+  // while(!startNetworkSetupFlag) {
+  //   if (client.available() > 0) {
+  //     String serverMsg = client.readStringUntil('\n');
 
-      if (serverMsg == "start") {
-        startNetworkSetupFlag = true;
-        Serial.println("Received start message from server, starting network setup");
-      }
-    }
-    delay(10);
-  }
+  //     if (serverMsg == "start") {
+  //       startNetworkSetupFlag = true;
+  //       Serial.println("Received start message from server, starting network setup");
+  //     }
+  //   }
+  //   delay(10);
+  // }
 
   while(!all_tags_online) {
+    Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
     checkTagsOnline();
     delay(10);
   }
@@ -360,27 +346,11 @@ void setup_esp_now() {
 **************************************/
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(921600);
 
   Serial.println("");
   Serial.println("NEW RUN NEW RUN NEW RUN");
   Serial.println("");
-  
-  // // Start Ethernet
-  // Ethernet.init(ETH_PHY_POWER);   // power pin
-  // Ethernet.begin(mac, server, );
-  // delay(1000);
-
-  // // Check for Ethernet hardware present
-  // if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-  //   Serial.println("Ethernet shield was not found.");
-  //   while (true) {
-  //     delay(1); // do nothing, no point running without Ethernet hardware
-  //   }
-  // }
-  // if (Ethernet.linkStatus() == LinkOFF) {
-  //   Serial.println("Ethernet cable is not connected.");
-  // }
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
@@ -426,11 +396,5 @@ void setup() {
 *************************************/
 
 void loop() {
-  // Add this part to maintain the Ethernet connection
-  // if (Ethernet.linkStatus() == LinkOFF) {
-  //   Serial.println("Ethernet link has been lost, waiting for reconnection...");
-  //   delay(10);
-  //   return;
-  // }
-  delay(10);  // Delay before checking the condition again
+  delay(1);
 }
