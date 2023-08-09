@@ -98,9 +98,11 @@ void sendJson() {
     for (int i = 0; i < 13; i++) {
       data.add(distances[tag_id][i]);
     }
+    data.add(0);
+    data.add(0);
+    data.add(0);
+    data.add(0);
   }
-  
-  Serial.println("Sending JSON:");
   
   byte buffer[1024];
   size_t nBytes = serializeJson(doc, buffer, sizeof(buffer));
