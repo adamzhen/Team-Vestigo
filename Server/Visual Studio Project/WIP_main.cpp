@@ -69,7 +69,7 @@ Vector3d multilateration(const PositionMatrix& centers, const VectorXd& distance
     Vector3d estimate = initial_guess;
 
     double lambda = 0.001;
-    double updateNorm;
+    double updateNorm = 1.0; {};
     int maxIterations = 1000;
     int iterations = 0;
 
@@ -442,6 +442,8 @@ int main()
     dcbSerialParams.Parity = NOPARITY;
     SetCommState(hSerial, &dcbSerialParams);
 
+    cout << "Serial Start Up Complete" << endl;
+
     /**************************************
     *********** DATA PROCESSING ***********
     **************************************/
@@ -473,37 +475,62 @@ int main()
         string completeMessage;
         byte buffer[1024];
         DWORD bytesRead;
-        if (!ReadFile(hSerial, buffer, sizeof(buffer), &bytesRead, NULL)) {
-            // Handle error
-            throw runtime_error("Bytes Not Correctly Read");
-        }
+        size_t MAX_MESSAGE_SIZE = 10000;
 
-        while (true) // Assuming you want to keep reading
+        bool readLoop = true;
+        while (readLoop) // Assuming you want to keep reading
         {
-
             if (!ReadFile(hSerial, buffer, sizeof(buffer), &bytesRead, NULL)) {
                 // Handle error
                 throw runtime_error("Bytes Not Correctly Read, In Loop");
-            }
-
-            // Append the read content to the complete message
-            completeMessage += string(reinterpret_cast<const char*>(buffer), bytesRead);
+            };
 
             // Check for a termination character, e.g., '}'
-            if (completeMessage.back() == '}') {
-                break; // Stop reading when a complete message is received
+            for (DWORD i = 0; i < bytesRead; ++i) {
+                char c = buffer[i];
+
+                if (c == '<')
+                {
+                    // Start of a message
+                    completeMessage.clear();
+                }
+                else if (c == '>')
+                {
+                    completeMessage = completeMessage.substr(1, completeMessage.length() - 2); // Trimming off first and last brackets
+
+                    size_t start = 0, end = 0;
+                    for (int i = 0; i < num_tags; ++i)
+                    {
+                        // Iterating through each vector within the 2D matrix
+                        start = completeMessage.find("[", end);
+                        end = completeMessage.find("]", start) + 1;
+                        VectorXd tag_data_row = dataProcessing(completeMessage.substr(start, end - start));
+                        tag_data.row(i) = tag_data_row.transpose();
+                    }
+
+                    // Reset the completeMessage for the next read
+                    completeMessage.clear();
+
+                    readLoop = false;
+                    break;
+                }
+                else
+                {
+                    completeMessage += c;
+                }
+
+                // Optional: Check for buffer overflow
+                if (completeMessage.size() > MAX_MESSAGE_SIZE)
+                {
+                    // Handle error
+                    throw runtime_error("Message size exceeded maximum limit");
+                }
             }
         }
 
-        completeMessage = completeMessage.substr(1, completeMessage.length() - 2); // Trimming off first and last brackets
 
-        size_t start = 0, end = 0;
-        for (int i = 0; i < num_tags; ++i) { // Iterating through each vector within the 2D matrix
-            start = completeMessage.find("[", end);
-            end = completeMessage.find("]", start) + 1;
-            VectorXd tag_data_row = dataProcessing(completeMessage.substr(start, end - start));
-            tag_data.row(i) = tag_data_row.transpose();
-        }
+        // Prints out data received
+        cout << tag_data << endl;
 
         /*** SDL SETUP **/
         // Clear the screen
@@ -521,6 +548,8 @@ int main()
             pitch = tag_data(j, 13);
             yaw = tag_data(j, 14);
             dt = tag_data(j, 15);
+
+            cout << roll << ", " << pitch << ", " << yaw << ", " << dt << endl;
 
             // Call the multilateration function
             Vector3d Tags_current;

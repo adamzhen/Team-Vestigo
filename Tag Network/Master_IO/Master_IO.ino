@@ -107,7 +107,9 @@ void sendJson() {
   byte buffer[1024];
   size_t nBytes = serializeJson(doc, buffer, sizeof(buffer));
 
+  Serial.write('<'); // Start delimiter
   Serial.write(buffer, nBytes); // Write the raw JSON data
+  Serial.write('>'); // End delimiter
 }
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
