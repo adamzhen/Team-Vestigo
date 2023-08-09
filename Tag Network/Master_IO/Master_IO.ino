@@ -316,7 +316,6 @@ void setup_esp_now() {
     Serial.println("ESPNow Init Failed");
     ESP.restart();
   }
-  Serial.println("ESPNow Init Success");
 
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Transmitted packet
@@ -348,11 +347,7 @@ void setup_esp_now() {
 **************************************/
 
 void setup() {
-  Serial.begin(921600);
-
-  Serial.println("");
-  Serial.println("NEW RUN NEW RUN NEW RUN");
-  Serial.println("");
+  Serial.begin(115200);
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);

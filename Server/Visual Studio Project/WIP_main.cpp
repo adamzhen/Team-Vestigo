@@ -428,9 +428,10 @@ int main()
     *********** SERIAL STARTUP ***********
     *************************************/
 
-    HANDLE hSerial = CreateFile(TEXT("COM3"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    HANDLE hSerial = CreateFile(TEXT("COM4"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (hSerial == INVALID_HANDLE_VALUE) {
         // Handle error
+        throw runtime_error("Connection Not Init Properly");
     }
     DCB dcbSerialParams = { 0 };
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
@@ -440,7 +441,6 @@ int main()
     dcbSerialParams.StopBits = ONESTOPBIT;
     dcbSerialParams.Parity = NOPARITY;
     SetCommState(hSerial, &dcbSerialParams);
-
 
     /**************************************
     *********** DATA PROCESSING ***********
@@ -470,29 +470,40 @@ int main()
         MatrixXd tag_data(num_tags, 16);
         VectorXd distances(12);
 
+        string completeMessage;
         byte buffer[1024];
         DWORD bytesRead;
         if (!ReadFile(hSerial, buffer, sizeof(buffer), &bytesRead, NULL)) {
             // Handle error
+            throw runtime_error("Bytes Not Correctly Read");
         }
 
-        string data_str(reinterpret_cast<const char*>(buffer), bytesRead);
+        while (true) // Assuming you want to keep reading
+        {
 
+            if (!ReadFile(hSerial, buffer, sizeof(buffer), &bytesRead, NULL)) {
+                // Handle error
+                throw runtime_error("Bytes Not Correctly Read, In Loop");
+            }
 
-        // data_str = "[[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105]]";
+            // Append the read content to the complete message
+            completeMessage += string(reinterpret_cast<const char*>(buffer), bytesRead);
 
-        data_str = data_str.substr(1, data_str.length() - 2); // Trimming off first and last brackets
+            // Check for a termination character, e.g., '}'
+            if (completeMessage.back() == '}') {
+                break; // Stop reading when a complete message is received
+            }
+        }
+
+        completeMessage = completeMessage.substr(1, completeMessage.length() - 2); // Trimming off first and last brackets
 
         size_t start = 0, end = 0;
         for (int i = 0; i < num_tags; ++i) { // Iterating through each vector within the 2D matrix
-            start = data_str.find("[", end);
-            end = data_str.find("]", start) + 1;
-            VectorXd tag_data_row = dataProcessing(data_str.substr(start, end - start));
+            start = completeMessage.find("[", end);
+            end = completeMessage.find("]", start) + 1;
+            VectorXd tag_data_row = dataProcessing(completeMessage.substr(start, end - start));
             tag_data.row(i) = tag_data_row.transpose();
         }
-
-        // Prints out data received
-        cout << tag_data << endl;
 
         /*** SDL SETUP **/
         // Clear the screen
