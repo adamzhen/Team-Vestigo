@@ -349,7 +349,7 @@ void setup_esp_now() {
 **************************************/
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(256000);
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
