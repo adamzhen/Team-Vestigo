@@ -550,13 +550,12 @@ int main()
                 }
             }
 
-            cout << "Drawing Objects" << endl;
             // randomizer for testing
             static random_device rd;           // Obtain a random number from hardware
             static mt19937 eng(rd());          // Seed the generator
             static uniform_int_distribution<> distr(0, 360); // Define the range
 
-            double randomthing = distr(eng);
+            double randomthing = 120;
 
             drawObject(Tags_position.row(j)[0], Tags_position.row(j)[1], randomthing, renderer, screen_scale, colors, j);
         }       
