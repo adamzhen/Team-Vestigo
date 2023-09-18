@@ -71,8 +71,9 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Users\Adam Zheng\OneDrive - Texas A&amp;M University\Documents\Arduino\Team-Vestigo\Visualization Tool\SDL2\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Adam Zheng\OneDrive - Texas A&amp;M University\Documents\Arduino\Team-Vestigo\Visualization Tool\SDL2\include;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\Adam Zheng\OneDrive - Texas A&amp;M University\Documents\Arduino\Team-Vestigo\Visualization Tool\SDL2\lib\x64;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>C:\Users\Adam Zheng\OneDrive - Texas A&amp;M University\Documents\Arduino\Team-Vestigo\Visualization Tool\SDL2\include;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
