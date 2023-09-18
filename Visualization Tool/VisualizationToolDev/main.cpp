@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <SDL.h>
 
 int main(int argc, char* argv[])
 {
