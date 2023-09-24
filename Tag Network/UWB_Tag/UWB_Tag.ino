@@ -22,13 +22,9 @@ volatile bool ackReceived = false;
 
 typedef struct __attribute__((packed)) rangingData {
   float data[13];
-  int tag_id = 0; 
+  int tag_id = 0;
+  bool run_ranging; 
 } rangingData;
-
-typedef struct __attribute__((packed)) networkData {
-  bool run_ranging;
-  bool network_initialize;
-} networkData;
 
 typedef struct __attribute__((packed)) ackData {
   bool ack;
@@ -36,16 +32,6 @@ typedef struct __attribute__((packed)) ackData {
 
 rangingData onDeviceRangingData;
 rangingData offDeviceRangingData;
-
-networkData onDeviceNetworkData;
-networkData offDeviceNetworkData;
-
-uint8_t macs[][6] = {
-  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
-  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
-  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
-};
 
 uint8_t MIOmac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
 
@@ -99,7 +85,7 @@ void sendAck(const uint8_t *peerMAC) {
   message.ack = true;
 
   uint8_t buf[sizeof(ackData) + 1];
-  buf[0] = 2;  // ackData type identifier
+  buf[0] = 1;  // ackData type identifier
   memcpy(&buf[1], &message, sizeof(ackData));
 
   esp_now_send(peerMAC, buf, sizeof(buf));
@@ -120,24 +106,14 @@ bool waitForAck() {
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   uint8_t dataType = incomingData[0];
-
-  // If the data is rangingData
+  
+  // If the data is networkData
   if (dataType == 0) {
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
     sendAck(mac);
   }
-  // If the data is networkData
-  else if (dataType == 1) {
-    memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
-    sendAck(mac);
-
-    if(offDeviceNetworkData.network_initialize) {
-      offDeviceNetworkData.run_ranging = true;
-      offDeviceNetworkData.network_initialize = false;
-    }
-  }
   // If the data is ackData
-  else if (dataType == 2) {
+  else if (dataType == 1) {
     ackReceived = true;
   }
 }
@@ -161,78 +137,6 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
   }
 }
 
-void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
-  esp_err_t result;
-
-  uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
-  buf[0] = 1;  // NetworkData type identifier
-  memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
-
-  for (int i = 0; i < retries; i++) {
-    result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
-    if (result == ESP_OK) {
-      break;
-    } else {
-      if (i < retries - 1) {
-        delay(50);
-      }
-    }
-  }
-}
-
-bool pollPreviousTag() {
-  int prevTagID = (tag_id - 2 + num_tags) % num_tags;  // Calculate previous tag ID considering cyclic nature of the tags
-  networkData pollingMessage;  // Create a networkData instance for polling
-  pollingMessage.run_ranging = false;  // This is just a polling message, so no need to set run_ranging to true
-  pollingMessage.network_initialize = false;  // This is not a network initialization message, so this remains false
-
-  uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
-  buf[0] = 1;  // NetworkData type identifier
-  memcpy(&buf[1], &pollingMessage, sizeof(networkData));  // Copy networkData to buffer
-
-  esp_err_t result = esp_now_send(macs[prevTagID], buf, sizeof(buf));  // Send the buffer
-  if (result != ESP_OK) {
-    return false;
-  }
-
-  // Wait for acknowledgement from the previous tag. If we don't receive an acknowledgement within a specific duration, return false
-  return waitForAck();
-}
-
-
-void sendUpdateToPeer() {
-  for (int i = 0; i <= num_tags - 2; i++) {
-    int nextTagID = (tag_id + i) % num_tags;
-
-    // Update the networkData struct to run ranging
-    onDeviceNetworkData.run_ranging = true;
-    sendToPeerNetwork(macs[nextTagID], &onDeviceNetworkData);
-    // Reset the run_ranging flag
-    onDeviceNetworkData.run_ranging = false;
-    
-    if (waitForAck()) {  // If the packet was sent successfully    
-      // Start timer
-      unsigned long startMillis = millis();
-
-      // Wait for run_ranging flag update from previous tag
-      while(!offDeviceNetworkData.run_ranging) {
-        if (millis() - startMillis > 600) {
-          if (!pollPreviousTag()) {
-            // Stop waiting and activate the current device
-            offDeviceNetworkData.run_ranging = true;
-            return;
-          } else {
-            return;
-          }
-        }
-        delay(10);
-      }
-
-      return;
-    }
-  }
-}
-
 
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
@@ -243,9 +147,6 @@ void setup_esp_now() {
   if (esp_now_init() != ESP_OK) {
     ESP.restart();
   }
-
-  // Once ESPNow is successfully Init, we will register for Send CB to
-  // get the status of Transmitted packet
 
   // Register for Receive CB to get incoming data
   esp_now_register_recv_cb(OnDataRecv);
@@ -542,8 +443,7 @@ void loop() {
 
     advancedRanging();
 
-    onDeviceNetworkData.run_ranging = true;
-    sendUpdateToPeer();
+    // change to have advancedRanging output data, add a IMU data collection event, then send complete data to MIO
   }
 }
 

@@ -15,9 +15,6 @@ bool all_tags_online = false;
 int attempts[4] = {0};
 bool startup_success = false;
 
-IPAddress server(192, 168, 1, 177);
-unsigned int network_port = 1234; 
-unsigned int error_port = 1235;
 bool startNetworkSetupFlag = false;
 
 volatile bool ackReceived = false;
@@ -27,13 +24,8 @@ unsigned int resetsConfirmed = 0;
 typedef struct __attribute__((packed)) rangingData {
   float data[13] = {0};
   int tag_id = 0; 
+  bool run_ranging; 
 } rangingData;
-
-
-typedef struct __attribute__((packed)) networkData {
-  bool run_ranging;
-  bool network_initialize;
-} networkData;
 
 typedef struct __attribute__((packed)) ackData {
   bool ack;
@@ -41,9 +33,6 @@ typedef struct __attribute__((packed)) ackData {
 
 rangingData onDeviceRangingData;
 rangingData offDeviceRangingData;
-
-networkData onDeviceNetworkData;
-networkData offDeviceNetworkData;
 
 uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
@@ -53,25 +42,19 @@ uint8_t macs[][6] = {
   {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 };
 
-uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-
 /******************************************
 ************ NETWORK FUNCTIONS ************
 ******************************************/
 
 void sendAck(const uint8_t *peerMAC) {
-  esp_err_t result;
-  ackData ack;
-  ack.ack = true;
+  ackData message;
+  message.ack = true;
+
   uint8_t buf[sizeof(ackData) + 1];
-  buf[0] = 2;
-  memcpy(&buf[1], &ack, sizeof(ackData));
-  result = esp_now_send(peerMAC, buf, sizeof(buf));
-  if (result == ESP_OK) {
-    Serial.println("Ack sent");
-  } else {
-    Serial.println("Error sending ack");
-  }
+  buf[0] = 1;
+  memcpy(&buf[1], &message, sizeof(ackData));
+
+  esp_now_send(peerMAC, buf, sizeof(buf));
 }
 
 bool waitForAck() {
@@ -86,11 +69,7 @@ bool waitForAck() {
   return true;
 }
 
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.print("Last Packet Send Status: ");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-}
-
+////////////// WIP ///////////////////////////
 void sendJson() {
   StaticJsonDocument<1024> doc;
   for (int tag_id = 0; tag_id < 4; tag_id++) {
@@ -111,9 +90,29 @@ void sendJson() {
   Serial.write(buffer, nBytes); // Write the raw JSON data
   Serial.write('>'); // End delimiter
 }
+////////////// WIP ///////////////////////////
 
+void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
+  esp_err_t result;
+
+  uint8_t buf[sizeof(rangingData) + 1];  // Buffer to hold type identifier and data
+  buf[0] = 0;  // rangingData type identifier
+  memcpy(&buf[1], message, sizeof(rangingData));  // Copy rangingData to buffer
+
+  for (int i = 0; i < retries; i++) {
+    result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
+    if (result == ESP_OK) {
+      break;
+    } else {
+      if (i < retries - 1) {  // If it's not the last retry
+        delay(50);  // Delay before retry
+      }
+    }
+  }
+}
+
+////////////// WIP ///////////////////////////
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  // Assuming the first byte in incomingData determines the type of data
   uint8_t dataType = incomingData[0];
 
   // If the data is rangingData
@@ -133,61 +132,28 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       } 
     }
 
-    // For debugging: print the received distances
-    // Serial.println("Distances received:");
-    // for (int i = 0; i < 13; i++) {
-    //   Serial.print(distances[offDeviceRangingData.tag_id][i]);
-    //   Serial.print(" ");
-    // }
-    // Serial.println();
-  }
+    onDeviceRangingData.run_ranging = true;
+    sendToPeer(macs[(offDeviceRangingData.tag_id + 1) % 4], &onDeviceRangingData);
 
-  // If the data is networkData (potentially not necessary)
-  else if (dataType == 1) {
-    memcpy(&offDeviceNetworkData, incomingData + 1, sizeof(offDeviceNetworkData));
+    // For debugging: print the received distances
+    Serial.println("Distances received:");
+    for (int i = 0; i < 13; i++) {
+      Serial.print(distances[offDeviceRangingData.tag_id][i]);
+      Serial.print(" ");
+    }
+    Serial.println();
   }
   
-  else if (dataType == 2) {
+  else if (dataType == 1) {
     Serial.println("Acknowledgement received");
     ackReceived = true;
-    Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
+
+    // add checking function here
   }
 }
+////////////// WIP ///////////////////////////
 
-void sendToPeerNetwork(uint8_t *peerMAC, networkData *message, int retries = 3) {
-  esp_err_t result;
-  uint8_t buf[sizeof(networkData) + 1];  // Buffer to hold type identifier and data
-  buf[0] = 1;  // NetworkData type identifier
-  memcpy(&buf[1], message, sizeof(networkData));  // Copy networkData to buffer
-
-  for (int i = 0; i < retries; i++) {
-    ackReceived = false; // Reset ackReceived before sending the message
-    result = esp_now_send(peerMAC, buf, sizeof(buf));  // Send the buffer
-    if (result == ESP_OK) {
-      Serial.println("Sent networkData success");
-      break;
-    } else {
-      Serial.println("Error sending the networkData");
-      if (i < retries - 1) {
-        delay(250);
-      }
-    }
-  }
-  waitForAck();
-}
-
-void sendInitializationToTag(uint8_t *tag_mac) {
-  onDeviceNetworkData.network_initialize = true;
-  sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
-  onDeviceNetworkData.network_initialize = false;
-}
-
-void sendNetworkPoll(uint8_t *tag_mac) {
-  onDeviceNetworkData.network_initialize = false;
-  onDeviceNetworkData.run_ranging = false;
-  sendToPeerNetwork(tag_mac, &onDeviceNetworkData);
-}
-
+////////////// WIP ///////////////////////////
 void checkTagsOnline() {
   static uint8_t tag_poll_index = 0;
   Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
@@ -265,7 +231,7 @@ void checkTagsOnline() {
   // If not all tags are online, continue polling
   if (!all_tags_online) {
     Serial.println("Sending polling request to tag " + String(tag_poll_index));
-    sendNetworkPoll(macs[tag_poll_index]);
+    // sendToPeer(macs[tag_poll_index]); // change later
     ackReceived = false;
     waitForAck();
   } else {
@@ -273,9 +239,9 @@ void checkTagsOnline() {
     startup_success = true;
   }
 }
+////////////// WIP ///////////////////////////
 
-
-
+////////////// WIP ///////////////////////////
 void startNetworkSetup() {
   // // Connect to the server
   // if (client.connect(server, error_port)) {
@@ -301,13 +267,15 @@ void startNetworkSetup() {
   //   delay(10);
   // }
 
-  while(!all_tags_online) {
-    Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
-    checkTagsOnline();
-    delay(10);
-  }
+  // while(!all_tags_online) {
+  //   Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
+  //   checkTagsOnline();
+  //   delay(10);
+  // }
 }
+////////////// WIP ///////////////////////////
 
+////////////// WIP ///////////////////////////
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -321,7 +289,6 @@ void setup_esp_now() {
 
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Transmitted packet
-  esp_now_register_send_cb(OnDataSent);
 
   // Register for Receive CB to get incoming data
   esp_now_register_recv_cb(OnDataRecv);
@@ -342,7 +309,7 @@ void setup_esp_now() {
     }
   }
 }
-
+////////////// WIP ///////////////////////////
 
 /**************************************
 ************ PROGRAM SETUP ************
@@ -355,8 +322,8 @@ void setup() {
   esp_now_register_recv_cb(OnDataRecv);
 
   unsigned long initCheck = millis();
-  bool didBreak = false;
-  bool isEmpty = true;
+  bool didBreak = true; // change later
+  bool isEmpty = false;
 
   while (millis() - initCheck < 1000) {
     // Check if empty
@@ -386,14 +353,11 @@ void setup() {
     while (!startup_success) {
       startNetworkSetup();
     }
-    sendInitializationToTag(macs[0]);
+    // sendInitializationToTag(macs[0]);
   }
 }
 
 /*************************************
 ************ PROGRAM LOOP ************
 *************************************/
-
-void loop() {
-  delay(1);
-}
+void loop() {}
