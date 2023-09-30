@@ -9,17 +9,10 @@
 ******************************************/
 
 float distances[4][13] = {0};
-bool online_tags[4] = {false};
 bool received[4] = {false};
-bool all_tags_online = false;
-int attempts[4] = {0};
-bool startup_success = false;
-
-bool startNetworkSetupFlag = false;
+int num_tags = 4;
 
 volatile bool ackReceived = false;
-unsigned int resetAttempts = 0;
-unsigned int resetsConfirmed = 0;
 
 typedef struct __attribute__((packed)) rangingData {
   float data[13] = {0};
@@ -133,7 +126,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     }
 
     onDeviceRangingData.run_ranging = true;
-    sendToPeer(macs[(offDeviceRangingData.tag_id + 1) % 4], &onDeviceRangingData);
+    sendToPeer(macs[(offDeviceRangingData.tag_id + 1) % num_tags], &onDeviceRangingData);
 
     // For debugging: print the received distances
     Serial.println("Distances received:");
@@ -153,129 +146,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 }
 ////////////// WIP ///////////////////////////
 
-////////////// WIP ///////////////////////////
-void checkTagsOnline() {
-  static uint8_t tag_poll_index = 0;
-  Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
-
-  if (ackReceived) {
-    Serial.println("Acknowledgement received from tag " + String(tag_poll_index));
-    online_tags[tag_poll_index] = true;
-
-    ackReceived = false;
-
-    // If the tag responded, reset the number of attempts for this tag
-    attempts[tag_poll_index] = 0;
-
-    // Move to the next tag
-    tag_poll_index++;
-
-    if (tag_poll_index >= 4) { 
-      tag_poll_index = 0;
-    }
-  } else {
-    // If the tag didn't respond, increase the number of attempts for this tag
-    Serial.println("No acknowledgement from tag " + String(tag_poll_index));
-    attempts[tag_poll_index]++;
-  
-    // If we've tried 5 times without success, report this to the server
-    if (attempts[tag_poll_index] >= 5) {
-      DynamicJsonDocument doc(64);
-      JsonArray array = doc.createNestedArray("tag_failures");
-      for(int i = 0; i < 4; i++){
-        array.add(attempts[i]);
-      }
-      String output;
-      serializeJson(doc, output);
-      // if (client.connect(server, error_port)) {
-      //   client.println(output);
-      //   client.stop();
-      // }
-
-      // Reset the number of attempts for all tags
-      for (int i = 0; i < 4; i++) {
-        attempts[i] = 0;
-        online_tags[i] = false;  // Reset all tags to offline
-      }
-  
-      // Move to the next tag
-      tag_poll_index++;
-
-      if (tag_poll_index >= 4) { 
-        tag_poll_index = 0;
-      }
-
-      return;
-    }
-  }
-
-  // Check if all tags are online
-  all_tags_online = true;
-  for (int i = 0; i < 4; i++) {
-    if (!online_tags[i]) {
-      all_tags_online = false;
-      break;
-    }
-  }
-
-  // Debug: Print the online status of all tags and the value of all_tags_online
-  for (int i = 0; i < 4; i++) {
-    Serial.print("Tag ");
-    Serial.print(i);
-    Serial.print(" online status: ");
-    Serial.println(online_tags[i] ? "Online" : "Offline");
-  }
-  Serial.print("All tags online: ");
-  Serial.println(all_tags_online ? "Yes" : "No");
-
-  // If not all tags are online, continue polling
-  if (!all_tags_online) {
-    Serial.println("Sending polling request to tag " + String(tag_poll_index));
-    // sendToPeer(macs[tag_poll_index]); // change later
-    ackReceived = false;
-    waitForAck();
-  } else {
-    // If all tags are online, set startup_success to true
-    startup_success = true;
-  }
-}
-////////////// WIP ///////////////////////////
-
-////////////// WIP ///////////////////////////
-void startNetworkSetup() {
-  // // Connect to the server
-  // if (client.connect(server, error_port)) {
-  //   Serial.println("Connected to the server");
-  // } else {
-  //   Serial.println("Failed to connect to the server");
-  //   return;  // If connection to the server failed, return from this function
-  // }
-
-  //TEMP VARIABLE SET
-  startNetworkSetupFlag = true;
-
-  // Wait for the server to send "start"
-  // while(!startNetworkSetupFlag) {
-  //   if (client.available() > 0) {
-  //     String serverMsg = client.readStringUntil('\n');
-
-  //     if (serverMsg == "start") {
-  //       startNetworkSetupFlag = true;
-  //       Serial.println("Received start message from server, starting network setup");
-  //     }
-  //   }
-  //   delay(10);
-  // }
-
-  // while(!all_tags_online) {
-  //   Serial.println(ackReceived = true ? "Received Flag Reset" : "Received Flag Not  Reset");
-  //   checkTagsOnline();
-  //   delay(10);
-  // }
-}
-////////////// WIP ///////////////////////////
-
-////////////// WIP ///////////////////////////
 void setup_esp_now() {
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -309,7 +179,6 @@ void setup_esp_now() {
     }
   }
 }
-////////////// WIP ///////////////////////////
 
 /**************************************
 ************ PROGRAM SETUP ************
@@ -320,41 +189,6 @@ void setup() {
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
-
-  unsigned long initCheck = millis();
-  bool didBreak = true; // change later
-  bool isEmpty = false;
-
-  while (millis() - initCheck < 1000) {
-    // Check if empty
-    for(int i = 0; i < 4; ++i) {
-      for(int j = 0; j < 13; ++j) {
-        if(distances[i][j] != 0.0f) {
-          isEmpty = false;
-          break;
-        }
-      }
-
-      if(!isEmpty) {
-        break;
-      }
-    }
-
-    if(!isEmpty) {
-      break;
-    }
-
-    delay(10);
-    
-  }
-
-  // init network if no data received yet
-  if (isEmpty) {
-    while (!startup_success) {
-      startNetworkSetup();
-    }
-    // sendInitializationToTag(macs[0]);
-  }
 }
 
 /*************************************
