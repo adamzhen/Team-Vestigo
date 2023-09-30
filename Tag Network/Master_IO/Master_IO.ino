@@ -129,16 +129,16 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     sendToPeer(macs[(offDeviceRangingData.tag_id + 1) % num_tags], &onDeviceRangingData);
 
     // For debugging: print the received distances
-    Serial.println("Distances received:");
-    for (int i = 0; i < 13; i++) {
-      Serial.print(distances[offDeviceRangingData.tag_id][i]);
-      Serial.print(" ");
-    }
-    Serial.println();
+    // Serial.println("Distances received:");
+    // for (int i = 0; i < 13; i++) {
+    //   Serial.print(distances[offDeviceRangingData.tag_id][i]);
+    //   Serial.print(" ");
+    // }
+    // Serial.println();
   }
   
   else if (dataType == 1) {
-    Serial.println("Acknowledgement received");
+    // Serial.println("Acknowledgement received");
     ackReceived = true;
 
     // add checking function here
@@ -189,6 +189,10 @@ void setup() {
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
+
+  onDeviceRangingData.run_ranging = true;
+  sendToPeer(macs[0], &onDeviceRangingData);
+  onDeviceRangingData.run_ranging = true;
 }
 
 /*************************************
