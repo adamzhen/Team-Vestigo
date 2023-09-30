@@ -16,7 +16,7 @@ std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
-const int tag_id = 1;
+const int tag_id = 4;
 const int num_tags = 4;
 volatile bool ackReceived = false;
 
@@ -152,9 +152,9 @@ void setup_esp_now() {
   esp_now_register_recv_cb(OnDataRecv);
 
   // Register peers
-  for(int i=0; i<sizeof(macs)/sizeof(macs[0]); i++) {
+  for(int i=0; i<sizeof(MIOmac)/sizeof(MIOmac); i++) {
     esp_now_peer_info_t peerInfo;
-    memcpy(peerInfo.peer_addr, macs[i], 6);
+    memcpy(peerInfo.peer_addr, MIOmac, 6);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
 
@@ -438,8 +438,8 @@ void setup() {
 *************************************/
 
 void loop() {
-  if (offDeviceNetworkData.run_ranging) {
-    offDeviceNetworkData.run_ranging = false;
+  if (offDeviceRangingData.run_ranging) {
+    offDeviceRangingData.run_ranging = false;
 
     advancedRanging();
 
