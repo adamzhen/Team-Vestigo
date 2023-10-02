@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\SDL2\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\eigen-3.4.0\Eigen\src\Core;C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\SDL2\include;$(IncludePath)</IncludePath>
     <ExternalIncludePath>$(ExternalIncludePath)</ExternalIncludePath>
     <LibraryPath>C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\SDL2\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -109,6 +109,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

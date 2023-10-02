@@ -1,2 +1,24 @@
 ﻿  main.cpp
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(32,29): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(429,36): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(429,28): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(474,24): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(475,25): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(576,125): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(576,110): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(708,45): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(709,45): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(710,45): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(713,49): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(714,49): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(715,49): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(753,30): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(769,27): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(770,27): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(771,33): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(772,33): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(773,34): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(774,34): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(619,15): warning C4101: 'dt': unreferenced local variable
+C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\main.cpp(699,40): warning C4101: 'e': unreferenced local variable
   VisualizationToolDev.vcxproj -> C:\Users\Adam Zheng\Team-Vestigo\Visualization Tool\VisualizationToolDev\x64\Debug\VisualizationToolDev.exe
