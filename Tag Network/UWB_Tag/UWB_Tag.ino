@@ -16,9 +16,12 @@ std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
-const int tag_id = 4;
+const int tag_id = 3;
 const int num_tags = 4;
 volatile bool ackReceived = false;
+
+unsigned long lastRangingTime = 0;
+const unsigned long UWBtimeoutDuration = 500;
 
 typedef struct __attribute__((packed)) rangingData {
   float data[13];
@@ -110,6 +113,9 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   // If the data is networkData
   if (dataType == 0) {
     memcpy(&offDeviceRangingData, incomingData + 1, sizeof(offDeviceRangingData));
+    if (!offDeviceRangingData.run_ranging) {
+      ESP.restart();
+    }
     sendAck(mac);
   }
   // If the data is ackData
@@ -273,9 +279,15 @@ void advancedRanging()
     key.second.clear();
   }
 
+  lastRangingTime = millis();
+
   // Loop between keys until exit conditions are met
   while(looping)
   {
+    if ((millis() - lastRangingTime) > UWBtimeoutDuration) {
+      ESP.restart();
+    }
+
     for (int i = 0; i < 7; i++) 
     {
       const auto& key = keys[i];

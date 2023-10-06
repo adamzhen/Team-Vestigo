@@ -13,6 +13,8 @@ bool received[4] = {false};
 int num_tags = 4;
 
 volatile bool ackReceived = false;
+unsigned long lastAckTime = 0;
+const unsigned long timeoutDuration = 500;
 
 typedef struct __attribute__((packed)) rangingData {
   float data[13] = {0};
@@ -105,6 +107,18 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
 }
 
 ////////////// WIP ///////////////////////////
+void sendResetFlagToTag(int tag_id) {
+  Serial.println();
+  Serial.print("Tag Reset: ");
+  Serial.println((offDeviceRangingData.tag_id + 1) & num_tags);
+  Serial.println();
+  onDeviceRangingData.run_ranging = false;
+  sendToPeer(macs[(offDeviceRangingData.tag_id + 1) % num_tags], &onDeviceRangingData);
+  onDeviceRangingData.run_ranging = true;
+}
+////////////// WIP ///////////////////////////
+
+////////////// WIP ///////////////////////////
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   uint8_t dataType = incomingData[0];
 
@@ -140,8 +154,9 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   else if (dataType == 1) {
     // Serial.println("Acknowledgement received");
     ackReceived = true;
-
+    lastAckTime = millis();
     // add checking function here
+
   }
 }
 ////////////// WIP ///////////////////////////
@@ -198,4 +213,11 @@ void setup() {
 /*************************************
 ************ PROGRAM LOOP ************
 *************************************/
-void loop() {}
+void loop() {
+  if (ackReceived && (millis() - lastAckTime) > timeoutDuration) {
+    sendResetFlagToTag(offDeviceRangingData.tag_id);
+    ackReceived = false;
+    delay(100);
+    sendToPeer(macs[(offDeviceRangingData.tag_id + 2) % num_tags], &onDeviceRangingData);
+  }
+}
