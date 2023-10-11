@@ -164,10 +164,9 @@ void receiveTagSignal()
   }
 }
 
-void adjustClockWithMasterTime(uint64_t master_time, uint64_t slave_time) 
+void adjustClockWithMasterTime(uint64_t masterTime, uint64_t slaveTime) 
 {
   Serial.println("adjustClock");
-  // Implement your Kalman filter or other clock adjustment logic here
-  // ...
+  dwt_setsystime(masterTime);
 }
 
