@@ -47,6 +47,19 @@ dwt_config_t config =
   DWT_PDOA_M0
 };
 
+void dwt_setsystime(uint32_t newTime)
+{
+  // Convert the 32-bit time to a byte array
+  uint8_t timeBytes[SYS_TIME_LEN];
+  timeBytes[0] = (uint8_t)(newTime & 0xFF);
+  timeBytes[1] = (uint8_t)((newTime >> 8) & 0xFF);
+  timeBytes[2] = (uint8_t)((newTime >> 16) & 0xFF);
+  timeBytes[3] = (uint8_t)((newTime >> 24) & 0xFF);
+
+  // Write the new time to the SYS_TIME register
+  dwt_writetodevice(SYS_TIME_ID, 0, SYS_TIME_LEN, timeBytes);
+}
+
 extern dwt_txconfig_t txconfig_options;
 
 uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
