@@ -39,15 +39,16 @@ void receiveSyncSignal()
         uint64_t fracMasterTime = masterTime % unitsPerSecond;
         uint64_t fracSlaveTime = slaveTime % unitsPerSecond;
 
-        if (fracMasterTime >= fracSlaveTime)
-        {
-          timeOffset = fracMasterTime - fracSlaveTime;
-          timeOffsetSign = 1;
-        }
-        else
-        {
-          timeOffset = fracSlaveTime - fracMasterTime;
-          timeOffsetSign = -1;
+        // Calculate the absolute time difference
+        uint64_t absTimeDiff = (fracMasterTime >= fracSlaveTime) ? (fracMasterTime - fracSlaveTime) : (fracSlaveTime - fracMasterTime);
+
+        // Check for wrap-around
+        if (absTimeDiff > unitsPerSecond / 2) {
+            timeOffset = unitsPerSecond - absTimeDiff;
+            timeOffsetSign = (fracMasterTime >= fracSlaveTime) ? -1 : 1;
+        } else {
+            timeOffset = absTimeDiff;
+            timeOffsetSign = (fracMasterTime >= fracSlaveTime) ? 1 : -1;
         }
 
         Serial.print("Master Time Received: ");
