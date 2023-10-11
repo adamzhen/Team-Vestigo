@@ -13,6 +13,9 @@ extern SPISettings _fastSPI;
 #define SYNC_MSG_TS_IDX 10
 #define SYNC_MSG_TS_LEN 8
 
+#define TX_ANT_DLY 16385
+#define RX_ANT_DLY 16385
+
 // Function prototypes
 void sendSyncSignal();
 void setup();
@@ -38,11 +41,15 @@ dwt_config_t config =
   DWT_PDOA_M0
 };
 
+extern dwt_txconfig_t txconfig_options;
+
+// determine how to switch channels 
+
 uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void setup() 
 {
-  Serial.begin(115200):
+  Serial.begin(115200);
 
   // Initialize SPI settings
   spiBegin(PIN_IRQ, PIN_RST);
@@ -61,9 +68,11 @@ void setup()
     // Configuration failed
     // Handle the error
   }
-  
-  // Set channel to 9 for Master Anchor
-  dwt_setchannel(MASTER_CHANNEL);
+
+  dwt_configuretxrf(&txconfig_options);
+
+  dwt_setrxantennadelay(RX_ANT_DLY);
+  dwt_settxantennadelay(TX_ANT_DLY);
   
   // Enable LEDs for debugging
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
@@ -74,13 +83,14 @@ void loop()
   sendSyncSignal();
   Serial.println("Looping");
   // Sleep or perform other tasks
+  delay(10);
 }
 
 void sendSyncSignal() 
 {
   // Prepare the sync signal packet
   Serial.println("Sending Sync");
-  uint64_t master_time = dwt_readsystime();
+  uint64_t master_time = dwt_readsystimestamphi32();
   memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &master_time, SYNC_MSG_TS_LEN);
 
   // Write data to DW3000's TX buffer
@@ -95,10 +105,11 @@ void sendSyncSignal()
   Serial.println("Sync Sent");
 
   // Poll DW IC until the TX frame sent event is set
-  while (!(dwt_read32bitreg(DW_SYS_STATUS_ID) & DWT_BIT_MASK(SYS_STATUS_TXFRS_BIT))) {};
+  while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK)) {};
 
   // Clear the TX frame sent event
-  dwt_write32bitreg(DW_SYS_STATUS_ID, DWT_BIT_MASK(SYS_STATUS_TXFRS_BIT));
+  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+
 }
 
 
