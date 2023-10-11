@@ -88,7 +88,7 @@ void loop()
 {
   receiveSyncSignal();
   // adjustClockWithMasterTime(master_time, uint64slave_time);
-  receiveTagSignal();
+  // receiveTagSignal();
 }
 
 // Rest of the functions
@@ -112,12 +112,12 @@ void receiveSyncSignal()
       dwt_readrxdata(rx_buffer, frame_len, 0);
       
       // Validate the received packet
-      Serial.print("Received Buffer: ");
-      for (int i = 0; i < frame_len; i++) {
-        Serial.print(rx_buffer[i], HEX);
-        Serial.print(" ");
-      }
-      Serial.println();
+      // Serial.print("Received Buffer: ");
+      // for (int i = 0; i < frame_len; i++) {
+      //   Serial.print(rx_buffer[i], HEX);
+      //   Serial.print(" ");
+      // }
+      // Serial.println();
 
       if (memcmp(rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
       {
@@ -141,6 +141,7 @@ void receiveSyncSignal()
   }
   else
   {
+    Serial.println("error occured");
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
   }
 }

@@ -82,19 +82,18 @@ void setup()
 void loop() 
 {
   sendSyncSignal();
-  Serial.println("Looping");
   // Sleep or perform other tasks
-  delay(100);
+  delay(500);
 }
 
 void sendSyncSignal() 
 {
   // Prepare the sync signal packet
   Serial.println("Sending Sync");
-  uint64_t master_time = dwt_readsystimestamphi32();
+  uint32_t masterTime32bit = dwt_readsystimestamphi32();
   Serial.print("Master Time: ");
-  Serial.println(master_time);
-  memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &master_time, SYNC_MSG_TS_LEN);
+  Serial.println((double)((uint64_t)masterTime32bit << 8) * DWT_TIME_UNITS, 12);
+  memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &masterTime32bit, SYNC_MSG_TS_LEN);
 
   // Write data to DW3000's TX buffer
   dwt_writetxdata(sizeof(sync_signal_packet), sync_signal_packet, 0);
