@@ -70,5 +70,7 @@ void setup()
 void loop() 
 {
   masterTime64bit = receiveSyncSignal();
+  Serial.print("Master Time: ");
+  Serial.println((double)masterTime64bit * DWT_TIME_UNITS, 9);
   // receiveTagSignal();
 }

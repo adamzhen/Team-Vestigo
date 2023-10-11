@@ -7,10 +7,6 @@
 extern uint32_t masterTime32bit;
 extern uint64_t masterTime64bit; // Global time which everything is based off of
 
-uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t rx_buffer[20];
-uint32_t status = 0;
-
 #define PIN_RST 27
 #define PIN_IRQ 34
 #define PIN_SS 4

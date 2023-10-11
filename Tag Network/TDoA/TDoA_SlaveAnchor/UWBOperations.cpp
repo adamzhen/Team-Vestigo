@@ -1,8 +1,8 @@
 #include "UWBOperations.h"
 
-extern uint8_t rx_sync_msg[16];
-extern uint8_t rx_buffer[20];
-extern uint32_t status;
+uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t rx_buffer[20];
+uint32_t status = 0;
 
 uint64_t receiveSyncSignal() 
 {
