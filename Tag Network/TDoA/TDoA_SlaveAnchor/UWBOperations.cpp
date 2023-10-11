@@ -1,5 +1,9 @@
 #include "UWBOperations.h"
 
+extern uint8_t rx_sync_msg[16];
+extern uint8_t rx_buffer[20];
+extern uint32_t status;
+
 uint64_t receiveSyncSignal() 
 {
   dwt_rxenable(DWT_START_RX_IMMEDIATE);

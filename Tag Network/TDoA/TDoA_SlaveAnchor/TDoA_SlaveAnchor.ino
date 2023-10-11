@@ -1,32 +1,15 @@
 #include <dw3000.h>
 #include <SPI.h>
 #include "UWBOperations.h"
-#include "ESP-NOWOperations.h"
-
-extern SPISettings _fastSPI;
-
-#define PIN_RST 27
-#define PIN_IRQ 34
-#define PIN_SS 4
-
-#define MASTER_ANCHOR_ID 0
-#define MASTER_CHANNEL 5
-#define TAG_CHANNEL 5
-
-#define SYNC_MSG_TS_IDX 10
-#define SYNC_MSG_TS_LEN 8
-
-#define TX_ANT_DLY 16385
-#define RX_ANT_DLY 16385
+//#include "ESP-NOWOperations.h"
 
 // Function prototypes
-void setup();
+extern SPISettings _fastSPI;
 
 // Global variables
 uint8_t anchorId;  // To be set to the Slave Anchor's ID
 uint32_t masterTime32bit;
-uint64_t masterTime64bit; // Global time which everything is based off of
-float timeOffset;
+uint64_t masterTime64bit;
 
 // Initialize the DW3000 configuration
 dwt_config_t config = 
@@ -47,10 +30,6 @@ dwt_config_t config =
 };
 
 extern dwt_txconfig_t txconfig_options;
-
-uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t rx_buffer[20];
-static uint32_t status = 0;
 
 void setup() 
 {
