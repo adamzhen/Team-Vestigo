@@ -18,6 +18,8 @@
 #define TX_ANT_DLY 16385
 #define RX_ANT_DLY 16385
 
+const uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
+
 void receiveSyncSignal();
 void receiveTagSignal();
 

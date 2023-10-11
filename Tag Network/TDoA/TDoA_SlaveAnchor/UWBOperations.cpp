@@ -2,9 +2,12 @@
 
 uint64_t masterTime, slaveTime;
 uint64_t timeOffset;
+int timeOffsetSign = 1;
 uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t rx_buffer[20];
 uint32_t status = 0;
+
+extern const uint64_t unitsPerSecond;
 
 void receiveSyncSignal() 
 {
@@ -33,12 +36,24 @@ void receiveSyncSignal()
         resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime32bit);
         masterTime = (uint64_t)masterTime32bit << 8;
 
-        timeOffset = masterTime - slaveTime;
+        uint64_t fracMasterTime = masterTime % unitsPerSecond;
+        uint64_t fracSlaveTime = slaveTime % unitsPerSecond;
+
+        if (fracMasterTime >= fracSlaveTime)
+        {
+          timeOffset = fracMasterTime - fracSlaveTime;
+          timeOffsetSign = 1;
+        }
+        else
+        {
+          timeOffset = fracSlaveTime - fracMasterTime;
+          timeOffsetSign = -1;
+        }
 
         Serial.print("Master Time Received: ");
         Serial.println((double)masterTime * DWT_TIME_UNITS, 12);
         Serial.print("Time Offset: ");
-        Serial.println((double)timeOffset * DWT_TIME_UNITS, 12)
+        Serial.println((double)timeOffset * timeOffsetSign * DWT_TIME_UNITS, 12);
       }
     }
   }
