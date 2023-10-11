@@ -8,7 +8,7 @@ extern SPISettings _fastSPI;
 #define PIN_SS 4
 
 #define MASTER_ANCHOR_ID 0
-#define MASTER_CHANNEL 9
+#define MASTER_CHANNEL 5
 
 #define SYNC_MSG_TS_IDX 10
 #define SYNC_MSG_TS_LEN 8
@@ -84,7 +84,7 @@ void loop()
   sendSyncSignal();
   Serial.println("Looping");
   // Sleep or perform other tasks
-  delay(10);
+  delay(500);
 }
 
 void sendSyncSignal() 
@@ -92,6 +92,8 @@ void sendSyncSignal()
   // Prepare the sync signal packet
   Serial.println("Sending Sync");
   uint64_t master_time = dwt_readsystimestamphi32();
+  Serial.print("Master Time: ");
+  Serial.println(master_time);
   memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &master_time, SYNC_MSG_TS_LEN);
 
   // Write data to DW3000's TX buffer

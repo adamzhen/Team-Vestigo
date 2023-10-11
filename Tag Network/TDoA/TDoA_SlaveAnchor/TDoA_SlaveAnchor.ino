@@ -8,7 +8,7 @@ extern SPISettings _fastSPI;
 #define PIN_SS 4
 
 #define MASTER_ANCHOR_ID 0
-#define MASTER_CHANNEL 9
+#define MASTER_CHANNEL 5
 #define TAG_CHANNEL 5
 
 #define SYNC_MSG_TS_IDX 10
@@ -25,7 +25,7 @@ void setup();
 
 // Global variables
 uint8_t anchorId;  // To be set to the Slave Anchor's ID
-uint64_t slaveCurrentTime, t_tag_signal, masterTime;
+uint32_t slaveCurrentTime, t_tag_signal, masterTime;
 float timeOffset;
 
 // Initialize the DW3000 configuration
@@ -85,7 +85,6 @@ void setup()
 
 void loop() 
 {
-  Serial.println("Looping");
   receiveSyncSignal();
   // adjustClockWithMasterTime(master_time, uint64slave_time);
   receiveTagSignal();
@@ -100,26 +99,15 @@ void receiveSyncSignal()
   // Poll for reception of a frame or error/timeout
   while (!((status = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR))) {};
 
-  Serial.println("Received");
-  Serial.print("Status: ");
-  Serial.println(status, HEX);
   if (status & SYS_STATUS_RXFCG_BIT_MASK)
   {
-    Serial.println("Pass status check");
     // Clear the RXFCG event
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
 
-    Serial.println("Event Clear");
-
     // Read the received packet to extract master's timestamp
     uint32_t frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
-    Serial.print("Frame Length: ");
-    Serial.println(frame_len);
-    Serial.print("Buffer Size: ");
-    Serial.println(sizeof(rx_buffer));
     if (frame_len <= sizeof(rx_buffer)) 
     {
-      Serial.println("Frame Length Good");
       dwt_readrxdata(rx_buffer, frame_len, 0);
       
       // Validate the received packet
@@ -132,19 +120,17 @@ void receiveSyncSignal()
 
       if (memcmp(rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
       {
-        Serial.println("Packet Validated");
-
         // Time of reception
         slaveCurrentTime = get_rx_timestamp_u64();
 
         // Extract the master's timestamp and adjust the slave's internal clock
-        memcpy(&masterTime, &rx_buffer[SYNC_MSG_TS_IDX], SYNC_MSG_TS_LEN);
+        resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime);
         adjustClockWithMasterTime(masterTime, slaveCurrentTime);
 
         Serial.print("Master Time Received: ");
-        Serial.println(masterTime * UUS_TO_DWT_TIME , 12);  // 9 decimal places for more precision
+        Serial.println(masterTime, 12);
         Serial.print("Slave Time Received: ");
-        Serial.println(slaveCurrentTime, 12);  // 9 decimal places for more precision
+        Serial.println(slaveCurrentTime, 12);
       }
     }
   }
