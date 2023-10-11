@@ -25,7 +25,8 @@ void setup();
 
 // Global variables
 uint8_t anchorId;  // To be set to the Slave Anchor's ID
-uint32_t slaveCurrentTime, t_tag_signal, masterTime;
+uint32_t t_tag_signal, masterTime32bit;
+uint64_t masterTime64bit, slaveTime64bit;
 float timeOffset;
 
 // Initialize the DW3000 configuration
@@ -121,16 +122,20 @@ void receiveSyncSignal()
       if (memcmp(rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
       {
         // Time of reception
-        slaveCurrentTime = get_rx_timestamp_u64();
+        slaveTime64bit = get_rx_timestamp_u64();
 
         // Extract the master's timestamp and adjust the slave's internal clock
-        resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime);
-        adjustClockWithMasterTime(masterTime, slaveCurrentTime);
+        resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime32bit);
+        masterTime64bit = (uint64_t)masterTime32bit << 8;
+        adjustClockWithMasterTime(masterTime64bit, slaveTime64bit);
+
+        double masterTimeDouble = (double)masterTime64bit * DWT_TIME_UNITS;
+        double slaveTimeDouble = (double)slaveTime64bit * DWT_TIME_UNITS;
 
         Serial.print("Master Time Received: ");
-        Serial.println(masterTime, 12);
+        Serial.println(masterTimeDouble, 12);
         Serial.print("Slave Time Received: ");
-        Serial.println(slaveCurrentTime, 12);
+        Serial.println(slaveTimeDouble, 12);
       }
     }
   }

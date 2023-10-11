@@ -84,7 +84,7 @@ void loop()
   sendSyncSignal();
   Serial.println("Looping");
   // Sleep or perform other tasks
-  delay(500);
+  delay(100);
 }
 
 void sendSyncSignal() 
