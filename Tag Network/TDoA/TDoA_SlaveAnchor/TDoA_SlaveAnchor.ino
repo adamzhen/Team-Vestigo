@@ -25,7 +25,7 @@ void setup();
 
 // Global variables
 uint8_t anchorId;  // To be set to the Slave Anchor's ID
-uint64_t slaveCurrentTime, t_tag_signal;
+uint64_t slaveCurrentTime, t_tag_signal, masterTime;
 float timeOffset;
 
 // Initialize the DW3000 configuration
@@ -50,11 +50,14 @@ extern dwt_txconfig_t txconfig_options;
 
 uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t rx_buffer[20];
+static uint32_t status = 0;
 
 void setup() 
 {
   Serial.begin(115200);
+  
   // Initialize SPI settings
+  _fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
   spiBegin(PIN_IRQ, PIN_RST);
   spiSelect(PIN_SS);
 
@@ -91,15 +94,11 @@ void loop()
 // Rest of the functions
 void receiveSyncSignal() 
 {
-  Serial.println("Enable Receive");
-  dwt_write32bitreg(SYS_STATUS_ID, 0xFFFFFFFF);
-
   // Enable receiver with immediate start
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
   // Poll for reception of a frame or error/timeout
-  uint32_t status;
-  while (!((status = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR))) {};
+  while (!((status = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR))) {};
 
   Serial.println("Received");
   Serial.print("Status: ");
@@ -111,10 +110,6 @@ void receiveSyncSignal()
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
 
     Serial.println("Event Clear");
-
-    uint64_t slaveCurrentTime = dwt_readsystimestamphi32();
-
-    Serial.println("Current Time Read");
 
     // Read the received packet to extract master's timestamp
     uint32_t frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
@@ -134,26 +129,29 @@ void receiveSyncSignal()
         Serial.print(" ");
       }
       Serial.println();
+
       if (memcmp(rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
       {
         Serial.println("Packet Validated");
+
+        // Time of reception
+        slaveCurrentTime = get_rx_timestamp_u64();
+
         // Extract the master's timestamp and adjust the slave's internal clock
-        uint64_t master_time;
-        memcpy(&master_time, &rx_buffer[SYNC_MSG_TS_IDX], SYNC_MSG_TS_LEN);
-        adjustClockWithMasterTime(master_time, slaveCurrentTime);
-        double master_time_in_seconds = (double)master_time / (1 / 15.65e-12);
-        double slave_time_in_seconds = (double)slaveCurrentTime / (1 / 15.65e-12);
+        memcpy(&masterTime, &rx_buffer[SYNC_MSG_TS_IDX], SYNC_MSG_TS_LEN);
+        adjustClockWithMasterTime(masterTime, slaveCurrentTime);
 
         Serial.print("Master Time Received: ");
-        Serial.println(master_time_in_seconds, 12);  // 9 decimal places for more precision
+        Serial.println(masterTime * UUS_TO_DWT_TIME , 12);  // 9 decimal places for more precision
         Serial.print("Slave Time Received: ");
-        Serial.println(slave_time_in_seconds, 12);  // 9 decimal places for more precision
+        Serial.println(slaveCurrentTime, 12);  // 9 decimal places for more precision
       }
     }
   }
-  // Handle error cases (not shown)
-
-  dwt_write32bitreg(SYS_STATUS_ID, 0xFFFFFFFF);
+  else
+  {
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+  }
 }
 
 

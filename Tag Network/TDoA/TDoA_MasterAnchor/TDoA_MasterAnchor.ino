@@ -52,6 +52,7 @@ void setup()
   Serial.begin(115200);
 
   // Initialize SPI settings
+  _fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
   spiBegin(PIN_IRQ, PIN_RST);
   spiSelect(PIN_SS);
   
