@@ -20,13 +20,13 @@ extern SPISettings _fastSPI;
 // Function prototypes
 void receiveSyncSignal();
 void receiveTagSignal();
-void adjustClockWithMasterTime(uint64_t master_time, uint64_t slave_time);
+void adjustClockWithMasterTime(uint32_t masterTime);
 void setup();
 
 // Global variables
 uint8_t anchorId;  // To be set to the Slave Anchor's ID
-uint32_t t_tag_signal, masterTime32bit;
-uint64_t masterTime64bit, slaveTime64bit;
+uint32_t masterTime32bit;
+uint64_t masterTime64bit, slaveTime64bit, slaveTime64bitNew;
 float timeOffset;
 
 // Initialize the DW3000 configuration
@@ -49,15 +49,8 @@ dwt_config_t config =
 
 void dwt_setsystime(uint32_t newTime)
 {
-  // Convert the 32-bit time to a byte array
-  uint8_t timeBytes[SYS_TIME_LEN];
-  timeBytes[0] = (uint8_t)(newTime & 0xFF);
-  timeBytes[1] = (uint8_t)((newTime >> 8) & 0xFF);
-  timeBytes[2] = (uint8_t)((newTime >> 16) & 0xFF);
-  timeBytes[3] = (uint8_t)((newTime >> 24) & 0xFF);
-
   // Write the new time to the SYS_TIME register
-  dwt_writetodevice(SYS_TIME_ID, 0, SYS_TIME_LEN, timeBytes);
+  dwt_write32bitreg(SYS_TIME_ID, newTime);
 }
 
 extern dwt_txconfig_t txconfig_options;
@@ -134,21 +127,26 @@ void receiveSyncSignal()
 
       if (memcmp(rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
       {
-        // Time of reception
         slaveTime64bit = get_rx_timestamp_u64();
 
         // Extract the master's timestamp and adjust the slave's internal clock
         resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime32bit);
         masterTime64bit = (uint64_t)masterTime32bit << 8;
-        adjustClockWithMasterTime(masterTime64bit, slaveTime64bit);
+        adjustClockWithMasterTime(masterTime32bit);
+
+        // Time of reception
+        slaveTime64bitNew = get_rx_timestamp_u64();
 
         double masterTimeDouble = (double)masterTime64bit * DWT_TIME_UNITS;
         double slaveTimeDouble = (double)slaveTime64bit * DWT_TIME_UNITS;
+        double slaveTimeDoubleNew = (double)slaveTime64bitNew * DWT_TIME_UNITS;
 
         Serial.print("Master Time Received: ");
         Serial.println(masterTimeDouble, 12);
         Serial.print("Slave Time Received: ");
         Serial.println(slaveTimeDouble, 12);
+        Serial.print("Slave Time New: ");
+        Serial.println(slaveTimeDoubleNew, 12);
       }
     }
   }
@@ -177,9 +175,8 @@ void receiveTagSignal()
   }
 }
 
-void adjustClockWithMasterTime(uint64_t masterTime, uint64_t slaveTime) 
+void adjustClockWithMasterTime(uint32_t masterTime) 
 {
-  Serial.println("adjustClock");
   dwt_setsystime(masterTime);
 }
 
