@@ -82,7 +82,6 @@ void setup()
 void loop() 
 {
   sendSyncSignal();
-  // Sleep or perform other tasks
   delay(500);
 }
 

@@ -1,5 +1,7 @@
-#include "dw3000.h"
-#include "SPI.h"
+#include <dw3000.h>
+#include <SPI.h>
+#include "UWBOperations.h"
+#include "ESP-NOWOperations.h"
 
 extern SPISettings _fastSPI;
 
@@ -18,15 +20,12 @@ extern SPISettings _fastSPI;
 #define RX_ANT_DLY 16385
 
 // Function prototypes
-void receiveSyncSignal();
-void receiveTagSignal();
-void adjustClockWithMasterTime(uint32_t masterTime);
 void setup();
 
 // Global variables
 uint8_t anchorId;  // To be set to the Slave Anchor's ID
 uint32_t masterTime32bit;
-uint64_t masterTime64bit, slaveTime64bit, slaveTime64bitNew;
+uint64_t masterTime64bit; // Global time which everything is based off of
 float timeOffset;
 
 // Initialize the DW3000 configuration
@@ -46,12 +45,6 @@ dwt_config_t config =
   DWT_STS_LEN_64,
   DWT_PDOA_M0
 };
-
-void dwt_setsystime(uint32_t newTime)
-{
-  // Write the new time to the SYS_TIME register
-  dwt_write32bitreg(SYS_TIME_ID, newTime);
-}
 
 extern dwt_txconfig_t txconfig_options;
 
@@ -87,96 +80,16 @@ void setup()
 
   // Enable LEDs for debugging
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
+
   Serial.println("Setup Complete");
+
+  masterTime64bit = receiveSyncSignal();
+  Serial.print("Master Time Set: ");
+  Serial.println(masterTime64bit);
 }
 
 void loop() 
 {
-  receiveSyncSignal();
-  // adjustClockWithMasterTime(master_time, uint64slave_time);
+  masterTime64bit = receiveSyncSignal();
   // receiveTagSignal();
 }
-
-// Rest of the functions
-void receiveSyncSignal() 
-{
-  // Enable receiver with immediate start
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
-
-  // Poll for reception of a frame or error/timeout
-  while (!((status = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_ERR))) {};
-
-  if (status & SYS_STATUS_RXFCG_BIT_MASK)
-  {
-    // Clear the RXFCG event
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
-
-    // Read the received packet to extract master's timestamp
-    uint32_t frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
-    if (frame_len <= sizeof(rx_buffer)) 
-    {
-      dwt_readrxdata(rx_buffer, frame_len, 0);
-      
-      // Validate the received packet
-      // Serial.print("Received Buffer: ");
-      // for (int i = 0; i < frame_len; i++) {
-      //   Serial.print(rx_buffer[i], HEX);
-      //   Serial.print(" ");
-      // }
-      // Serial.println();
-
-      if (memcmp(rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
-      {
-        slaveTime64bit = get_rx_timestamp_u64();
-
-        // Extract the master's timestamp and adjust the slave's internal clock
-        resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime32bit);
-        masterTime64bit = (uint64_t)masterTime32bit << 8;
-        adjustClockWithMasterTime(masterTime32bit);
-
-        // Time of reception
-        slaveTime64bitNew = get_rx_timestamp_u64();
-
-        double masterTimeDouble = (double)masterTime64bit * DWT_TIME_UNITS;
-        double slaveTimeDouble = (double)slaveTime64bit * DWT_TIME_UNITS;
-        double slaveTimeDoubleNew = (double)slaveTime64bitNew * DWT_TIME_UNITS;
-
-        Serial.print("Master Time Received: ");
-        Serial.println(masterTimeDouble, 12);
-        Serial.print("Slave Time Received: ");
-        Serial.println(slaveTimeDouble, 12);
-        Serial.print("Slave Time New: ");
-        Serial.println(slaveTimeDoubleNew, 12);
-      }
-    }
-  }
-  else
-  {
-    Serial.println("error occured");
-    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
-  }
-}
-
-
-void receiveTagSignal() 
-{
-  // Activate reception on channel 5
-  // dwt_setchannel(TAG_CHANNEL); work on this later
-  dwt_rxenable(DWT_START_RX_IMMEDIATE);
-
-  // Poll for reception of tag signal
-  uint32_t status;
-  while (!((status = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR))) {};
-
-  if (status & SYS_STATUS_RXFCG_BIT_MASK) 
-  {
-    // Capture the time of tag signal receipt
-    // t_tag_signal = dwt_readsystime(); // Fix later
-  }
-}
-
-void adjustClockWithMasterTime(uint32_t masterTime) 
-{
-  dwt_setsystime(masterTime);
-}
-
