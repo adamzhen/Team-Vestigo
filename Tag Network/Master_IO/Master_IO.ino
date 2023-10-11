@@ -3,6 +3,7 @@
 #include <esp_now.h>
 #include <ArduinoJson.h>
 #include <SPI.h>
+#include <esp_sleep.h>
 
 /******************************************
 ******** GEN VARIABLES AND STRUCTS ********
@@ -13,8 +14,10 @@ bool received[4] = {false};
 int num_tags = 4;
 
 volatile bool ackReceived = false;
+volatile bool resetInProgress = false;
 unsigned long lastAckTime = 0;
-const unsigned long timeoutDuration = 500;
+const unsigned long timeoutDuration = 750;
+const unsigned long timeoutCascadeDuration = 3000;
 
 typedef struct __attribute__((packed)) rangingData {
   float data[13] = {0};
@@ -50,6 +53,8 @@ void sendAck(const uint8_t *peerMAC) {
   memcpy(&buf[1], &message, sizeof(ackData));
 
   esp_now_send(peerMAC, buf, sizeof(buf));
+  Serial.println();
+  Serial.println("Sent Ack");
 }
 
 bool waitForAck() {
@@ -61,6 +66,8 @@ bool waitForAck() {
     }
   }
   ackReceived = false;
+  Serial.println();
+  Serial.println("Received Ack");
   return true;
 }
 
@@ -108,12 +115,10 @@ void sendToPeer(uint8_t *peerMAC, rangingData *message, int retries = 3) {
 
 ////////////// WIP ///////////////////////////
 void sendResetFlagToTag(int tag_id) {
-  Serial.println();
-  Serial.print("Tag Reset: ");
-  Serial.println((offDeviceRangingData.tag_id + 1) & num_tags);
-  Serial.println();
   onDeviceRangingData.run_ranging = false;
   sendToPeer(macs[(offDeviceRangingData.tag_id + 1) % num_tags], &onDeviceRangingData);
+  Serial.println();
+  Serial.println("Sent Reset");
   onDeviceRangingData.run_ranging = true;
 }
 ////////////// WIP ///////////////////////////
@@ -129,7 +134,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
     if (!received[offDeviceRangingData.tag_id]) {
       received[offDeviceRangingData.tag_id] = true;
-    } else {   
+    } 
+    else if (!resetInProgress) {
       sendJson();
       for(int i = 0; i < 4; i++) {
         received[i] = false;
@@ -138,8 +144,22 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
         }
       } 
     }
+    else {
+      Serial.println();
+      Serial.println();
+      Serial.println("Reset Ranging and Received Data");
+      Serial.println();
+      for(int i = 0; i < 4; i++) {
+        received[i] = false;
+        for (int j = 0; j < 13; j++) {
+          distances[i][j] = 0;
+        }
+      }
+      resetInProgress = false; 
+    }
 
     onDeviceRangingData.run_ranging = true;
+    delay(125);
     sendToPeer(macs[(offDeviceRangingData.tag_id + 1) % num_tags], &onDeviceRangingData);
 
     // For debugging: print the received distances
@@ -207,7 +227,6 @@ void setup() {
 
   onDeviceRangingData.run_ranging = true;
   sendToPeer(macs[0], &onDeviceRangingData);
-  onDeviceRangingData.run_ranging = true;
 }
 
 /*************************************
@@ -215,9 +234,35 @@ void setup() {
 *************************************/
 void loop() {
   if (ackReceived && (millis() - lastAckTime) > timeoutDuration) {
+    Serial.println();
+    Serial.println();
+    Serial.println("Standard Failure");
+    Serial.println();
+    resetInProgress = true;
     sendResetFlagToTag(offDeviceRangingData.tag_id);
     ackReceived = false;
-    delay(100);
     sendToPeer(macs[(offDeviceRangingData.tag_id + 2) % num_tags], &onDeviceRangingData);
+    Serial.println();
+    Serial.println();
+    Serial.println("Reset Tag");
+    Serial.println();
+  }
+
+  if (millis() - lastAckTime > timeoutCascadeDuration) {
+    Serial.println();
+    Serial.println();
+    Serial.println("Cascade Failure");
+    Serial.println();
+    resetInProgress = true;
+    onDeviceRangingData.run_ranging = true;
+    for (int i = 0; i < 4; i++) {
+      sendResetFlagToTag(i);
+    }
+    sendToPeer(macs[0], &onDeviceRangingData);
+    Serial.println();
+    Serial.println();
+    Serial.println("All tags reset");
+    Serial.println();
   }
 }
+
