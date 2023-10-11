@@ -4,9 +4,6 @@
 #include <Arduino.h>
 #include <dw3000.h>
 
-extern uint32_t masterTime32bit;
-extern uint64_t masterTime64bit; // Global time which everything is based off of
-
 #define PIN_RST 27
 #define PIN_IRQ 34
 #define PIN_SS 4
@@ -21,7 +18,7 @@ extern uint64_t masterTime64bit; // Global time which everything is based off of
 #define TX_ANT_DLY 16385
 #define RX_ANT_DLY 16385
 
-uint64_t receiveSyncSignal();
+void receiveSyncSignal();
 void receiveTagSignal();
 
 #endif

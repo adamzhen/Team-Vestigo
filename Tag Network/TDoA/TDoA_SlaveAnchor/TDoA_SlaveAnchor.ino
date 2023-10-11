@@ -8,8 +8,6 @@ extern SPISettings _fastSPI;
 
 // Global variables
 uint8_t anchorId;  // To be set to the Slave Anchor's ID
-uint32_t masterTime32bit;
-uint64_t masterTime64bit;
 
 // Initialize the DW3000 configuration
 dwt_config_t config = 
@@ -62,15 +60,11 @@ void setup()
 
   Serial.println("Setup Complete");
 
-  masterTime64bit = receiveSyncSignal();
-  Serial.print("Master Time Set: ");
-  Serial.println(masterTime64bit);
+  receiveSyncSignal();
 }
 
 void loop() 
 {
-  masterTime64bit = receiveSyncSignal();
-  Serial.print("Master Time: ");
-  Serial.println((double)masterTime64bit * DWT_TIME_UNITS, 9);
+  receiveSyncSignal();
   // receiveTagSignal();
 }

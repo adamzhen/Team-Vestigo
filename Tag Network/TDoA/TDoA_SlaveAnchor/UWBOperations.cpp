@@ -1,10 +1,12 @@
 #include "UWBOperations.h"
 
+uint64_t masterTime, slaveTime;
+uint64_t timeOffset;
 uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t rx_buffer[20];
 uint32_t status = 0;
 
-uint64_t receiveSyncSignal() 
+void receiveSyncSignal() 
 {
   dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
@@ -24,15 +26,19 @@ uint64_t receiveSyncSignal()
 
       if (memcmp(rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
       {
-        // Extract the master's timestamp and adjust the slave's internal clock
-        resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime32bit);
-        return (uint64_t)masterTime32bit << 8;
+        slaveTime = get_rx_timestamp_u64();
 
-        // debug only
-        double masterTimeDouble = (double)masterTime64bit * DWT_TIME_UNITS;
+        // Extract the master's timestamp and adjust the slave's internal clock
+        uint32_t masterTime32bit;
+        resp_msg_get_ts(&rx_buffer[SYNC_MSG_TS_IDX], &masterTime32bit);
+        masterTime = (uint64_t)masterTime32bit << 8;
+
+        timeOffset = masterTime - slaveTime;
 
         Serial.print("Master Time Received: ");
-        Serial.println(masterTimeDouble, 12);
+        Serial.println((double)masterTime * DWT_TIME_UNITS, 12);
+        Serial.print("Time Offset: ");
+        Serial.println((double)timeOffset * DWT_TIME_UNITS, 12)
       }
     }
   }
