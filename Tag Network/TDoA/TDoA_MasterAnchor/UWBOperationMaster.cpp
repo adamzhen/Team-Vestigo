@@ -1,8 +1,13 @@
 #include "UWBOperationMaster.h"
 #include <SPI.h>
 
-uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
-extern uint64_t knownToF;
+static uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0xE0, 0, 0};
+static uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8_t TWR_rx_buffer[20];
+static uint32_t statusTWR = 0;
+
+uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 
 dwt_config_t config = 
 {
@@ -51,6 +56,8 @@ void configUWB()
   
   // Enable LEDs for debugging
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
+
+  Serial.println("UWB Configured");
 }
 
 void sendSyncSignal() 
@@ -81,8 +88,64 @@ void sendSyncSignal()
 }
 
 //////////////////// WIP ////////////////////
-void gatherSlaveToF()
+uint64_t gatherSlaveToF()
 {
-  Serial.println("TWR");
+  dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
+  dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS);
+
+  // find a way to reset afterwards
+  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
+  dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
+  dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1);          /* Zero offset in TX buffer, ranging. */
+
+  /* Start transmission, indicating that a response is expected so that reception is enabled automatically after the frame is sent and the delay
+   * set by dwt_setrxaftertxdelay() has elapsed. */
+  dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+
+  while (!((statusTWR = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR))) {};
+
+  if (statusTWR & SYS_STATUS_RXFCG_BIT_MASK)
+  {
+    uint32_t frame_len;
+
+    /* Clear good RX frame event in the DW IC status register. */
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+
+    /* A frame has been received, read it into the local buffer. */
+    frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
+    if (frame_len <= sizeof(TWR_rx_buffer))
+    {
+      dwt_readrxdata(TWR_rx_buffer, frame_len, 0);
+
+      if (memcmp(TWR_rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
+      {
+        uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
+        int32_t rtd_init, rtd_resp;
+        float clockOffsetRatio;
+
+        poll_tx_ts = dwt_readtxtimestamplo32();
+        resp_rx_ts = dwt_readrxtimestamplo32();
+
+        /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
+        clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1 << 26);
+
+        /* Get timestamps embedded in response message. */
+        resp_msg_get_ts(&TWR_rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
+        resp_msg_get_ts(&TWR_rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
+
+        rtd_init = resp_rx_ts - poll_tx_ts;
+        rtd_resp = resp_tx_ts - poll_rx_ts;
+
+        return (rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0;
+      }
+    }
+  }
+  else
+  {
+    return 0;
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
+  }
+
+  delay(100);
 }
 //////////////////// WIP ////////////////////

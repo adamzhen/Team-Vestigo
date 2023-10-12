@@ -11,16 +11,23 @@
 #define MASTER_ANCHOR_ID 0
 #define MASTER_CHANNEL 5
 
+// TDoA Sync
 #define SYNC_MSG_TS_IDX 10
 #define SYNC_MSG_TS_LEN 8
+
+// TWR ToF
+#define ALL_MSG_COMMON_LEN 10
+#define RESP_MSG_POLL_RX_TS_IDX 10
+#define RESP_MSG_RESP_TX_TS_IDX 14
+#define RESP_MSG_TS_LEN 4
+#define POLL_TX_TO_RESP_RX_DLY_UUS 240
+#define RESP_RX_TIMEOUT_UUS 400
 
 #define TX_ANT_DLY 16385
 #define RX_ANT_DLY 16385
 
-const uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
-
 void configUWB();
-void gatherSlaveToF();
+uint64_t gatherSlaveToF();
 void sendSyncSignal();
 
 #endif

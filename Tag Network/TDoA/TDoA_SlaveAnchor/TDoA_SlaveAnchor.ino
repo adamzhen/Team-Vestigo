@@ -9,10 +9,15 @@ void setup()
   Serial.begin(115200);
 
   configUWB();
+
+  while (true) 
+  {
+    sendSlaveToF();
+  }
 }
 
 void loop() 
 {
   receiveSyncSignal();
-  // receiveTagSignal();
+  // receiveTagSignal(); 
 }
