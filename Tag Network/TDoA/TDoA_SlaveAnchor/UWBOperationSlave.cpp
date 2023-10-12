@@ -30,7 +30,6 @@ dwt_config_t config =
 extern dwt_txconfig_t txconfig_options;
 extern SPISettings _fastSPI;
 
-//////////////////// WIP ////////////////////
 void configUWB()
 {
   // Initialize SPI settings
@@ -59,7 +58,6 @@ void configUWB()
   // Enable LEDs for debugging
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 }
-//////////////////// WIP ////////////////////
 
 void receiveSyncSignal() 
 {
@@ -95,7 +93,8 @@ void receiveSyncSignal()
         uint64_t absTimeDiff = (fracMasterTime >= fracSlaveTime) ? (fracMasterTime - fracSlaveTime) : (fracSlaveTime - fracMasterTime);
 
         // Check for wrap-around
-        if (absTimeDiff > unitsPerSecond / 2) {
+        if (absTimeDiff > unitsPerSecond / 2) 
+        {
             timeOffset = unitsPerSecond - absTimeDiff;
             timeOffsetSign = (fracMasterTime >= fracSlaveTime) ? -1 : 1;
         } else {
