@@ -1,4 +1,5 @@
-#include "UWBOperations.h"
+#include "UWBOperationSlave.h"
+#include <SPI.h>
 
 uint64_t masterTime, slaveTime;
 uint64_t timeOffset;
@@ -7,7 +8,58 @@ uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 
 uint8_t rx_buffer[20];
 uint32_t status = 0;
 
-extern const uint64_t unitsPerSecond;
+uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
+
+dwt_config_t config = 
+{
+  MASTER_CHANNEL,
+  DWT_PLEN_128,
+  DWT_PAC8,
+  9,
+  9,
+  1,
+  DWT_BR_6M8,
+  DWT_PHRMODE_STD,
+  DWT_PHRRATE_STD,
+  (129 + 8 - 8),
+  DWT_STS_MODE_OFF,
+  DWT_STS_LEN_64,
+  DWT_PDOA_M0
+};
+
+extern dwt_txconfig_t txconfig_options;
+extern SPISettings _fastSPI;
+
+//////////////////// WIP ////////////////////
+void configUWB()
+{
+  // Initialize SPI settings
+  _fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
+  spiBegin(PIN_IRQ, PIN_RST);
+  spiSelect(PIN_SS);
+  
+  // Initialize the DW3000
+  if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) 
+  {
+    // Initialization failed
+    // Handle the error
+  }
+
+  if (dwt_configure(&config) == DWT_ERROR) 
+  {
+    // Configuration failed
+    // Handle the error
+  }
+
+  dwt_configuretxrf(&txconfig_options);
+
+  dwt_setrxantennadelay(RX_ANT_DLY);
+  dwt_settxantennadelay(TX_ANT_DLY);
+  
+  // Enable LEDs for debugging
+  dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
+}
+//////////////////// WIP ////////////////////
 
 void receiveSyncSignal() 
 {

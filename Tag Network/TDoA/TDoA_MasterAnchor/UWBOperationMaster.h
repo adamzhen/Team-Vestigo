@@ -1,5 +1,5 @@
-#ifndef UWBOperations_h
-#define UWBOperations_h
+#ifndef UWBOperationMaster_h
+#define UWBOperationMaster_h
 
 #include <Arduino.h>
 #include <dw3000.h>
@@ -10,7 +10,6 @@
 
 #define MASTER_ANCHOR_ID 0
 #define MASTER_CHANNEL 5
-#define TAG_CHANNEL 5
 
 #define SYNC_MSG_TS_IDX 10
 #define SYNC_MSG_TS_LEN 8
@@ -20,7 +19,8 @@
 
 const uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 
-void receiveSyncSignal();
-void receiveTagSignal();
+void configUWB();
+void gatherSlaveToF();
+void sendSyncSignal();
 
 #endif
