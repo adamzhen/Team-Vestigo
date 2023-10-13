@@ -145,7 +145,5 @@ uint64_t gatherSlaveToF()
     return 0;
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
   }
-
-  delay(100);
 }
 //////////////////// WIP ////////////////////
