@@ -25,7 +25,7 @@ struct __attribute__((packed)) TDoAstruct : public Data {
 };
 
 struct __attribute__((packed)) TWRstruct : public Data {
-  bool collectToF = true;
+  bool collectToF = false;
   TWRstruct() {
     type = TWR_TYPE;
   }

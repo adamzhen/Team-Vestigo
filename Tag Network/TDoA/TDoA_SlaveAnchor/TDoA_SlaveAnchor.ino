@@ -13,15 +13,15 @@ void setup()
   setupESPNOW();
 
   configUWB();
-
-  while (TWRData.collectToF) 
-  {
-    sendSlaveToF();
-  }
 }
 
 void loop() 
 {
+  while (TWRData.collectToF)
+  {
+    sendSlaveToF();
+  }
+  
   receiveSyncSignal();
   // receiveTagSignal(); 
 }

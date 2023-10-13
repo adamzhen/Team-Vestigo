@@ -61,9 +61,9 @@ void setupESPNOW() {
   esp_now_register_recv_cb(OnDataRecv);
 
   // Register peers
-  for(int i=0; i<sizeof(MIOmac)/sizeof(MIOmac); i++) {
+  for(int i=0; i<sizeof(anchorMacs)/sizeof(anchorMacs[0]); i++) {
     esp_now_peer_info_t peerInfo;
-    memcpy(peerInfo.peer_addr, MIOmac, 6);
+    memcpy(peerInfo.peer_addr, anchorMacs[i], 6);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
 

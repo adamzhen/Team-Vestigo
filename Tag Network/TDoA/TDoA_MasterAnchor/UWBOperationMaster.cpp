@@ -1,11 +1,14 @@
-#include "UWBOperationMaster.h"
 #include <SPI.h>
+#include "UWBOperationMaster.h"
+#include "SharedVariables.h"
 
-static uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0};
 static uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0xE0, 0, 0};
 static uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8_t TWR_rx_buffer[20];
 static uint32_t statusTWR = 0;
+
+uint64_t transmissionDelay = 1000 * UUS_TO_DWT_TIME;
 
 uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 
@@ -64,10 +67,24 @@ void sendSyncSignal()
 {
   // Prepare the sync signal packet
   Serial.println("Sending Sync");
+
+  // Calculate total system delay
+  uint64_t totalDelay = averageToF + TX_ANT_DLY;
+
+  // Set Transmission Time
   uint32_t masterTime32bit = dwt_readsystimestamphi32();
+  uint32_t transmissionTime= (uint32_t)(((((uint64_t)masterTime32bit) << 8) + transmissionDelay) >> 8);
+  dwt_setdelayedtrxtime(transmissionTime);
+
+  // Calculate Sync Time
+  uint64_t syncedTime = (((uint64_t)(masterTime32bit & 0xFFFFFFFEUL)) << 8) + totalDelay;
+
+  // Debug
   Serial.print("Master Time: ");
-  Serial.println((double)((uint64_t)masterTime32bit << 8) * DWT_TIME_UNITS, 12);
-  memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &masterTime32bit, SYNC_MSG_TS_LEN);
+  Serial.println((double)syncedTime * DWT_TIME_UNITS, 12);
+
+  // Copy Sync Time to Sync Packet
+  resp_msg_set_ts(&sync_signal_packet[SYNC_MSG_TS_IDX], syncedTime);
 
   // Write data to DW3000's TX buffer
   dwt_writetxdata(sizeof(sync_signal_packet), sync_signal_packet, 0);
@@ -76,18 +93,19 @@ void sendSyncSignal()
   dwt_writetxfctrl(sizeof(sync_signal_packet), 0, 1);
   
   // Start the transmission
-  dwt_starttx(DWT_START_TX_IMMEDIATE);
+  dwt_starttx(DWT_START_TX_DELAYED);
 
-  Serial.println("Sync Sent");
+  Serial.println("sent");
 
   // Poll DW IC until the TX frame sent event is set
   while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK)) {};
+
+  Serial.println("reg cleared");
 
   // Clear the TX frame sent event
   dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
 }
 
-//////////////////// WIP ////////////////////
 uint64_t gatherSlaveToF()
 {
   dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
@@ -146,4 +164,3 @@ uint64_t gatherSlaveToF()
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
   }
 }
-//////////////////// WIP ////////////////////
