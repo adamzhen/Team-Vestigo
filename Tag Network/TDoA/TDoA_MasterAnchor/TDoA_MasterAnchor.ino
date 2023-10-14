@@ -46,7 +46,6 @@ void loop()
 {
   sendSyncSignal();
   delay(200);
-  Serial.println("looping");
 }
 
 

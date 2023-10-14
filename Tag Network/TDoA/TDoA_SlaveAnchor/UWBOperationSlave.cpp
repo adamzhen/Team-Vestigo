@@ -4,11 +4,11 @@
 uint64_t masterTime, slaveTime, timeOffset;
 int timeOffsetSign = 1;
 
-uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0};
+uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8_t rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0xE0, 0, 0};
 static uint8_t tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-uint8_t TDoA_rx_buffer[14], TWR_rx_buffer[20];
+uint8_t TDoA_rx_buffer[18], TWR_rx_buffer[20];
 uint32_t statusTDoA = 0, statusTWR = 0;
 static uint64_t poll_rx_ts, resp_tx_ts;
 
@@ -85,10 +85,22 @@ void receiveSyncSignal()
       {
         slaveTime = get_rx_timestamp_u64();
 
+        // debug
+        // for(int i = 0; i < sizeof(TDoA_rx_buffer); i++)
+        // {
+        //   Serial.print("Element [");
+        //   Serial.print(i);
+        //   Serial.print("]: 0x");
+        //   Serial.println(TDoA_rx_buffer[i], HEX);
+        // }
+
         // Extract the master's timestamp and adjust the slave's internal clock
-        uint32_t masterTime32bit;
-        resp_msg_get_ts(&TDoA_rx_buffer[SYNC_MSG_TS_IDX], &masterTime32bit);
-        masterTime = (uint64_t)masterTime32bit;
+        uint64_t masterTime = 0;
+
+        for (int i = 7; i >= 0; i--) {
+            masterTime <<= 8;
+            masterTime |= TDoA_rx_buffer[8 + i];
+        }
 
         uint64_t fracMasterTime = masterTime % unitsPerSecond;
         uint64_t fracSlaveTime = slaveTime % unitsPerSecond;

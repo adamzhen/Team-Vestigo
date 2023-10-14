@@ -2,7 +2,7 @@
 #include "UWBOperationMaster.h"
 #include "SharedVariables.h"
 
-static uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0};
+static uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0xE0, 0, 0};
 static uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8_t TWR_rx_buffer[20];
@@ -65,9 +65,6 @@ void configUWB()
 
 void sendSyncSignal() 
 {
-  // Prepare the sync signal packet
-  Serial.println("Sending Sync");
-
   // Calculate total system delay
   uint64_t totalDelay = averageToF + TX_ANT_DLY;
 
@@ -84,7 +81,20 @@ void sendSyncSignal()
   Serial.println((double)syncedTime * DWT_TIME_UNITS, 12);
 
   // Copy Sync Time to Sync Packet
-  resp_msg_set_ts(&sync_signal_packet[SYNC_MSG_TS_IDX], syncedTime);
+  memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &syncedTime, SYNC_MSG_TS_LEN);
+  
+  // debug
+  // Serial.print("Synced Time: ");
+  // Serial.println(syncedTime);
+  // Serial.print("Synced Time Converted: ");
+  // Serial.println((double)syncedTime * DWT_TIME_UNITS, 12);
+  // for(int i = 0; i < sizeof(sync_signal_packet); i++)
+  // {
+  //   Serial.print("Element [");
+  //   Serial.print(i);
+  //   Serial.print("]: 0x");
+  //   Serial.println(sync_signal_packet[i], HEX);
+  // }
 
   // Write data to DW3000's TX buffer
   dwt_writetxdata(sizeof(sync_signal_packet), sync_signal_packet, 0);
@@ -93,17 +103,18 @@ void sendSyncSignal()
   dwt_writetxfctrl(sizeof(sync_signal_packet), 0, 1);
   
   // Start the transmission
-  dwt_starttx(DWT_START_TX_DELAYED);
+  int ret = dwt_starttx(DWT_START_TX_DELAYED);
 
-  Serial.println("sent");
+  if (ret == DWT_SUCCESS) {
+    // Poll DW IC until the TX frame sent event is set
+    while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK)) {};
 
-  // Poll DW IC until the TX frame sent event is set
-  while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK)) {};
-
-  Serial.println("reg cleared");
-
-  // Clear the TX frame sent event
-  dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+    // Clear the TX frame sent event
+    dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
+  } else {
+    Serial.println("Abandoned");
+  }
+  
 }
 
 uint64_t gatherSlaveToF()
