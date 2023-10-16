@@ -49,7 +49,7 @@ void setup()
 void loop() 
 {
   sendSyncSignal();
-  delay(200);
+  delay(250);
 }
 
 

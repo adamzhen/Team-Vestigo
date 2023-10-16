@@ -37,33 +37,17 @@ extern SPISettings _fastSPI;
 
 void configUWB()
 {
-  // Initialize SPI settings
   _fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
   spiBegin(PIN_IRQ, PIN_RST);
   spiSelect(PIN_SS);
   
-  // Initialize the DW3000
-  if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR) 
-  {
-    // Initialization failed
-    // Handle the error
-  }
-
-  if (dwt_configure(&config) == DWT_ERROR) 
-  {
-    // Configuration failed
-    // Handle the error
-  }
-
+  if (dwt_initialise(DWT_DW_INIT) == DWT_ERROR || dwt_configure(&config) == DWT_ERROR) return;
   dwt_configuretxrf(&txconfig_options);
-
   dwt_setrxantennadelay(RX_ANT_DLY);
   dwt_settxantennadelay(TX_ANT_DLY);
   
   // Enable LEDs for debugging
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
-
-  Serial.println("UWB Configured");
 }
 
 // UWB Operation Functions
@@ -117,7 +101,6 @@ void sendSyncSignal()
   } else {
     Serial.println("Abandoned");
   }
-  
 }
 
 uint64_t gatherSlaveToF()
