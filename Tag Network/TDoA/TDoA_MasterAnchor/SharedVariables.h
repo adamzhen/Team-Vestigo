@@ -4,7 +4,9 @@
 #include <Arduino.h>
 
 // ESP-NOW Variables
-extern uint8_t anchorMacs[][6];
+extern uint8_t slaveMacs[][6];
+extern uint8_t masterMac[6];
+extern uint8_t MIOMac[6];
 
 enum DataType {
   TWR_TYPE = 0,
@@ -26,6 +28,7 @@ struct __attribute__((packed)) TDoAstruct : public Data {
 
 struct __attribute__((packed)) TWRstruct : public Data {
   bool collectToF = false;
+  uint64_t ToF = 0;
   TWRstruct() {
     type = TWR_TYPE;
   }

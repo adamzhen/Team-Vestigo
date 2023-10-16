@@ -2,16 +2,20 @@
 #include "UWBOperationMaster.h"
 #include "SharedVariables.h"
 
+// Time Variables
+uint64_t transmissionDelay = 1500 * UUS_TO_DWT_TIME;
+uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
+
+// UWB Messages
 static uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static uint8_t tx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0xE0, 0, 0};
 static uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+// UWB Variables
 static uint8_t TWR_rx_buffer[20];
 static uint32_t statusTWR = 0;
 
-uint64_t transmissionDelay = 1500 * UUS_TO_DWT_TIME;
-
-uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
-
+// UWB Configs
 dwt_config_t config = 
 {
   MASTER_CHANNEL,
@@ -28,7 +32,6 @@ dwt_config_t config =
   DWT_STS_LEN_64,
   DWT_PDOA_M0
 };
-
 extern dwt_txconfig_t txconfig_options;
 extern SPISettings _fastSPI;
 
@@ -63,18 +66,16 @@ void configUWB()
   Serial.println("UWB Configured");
 }
 
+// UWB Operation Functions
 void sendSyncSignal() 
 {
-  // Calculate total system delay
-  uint64_t totalDelay = averageToF + TX_ANT_DLY;
-
   // Set Transmission Time
   uint32_t masterTime32bit = dwt_readsystimestamphi32();
   uint32_t transmissionTime= (uint32_t)(((((uint64_t)masterTime32bit) << 8) + transmissionDelay) >> 8);
   dwt_setdelayedtrxtime(transmissionTime);
 
   // Calculate Sync Time
-  uint64_t syncedTime = (((uint64_t)(transmissionTime)) << 8) + totalDelay;
+  uint64_t syncedTime = (((uint64_t)(transmissionTime)) << 8) + TX_ANT_DLY;
 
   // Debug
   Serial.print("Master Time: ");

@@ -1,4 +1,5 @@
 #include "UWBOperationSlave.h"
+#include "SharedVariables.h"
 #include <SPI.h>
 #include <deque>
 
@@ -24,7 +25,6 @@ static uint64_t poll_rx_ts, resp_tx_ts;
 uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 
 // Kalman Parameters
-// insert global variables here
 double kalman_gain = 0.0;
 double estimate = 0.0;
 double estimate_error = 1.0;  // Initial error
@@ -179,7 +179,7 @@ void receiveSyncSignal()
         receivedSlaveTime = get_rx_timestamp_u64() & 0xFFFFFFFFFF;      
         receivedMasterTime = getMasterTime(receivedMasterTime, TDoA_rx_buffer) & 0xFFFFFFFFFF;
 
-        masterTime = adjustTo64bitTime(receivedMasterTime, lastReceivedMasterTime, overflowCounterMaster);
+        masterTime = adjustTo64bitTime(receivedMasterTime, lastReceivedMasterTime, overflowCounterMaster) + TWRData.ToF;
         slaveTime = adjustTo64bitTime(receivedSlaveTime, lastReceivedSlaveTime, overflowCounterSlave);
         updateTimeOffsets();
 

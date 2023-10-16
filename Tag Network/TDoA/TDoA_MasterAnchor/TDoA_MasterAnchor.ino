@@ -4,7 +4,6 @@
 
 // Global variables
 uint8_t anchorId = MASTER_ANCHOR_ID;
-uint64_t averageToF = 0;
 
 // determine how to switch channels 
 
@@ -16,30 +15,35 @@ void setup()
 
   configUWB();
 
-  TWRData.collectToF = true;
-  sendToPeer(anchorMacs[3], &TWRData, sizeof(TWRData));
-
-  uint32_t numSamples = 0;
-  uint64_t totalToF = 0.0;
-
-  uint64_t startTime = millis();
-  while (millis() - startTime < 5000)
+  for (int i = 0; i < 6; i++) 
   {
-    uint64_t ToF = gatherSlaveToF();
-    if (ToF != 0) 
+    TWRData.collectToF = true;
+    sendToPeer(anchorMacs[i], &TWRData, sizeof(TWRData));
+
+    uint32_t numSamples = 0;
+    uint64_t totalToF = 0.0;
+
+    uint64_t startTime = millis();
+    while (millis() - startTime < 5000)
     {
-      totalToF += ToF;
-      numSamples++;
+      uint64_t ToF = gatherSlaveToF(i);
+      if (ToF != 0) 
+      {
+        totalToF += ToF;
+        numSamples++;
+      }
+      delay(5);
     }
-    delay(5);
+
+    uint64_t averageToF = 0;
+    averageToF = totalToF / numSamples;
+    Serial.print("Average ToF: ");
+    Serial.println(averageToF * DWT_TIME_UNITS, 12);
+
+    TWRData.collectToF = false;
+    TWRData.ToF = averageToF;
+    sendToPeer(anchorMacs[i], &TWRData, sizeof(TWRData));
   }
-
-  averageToF = totalToF / numSamples;
-  Serial.print("Average ToF: ");
-  Serial.println(averageToF * DWT_TIME_UNITS, 12);
-
-  TWRData.collectToF = false;
-  sendToPeer(anchorMacs[3], &TWRData, sizeof(TWRData));
 }
 
 void loop() 

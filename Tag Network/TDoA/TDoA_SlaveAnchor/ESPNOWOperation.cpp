@@ -4,14 +4,15 @@
 TDoAstruct TDoAData;
 TWRstruct TWRData;
 
-uint8_t anchorMacs[][6] = {
-  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
-  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
+uint8_t slaveMacs[][6] = {
+  // all placeholders
+  {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // Slave 1
+  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // Slave
   {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
 };
-
-uint8_t MIOmac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
+uint8_t masterMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}; //placeholder
+uint8_t MIOMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) 
 {
@@ -60,10 +61,10 @@ void setupESPNOW() {
   // Register for Receive CB to get incoming data
   esp_now_register_recv_cb(OnDataRecv);
 
-  // Register peers
-  for(int i=0; i<sizeof(anchorMacs)/sizeof(anchorMacs[0]); i++) {
+  // Register Slaves
+  for(int i=0; i<sizeof(slaveMacs)/sizeof(slaveMacs[0]); i++) {
     esp_now_peer_info_t peerInfo;
-    memcpy(peerInfo.peer_addr, anchorMacs[i], 6);
+    memcpy(peerInfo.peer_addr, slaveMacs[i], 6);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
 
@@ -75,9 +76,22 @@ void setupESPNOW() {
     }
   }
 
+  // Register Master
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, masterMac, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  peerInfo.ifidx = WIFI_IF_STA;
+
+  // Add Master      
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    return;
+  }
+
   // Register MIO
   esp_now_peer_info_t peerInfo;
-  memcpy(peerInfo.peer_addr, MIOmac, 6);
+  memcpy(peerInfo.peer_addr, MIOMac, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
 
