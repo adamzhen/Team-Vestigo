@@ -8,7 +8,7 @@ static uint8_t rx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0
 static uint8_t TWR_rx_buffer[20];
 static uint32_t statusTWR = 0;
 
-uint64_t transmissionDelay = 1000 * UUS_TO_DWT_TIME;
+uint64_t transmissionDelay = 1500 * UUS_TO_DWT_TIME;
 
 uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 
@@ -74,10 +74,12 @@ void sendSyncSignal()
   dwt_setdelayedtrxtime(transmissionTime);
 
   // Calculate Sync Time
-  uint64_t syncedTime = (((uint64_t)(masterTime32bit & 0xFFFFFFFEUL)) << 8) + totalDelay;
+  uint64_t syncedTime = (((uint64_t)(transmissionTime)) << 8) + totalDelay;
 
   // Debug
   Serial.print("Master Time: ");
+  Serial.println((double)(((uint64_t)masterTime32bit) << 8)  * DWT_TIME_UNITS, 12);
+  Serial.print("Synced Time: ");
   Serial.println((double)syncedTime * DWT_TIME_UNITS, 12);
 
   // Copy Sync Time to Sync Packet
