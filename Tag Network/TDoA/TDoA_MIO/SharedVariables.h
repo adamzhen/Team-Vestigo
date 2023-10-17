@@ -7,6 +7,7 @@
 extern uint8_t slaveMacs[][6];
 extern uint8_t masterMac[6];
 extern uint8_t MIOMac[6];
+extern unsigned long lastReceptionTime;
 
 // ESP-NOW Structs
 enum DataType {
@@ -28,14 +29,6 @@ struct __attribute__((packed)) TDoAstruct : public Data {
   }
 };
 
-struct __attribute__((packed)) TWRstruct : public Data {
-  bool collectToF = false;
-  uint64_t ToF = 0;
-  TWRstruct() {
-    type = TWR_TYPE;
-  }
-};
-
 struct __attribute__((packed)) Resetstruct : public Data {
   bool reset = false;
   Resetstruct() {
@@ -43,11 +36,7 @@ struct __attribute__((packed)) Resetstruct : public Data {
   }
 };
 
-extern TWRstruct TWRData;
 extern TDoAstruct TDoAData;
 extern Resetstruct deviceResetFlag;
-
-// UWB Variables
-extern uint64_t averageToF;
 
 #endif

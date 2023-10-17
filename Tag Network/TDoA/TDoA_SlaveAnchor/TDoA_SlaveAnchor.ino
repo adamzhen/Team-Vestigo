@@ -2,7 +2,6 @@
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
 
-// Global variables
 int SLAVE_ID = 1;
 
 void setup() 

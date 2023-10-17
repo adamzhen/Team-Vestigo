@@ -11,7 +11,8 @@ extern uint8_t MIOMac[6];
 // ESP-NOW Structs
 enum DataType {
   TWR_TYPE = 0,
-  TDOA_TYPE = 1
+  TDOA_TYPE = 1,
+  RESET_TYPE = 2
 };
 
 struct __attribute__((packed)) Data {
@@ -35,8 +36,16 @@ struct __attribute__((packed)) TWRstruct : public Data {
   }
 };
 
+struct __attribute__((packed)) Resetstruct : public Data {
+  bool reset = false;
+  Resetstruct() {
+    type = RESET_TYPE;
+  }
+};
+
 extern TWRstruct TWRData;
 extern TDoAstruct TDoAData;
+extern Resetstruct deviceResetFlag;
 
 extern int SLAVE_ID;
 

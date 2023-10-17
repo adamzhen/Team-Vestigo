@@ -3,7 +3,6 @@
 
 // Structs
 TDoAstruct TDoAData;
-TWRstruct TWRData;
 Resetstruct deviceResetFlag;
 
 // Mac Addresses
@@ -19,6 +18,9 @@ uint8_t slaveMacs[][6] = {
 uint8_t masterMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}; //placeholder
 uint8_t MIOMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
 
+// Variables
+unsigned long lastReceptionTime = 0;
+
 // ESP-NOW Functions
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) 
 {
@@ -26,14 +28,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
   
   switch(dataType) 
   {
-    case TWR_TYPE:
-      memcpy(&TWRData, incomingData + 1, sizeof(TWRData));
-      break;
-    
     case TDOA_TYPE:
       memcpy(&TDoAData, incomingData + 1, sizeof(TDoAData));
+      lastReceptionTime = millis();
       break;
-    
+
     case RESET_TYPE:
       ESP.restart();
       break;
