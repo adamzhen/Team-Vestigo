@@ -3,8 +3,7 @@
 #include "SharedVariables.h"
 
 // Global variables
-uint8_t anchorId;  // To be set to the Slave Anchor's ID
-
+int SLAVE_ID = 1;
 
 void setup() 
 {
@@ -22,6 +21,5 @@ void loop()
     sendSlaveToF();
   }
   
-  receiveSyncSignal();
-  // receiveTagSignal(); 
+  receiveTDoASignal();
 }

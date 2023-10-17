@@ -18,6 +18,11 @@
 #define SYNC_MSG_TS_IDX 8
 #define SYNC_MSG_TS_LEN 5
 
+// TDoA Blink
+#define BLINK_MSG_ID_IDX 8
+#define BLINK_MSG_TS_IDX 9
+#define BLINK_MSG_TS_LEN 5
+
 // TWR ToF
 #define ALL_MSG_COMMON_LEN 10
 #define RESP_MSG_POLL_RX_TS_IDX 10
@@ -35,7 +40,6 @@
 
 void configUWB();
 void sendSlaveToF();
-void receiveSyncSignal();
-void receiveTagSignal();
+void receiveTDoASignal();
 
 #endif

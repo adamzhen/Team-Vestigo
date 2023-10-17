@@ -8,6 +8,7 @@ extern uint8_t slaveMacs[][6];
 extern uint8_t masterMac[6];
 extern uint8_t MIOMac[6];
 
+// ESP-NOW Structs
 enum DataType {
   TWR_TYPE = 0,
   TDOA_TYPE = 1

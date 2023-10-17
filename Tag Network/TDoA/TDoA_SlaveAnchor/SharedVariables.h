@@ -3,10 +3,12 @@
 
 #include <Arduino.h>
 
+// ESP-NOW Variables
 extern uint8_t slaveMacs[][6];
 extern uint8_t masterMac[6];
 extern uint8_t MIOMac[6];
 
+// ESP-NOW Structs
 enum DataType {
   TWR_TYPE = 0,
   TDOA_TYPE = 1
@@ -35,5 +37,7 @@ struct __attribute__((packed)) TWRstruct : public Data {
 
 extern TWRstruct TWRData;
 extern TDoAstruct TDoAData;
+
+extern int SLAVE_ID;
 
 #endif

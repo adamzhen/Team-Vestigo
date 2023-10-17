@@ -10,8 +10,9 @@
 
 #define MASTER_CHANNEL 5
 
-#define SYNC_MSG_TS_IDX 8
-#define SYNC_MSG_TS_LEN 5
+#define BLINK_MSG_ID_IDX 8
+#define BLINK_MSG_TS_IDX 9
+#define BLINK_MSG_TS_LEN 5
 
 #define TX_ANT_DLY 16385
 #define RX_ANT_DLY 16385

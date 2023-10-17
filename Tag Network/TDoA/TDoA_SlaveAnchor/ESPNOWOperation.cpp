@@ -1,9 +1,11 @@
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
 
+// Structs
 TDoAstruct TDoAData;
 TWRstruct TWRData;
 
+// Mac Addresses
 uint8_t slaveMacs[][6] = {
   // all placeholders
   {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // Slave 1
@@ -14,6 +16,7 @@ uint8_t slaveMacs[][6] = {
 uint8_t masterMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}; //placeholder
 uint8_t MIOMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
 
+// ESP-NOW Functions
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) 
 {
   uint8_t dataType = incomingData[0];
@@ -26,10 +29,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
     
     case TDOA_TYPE:
       memcpy(&TDoAData, incomingData + 1, sizeof(TDoAData));
-      // Now, TDoAData is populated and you can use it.
-      // For example:
-      // Serial.print("Received TDoA Data, anchor_id: ");
-      // Serial.println(TDoAData.anchor_id);
       break;
 
     default:
@@ -49,16 +48,13 @@ void sendToPeer(uint8_t *peerMAC, Data *message, size_t dataSize)
 
 
 void setupESPNOW() {
-  // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
 
-  // Init ESPNow with a fallback logic
   WiFi.disconnect();
   if (esp_now_init() != ESP_OK) {
     ESP.restart();
   }
 
-  // Register for Receive CB to get incoming data
   esp_now_register_recv_cb(OnDataRecv);
 
   // Register Slaves
@@ -67,38 +63,29 @@ void setupESPNOW() {
     memcpy(peerInfo.peer_addr, slaveMacs[i], 6);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
-
     peerInfo.ifidx = WIFI_IF_STA;
-
-    // Add peer        
     if (esp_now_add_peer(&peerInfo) != ESP_OK){
       return;
     }
   }
 
   // Register Master
-  esp_now_peer_info_t peerInfo;
-  memcpy(peerInfo.peer_addr, masterMac, 6);
-  peerInfo.channel = 0;
-  peerInfo.encrypt = false;
-
-  peerInfo.ifidx = WIFI_IF_STA;
-
-  // Add Master      
-  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+  esp_now_peer_info_t peerInfoMaster;
+  memcpy(peerInfoMaster.peer_addr, masterMac, 6);
+  peerInfoMaster.channel = 0;
+  peerInfoMaster.encrypt = false;
+  peerInfoMaster.ifidx = WIFI_IF_STA;
+  if (esp_now_add_peer(&peerInfoMaster) != ESP_OK){
     return;
   }
 
   // Register MIO
-  esp_now_peer_info_t peerInfo;
-  memcpy(peerInfo.peer_addr, MIOMac, 6);
-  peerInfo.channel = 0;
-  peerInfo.encrypt = false;
-
-  peerInfo.ifidx = WIFI_IF_STA;
-
-  // Add MIO      
-  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+  esp_now_peer_info_t peerInfoMIO;
+  memcpy(peerInfoMIO.peer_addr, MIOMac, 6);
+  peerInfoMIO.channel = 0;
+  peerInfoMIO.encrypt = false;
+  peerInfoMIO.ifidx = WIFI_IF_STA;    
+  if (esp_now_add_peer(&peerInfoMIO) != ESP_OK){
     return;
   }
 }
