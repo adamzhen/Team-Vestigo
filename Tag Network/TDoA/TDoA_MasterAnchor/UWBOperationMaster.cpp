@@ -69,34 +69,16 @@ void sendSyncSignal()
 
   // Copy Sync Time to Sync Packet
   memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &syncedTime, SYNC_MSG_TS_LEN);
-  
-  // debug
-  // Serial.print("Synced Time: ");
-  // Serial.println(syncedTime);
-  // Serial.print("Synced Time Converted: ");
-  // Serial.println((double)syncedTime * DWT_TIME_UNITS, 12);
-  // for(int i = 0; i < sizeof(sync_signal_packet); i++)
-  // {
-  //   Serial.print("Element [");
-  //   Serial.print(i);
-  //   Serial.print("]: 0x");
-  //   Serial.println(sync_signal_packet[i], HEX);
-  // }
 
-  // Write data to DW3000's TX buffer
   dwt_writetxdata(sizeof(sync_signal_packet), sync_signal_packet, 0);
-  
-  // Configure the TX settings and enable immediate transmission
   dwt_writetxfctrl(sizeof(sync_signal_packet), 0, 1);
   
   // Start the transmission
   int ret = dwt_starttx(DWT_START_TX_DELAYED);
 
+  // Error Handling
   if (ret == DWT_SUCCESS) {
-    // Poll DW IC until the TX frame sent event is set
     while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS_BIT_MASK)) {};
-
-    // Clear the TX frame sent event
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
   } else {
     Serial.println("Abandoned");
@@ -108,13 +90,10 @@ uint64_t gatherSlaveToF()
   dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
   dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS);
 
-  // find a way to reset afterwards
   dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
-  dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0); /* Zero offset in TX buffer. */
-  dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1);          /* Zero offset in TX buffer, ranging. */
+  dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
+  dwt_writetxfctrl(sizeof(tx_poll_msg), 0, 1);
 
-  /* Start transmission, indicating that a response is expected so that reception is enabled automatically after the frame is sent and the delay
-   * set by dwt_setrxaftertxdelay() has elapsed. */
   dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
 
   while (!((statusTWR = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR))) {};
@@ -123,10 +102,8 @@ uint64_t gatherSlaveToF()
   {
     uint32_t frame_len;
 
-    /* Clear good RX frame event in the DW IC status register. */
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG_BIT_MASK);
 
-    /* A frame has been received, read it into the local buffer. */
     frame_len = dwt_read32bitreg(RX_FINFO_ID) & RXFLEN_MASK;
     if (frame_len <= sizeof(TWR_rx_buffer))
     {
@@ -134,6 +111,7 @@ uint64_t gatherSlaveToF()
 
       if (memcmp(TWR_rx_buffer, rx_resp_msg, ALL_MSG_COMMON_LEN) == 0)
       {
+        // Compute reception and transmission times
         uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
         int32_t rtd_init, rtd_resp;
         float clockOffsetRatio;
@@ -151,13 +129,15 @@ uint64_t gatherSlaveToF()
         rtd_init = resp_rx_ts - poll_tx_ts;
         rtd_resp = resp_tx_ts - poll_rx_ts;
 
+        // Return final ToF
         return (rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0;
       }
     }
   }
   else
   {
-    return 0;
+    // Error Handling
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR);
+    return 0;
   }
 }

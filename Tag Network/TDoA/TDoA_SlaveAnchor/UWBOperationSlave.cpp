@@ -306,22 +306,3 @@ void sendSlaveToF()
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
   }
 }
-
-//////////////////// WIP ////////////////////
-// void receiveTagSignal() 
-// {
-//   // Activate reception on channel 5
-//   // dwt_setchannel(TAG_CHANNEL); work on this later
-//   dwt_rxenable(DWT_START_RX_IMMEDIATE);
-
-//   // Poll for reception of tag signal
-//   uint32_t status;
-//   while (!((status = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG_BIT_MASK | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR))) {};
-
-//   if (status & SYS_STATUS_RXFCG_BIT_MASK) 
-//   {
-//     // Capture the time of tag signal receipt
-//     // t_tag_signal = dwt_readsystime(); // Fix later
-//   }
-// }
-//////////////////// WIP ////////////////////
