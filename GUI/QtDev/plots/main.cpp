@@ -555,16 +555,16 @@ void MainWindow::realtimeDataSlot()
     if (key-lastPointKey > 0.002) // at most add point every 2 ms
     {
         // add data to lines:
-        ui->customPlot->graph(0)->addData(key, qSin(key)+std::rand()/(double)RAND_MAX*1*qSin(key/0.4));
-        ui->customPlot->graph(1)->addData(key, orientation);
+        ui->customPlot1->graph(0)->addData(key, qSin(key)+std::rand()/(double)RAND_MAX*1*qSin(key/0.4));
+        ui->customPlot1->graph(1)->addData(key, orientation);
         // rescale value (vertical) axis to fit the current data:
-        ui->customPlot->graph(0)->rescaleValueAxis();
-        ui->customPlot->graph(1)->rescaleValueAxis(true);
+        ui->customPlot1->graph(0)->rescaleValueAxis();
+        ui->customPlot1->graph(1)->rescaleValueAxis(true);
         lastPointKey = key;
     }
     // make key axis range scroll with the data (at a constant range size of 8):
-    ui->customPlot->xAxis->setRange(key, 8, Qt::AlignRight);
-    ui->customPlot->replot();
+    ui->customPlot1->xAxis->setRange(key, 8, Qt::AlignRight);
+    ui->customPlot1->replot();
 
     // calculate frames per second:
     static double lastFpsKey;
@@ -575,7 +575,7 @@ void MainWindow::realtimeDataSlot()
         ui->statusBar->showMessage(
             QString("%1 FPS, Total Data points: %2")
                 .arg(frameCount/(key-lastFpsKey), 0, 'f', 0)
-                .arg(ui->customPlot->graph(0)->data()->size()+ui->customPlot->graph(1)->data()->size())
+                .arg(ui->customPlot1->graph(0)->data()->size()+ui->customPlot1->graph(1)->data()->size())
             , 0);
         lastFpsKey = key;
         frameCount = 0;

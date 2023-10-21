@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+#include "../QCustomPlot/qcustomplot.h"
+#include "ui_mainwindow.h"
 #include <QApplication>
 #include <fstream>
 #include <iostream>
@@ -35,6 +37,17 @@ std::vector<Eigen::Vector3d> UWB_previous = {
 std::vector<std::vector<float>> previous_IMU_data = {
     {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0} , {0.0, 0.0, 0.0, 0.0}
 };
+std::vector<Eigen::Vector3d> anchor_position;
+
+// Socket setup
+const int num_ports = 1;
+int ports[num_ports] = { 1234 };
+SOCKET socks[num_ports];
+sockaddr_in serverAddrs[num_ports];
+int recvLens[num_ports];
+sockaddr_in clientAddrs[num_ports];
+int clientAddrLens[num_ports] = { sizeof(sockaddr_in) };
+char buffer[1024];
 
 /***********************************
 *********** LM ALGORITHM ***********
@@ -351,6 +364,225 @@ float calculate_average(std::vector<float> vector)
 }
 
 
+float readSensorData() {
+
+    /***** Setup output file *****/
+    // Open the file for writing
+    std::ofstream outFile("Tracked Location", std::ios::app);
+
+    // Check if the file was opened successfully
+    if (!outFile) {
+        std::cerr << "Error opening file." << std::endl;
+        return 1;
+    }
+
+    // get the current timestamp
+    auto now = std::chrono::system_clock::now();
+    // convert the timestamp to a time_t object
+    std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
+    // set the desired timezone
+    std::tm timeinfo;
+    localtime_s(&timeinfo, &timestamp);
+
+    int hours = timeinfo.tm_hour;
+    int minutes = timeinfo.tm_min;
+    int seconds = timeinfo.tm_sec;
+
+    // Defines variables for location coordinates
+    const int num_tags = 4;
+    float UWB_x[num_tags];
+    float UWB_y[num_tags];
+    float UWB_z[num_tags];
+
+    float roll;
+    float pitch;
+    float yaw;
+    float dt;
+
+    std::vector<std::vector<float>> tag_data;
+    std::vector<float> tag1_data;
+    std::vector<float> tag2_data;
+    std::vector<float> tag3_data;
+    std::vector<float> tag4_data;
+    std::vector<float> distances;
+
+    for (int i = 0; i < num_ports; ++i)
+    {
+        /*std::cout << "Port Num: " << i << std::endl;*/
+
+        // pulls UWB data from first port
+        recvLens[i] = recvfrom(socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&clientAddrs[i], &clientAddrLens[i]);
+
+        // checks if data is received on port
+        if (recvLens[i] <= 0) {
+            // std::cout << "NO DATA" << std::endl;
+            continue;
+        }
+
+        std::string data_str(buffer, recvLens[i]);
+        // data_str = "[[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105]]";
+
+        // converts string into 2D vector
+        data_str = data_str.substr(1, data_str.length() - 2); // trimming off first and last brackets
+        size_t start = 0;
+        size_t end = 0;
+        do { // iterating through each vector within the 2D vector
+            start = data_str.find("[", end);
+            end = data_str.find("]", start) + 1;
+            //std::cout << data_str.substr(start, end - start) << std::endl;
+            tag_data.push_back(dataProcessing(data_str.substr(start, end - start)));
+        } while (data_str.find(",[", start) != -1);
+
+        // Prints out data received
+        std::cout << std::endl;
+        for (const auto& row : tag_data) {
+            for (const auto& element : row) {
+                std::cout << element << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+
+        // Loop through the tags
+        for (int j = 0; j < num_tags; ++j) {
+
+            /*************************************
+                *********** UWB PROCESSING ***********
+                *************************************/
+
+            for (int k = 0; k < 12; k++) {
+                distances.push_back(tag_data[j][k]);
+            }
+
+            // IMU data
+            roll = 0; //tag_data[j][14];
+            pitch = 0; //tag_data[j][13];
+            yaw = tag_data[j][12];
+
+            // Define the anchor points
+            Eigen::Vector3d point_1 = anchor_position[0];
+            Eigen::Vector3d point_2 = anchor_position[1];
+            Eigen::Vector3d point_3 = anchor_position[2];
+            Eigen::Vector3d point_4 = anchor_position[3];
+            Eigen::Vector3d point_5 = anchor_position[4];
+            Eigen::Vector3d point_6 = anchor_position[5];
+            Eigen::Vector3d point_7 = anchor_position[6];
+            Eigen::Vector3d point_8 = anchor_position[7];
+            Eigen::Vector3d point_9 = anchor_position[8];
+            Eigen::Vector3d point_10 = anchor_position[9];
+            Eigen::Vector3d point_11 = anchor_position[10];
+            Eigen::Vector3d point_12 = anchor_position[11];
+            std::vector<Eigen::Vector3d> points = {
+                Eigen::Vector3d(point_1), Eigen::Vector3d(point_2), Eigen::Vector3d(point_3),
+                Eigen::Vector3d(point_4), Eigen::Vector3d(point_5), Eigen::Vector3d(point_6),
+                Eigen::Vector3d(point_7), Eigen::Vector3d(point_8), Eigen::Vector3d(point_9),
+                Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
+            };
+
+            // Call the multilateration function
+            Eigen::Vector3d result;
+            try {
+                result = multilateration(points, distances, UWB_previous[j]);
+                // Update the previous position
+                UWB_previous[j] = result;
+            }
+            catch (std::exception& e) {
+                // Use the previous position if a unique solution is not found
+                result = UWB_previous[j];
+            }
+            distances.clear();
+
+            // Checks for Outliers
+            Eigen::Vector3d UWB_current = { result[0] , result[1] , result[2] };
+            if (abs(UWB_current.norm() - UWB_previous[j].norm()) < 0.25) {
+                UWB_x[j] = UWB_current[0];
+                UWB_y[j] = UWB_current[1];
+                UWB_z[j] = UWB_current[2];
+            }
+            else {
+                UWB_x[j] = UWB_previous[j][0];
+                UWB_y[j] = UWB_previous[j][1];
+                UWB_z[j] = UWB_previous[j][2];
+                std::cout << "PREVIOUS USED" << std::endl;
+            }
+
+
+            // writes the location data to the console
+            std::cout << "x: " << UWB_x[j] << ", y: " << UWB_y[j] << ", z: " << UWB_z[j] << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
+
+            /*************************************
+                *********** IMU PROCESSING ***********
+                *************************************/
+
+            double PI = M_PI;
+
+            // calculating orientation
+            float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
+            float compass = zerodir - yaw;
+            if (compass < 0) {
+                compass += 360;
+            }
+
+            float room_orientation = 20; // compass direction of positive x-axis of the room
+            float theta = compass - room_orientation;
+            if (theta < 0) {
+                theta += 360;
+            }
+
+            float rtheta = theta * PI / 180;
+
+            return theta;
+
+            // Write location data to file
+            outFile << UWB_x[j] << ", " << UWB_y[j] << ", " << UWB_z[j] << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
+
+        }
+    }
+
+}
+
+// Close the file
+//outFile.close();
+
+void MainWindow::realtimeDataSlot()
+{
+    static QTime timeStart = QTime::currentTime();
+    // calculate two new data points:
+    double key = timeStart.msecsTo(QTime::currentTime())/1000.0; // time elapsed since start of demo, in seconds
+    // std::cout << key << std::endl;
+    static double lastPointKey = 0;
+    // get data from sensors
+    float orientation = readSensorData();
+    if (key-lastPointKey > 0.002) // at most add point every 2 ms
+    {
+        // add data to lines:
+        ui->customPlot1->graph(0)->addData(key, qSin(key)+std::rand()/(double)RAND_MAX*1*qSin(key/0.4));
+        ui->customPlot1->graph(1)->addData(key, orientation);
+        // rescale value (vertical) axis to fit the current data:
+        ui->customPlot1->graph(0)->rescaleValueAxis();
+        ui->customPlot1->graph(1)->rescaleValueAxis(true);
+        lastPointKey = key;
+    }
+    // make key axis range scroll with the data (at a constant range size of 8):
+    ui->customPlot1->xAxis->setRange(key, 8, Qt::AlignRight);
+    ui->customPlot1->replot();
+
+    // calculate frames per second:
+    static double lastFpsKey;
+    static int frameCount;
+    ++frameCount;
+    if (key-lastFpsKey > 2) // average fps over 2 seconds
+    {
+        ui->statusBar->showMessage(
+            QString("%1 FPS, Total Data points: %2")
+                .arg(frameCount/(key-lastFpsKey), 0, 'f', 0)
+                .arg(ui->customPlot1->graph(0)->data()->size()+ui->customPlot1->graph(1)->data()->size())
+            , 0);
+        lastFpsKey = key;
+        frameCount = 0;
+    }
+}
+
 /***********************************
 *********** MAIN PROGRAM ***********
 ***********************************/
@@ -360,6 +592,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     MainWindow w;
     w.show();
+
 
     /***********************************
     *********** ROOM CONFIG ***********
@@ -383,111 +616,22 @@ int main(int argc, char *argv[])
     double length;
     double width;
 
-    std::cout << "Tracking Startup Menu:" << std::endl;
-    std::cout << "Do you want to set up a new room? (Y/N)? ";
-    char choice_new_room;
-    std::cin >> choice_new_room;
+    std::string read_filename = "dev"; // name of file with anchor locations and room dimensions
+    readDimensions(read_filename, length, width, anchor_position);
 
-    if (choice_new_room == 'Y' || choice_new_room == 'y') {
-
-        // Ask for room dimensions from user
-        float* room_dimensions = getDimensions();
-        length = room_dimensions[0];
-        width = room_dimensions[1];
-
-        // Ask for the anchor location from user
-        std::vector<Eigen::Vector3d> anchor_positions = getAnchors();
-        point_1 = anchor_positions[0];
-        point_2 = anchor_positions[1];
-        point_3 = anchor_positions[2];
-        point_4 = anchor_positions[3];
-        point_5 = anchor_positions[4];
-        point_6 = anchor_positions[5];
-        point_7 = anchor_positions[6];
-        point_8 = anchor_positions[7];
-        point_9 = anchor_positions[8];
-        point_10 = anchor_positions[9];
-        point_11 = anchor_positions[10];
-        point_12 = anchor_positions[11];
-
-        std::cout << "Do you want to save the new room configuration (Y/N)?";
-        char choice_save;
-        std::cin >> choice_save;
-
-        if (choice_save == 'Y' || choice_save == 'y')
-        {
-            std::cout << "Enter the name of the new room: ";
-            std::string save_filename;
-            std::cin >> save_filename;
-
-            // Check for existing file
-            //            struct stat buffer;
-            //            if (stat(save_filename.c_str(), &buffer) == 0) {
-
-            //                std::cout << "File already exists, try again";
-
-            //                return 0;
-            //            }
-
-            saveDimensions(length, width, anchor_positions, save_filename);
-
-        }
-    }
-    else if (choice_new_room == 'n' || choice_new_room == 'N') {
-
-        std::cout << "Enter the name of an existing room: ";
-        std::string read_filename;
-        std::cin >> read_filename;
-
-        // Checks for existing file
-        //        struct stat buffer;
-        //        if (stat(read_filename.c_str(), &buffer) != 0) {
-
-        //            std::cout << "File does not exist, try again";
-
-        //            return 0;
-        //        }
-
-        std::vector<Eigen::Vector3d> anchor_position;
-        readDimensions(read_filename, length, width, anchor_position);
-
-        std::cout << anchor_position.size() << std::endl;
-        point_1 = anchor_position[0];
-        point_2 = anchor_position[1];
-        point_3 = anchor_position[2];
-        point_4 = anchor_position[3];
-        point_5 = anchor_position[4];
-        point_6 = anchor_position[5];
-        point_7 = anchor_position[6];
-        point_8 = anchor_position[7];
-        point_9 = anchor_position[8];
-        point_10 = anchor_position[9];
-        point_11 = anchor_position[10];
-        point_12 = anchor_position[11];
-    }
-    else {
-
-        std::string read_filename = "dev";
-        std::vector<Eigen::Vector3d> anchor_position;
-        readDimensions(read_filename, length, width, anchor_position);
-
-        std::cout << anchor_position.size() << std::endl;
-        point_1 = anchor_position[0];
-        point_2 = anchor_position[1];
-        point_3 = anchor_position[2];
-        point_4 = anchor_position[3];
-        point_5 = anchor_position[4];
-        point_6 = anchor_position[5];
-        point_7 = anchor_position[6];
-        point_8 = anchor_position[7];
-        point_9 = anchor_position[8];
-        point_10 = anchor_position[9];
-        point_11 = anchor_position[10];
-        point_12 = anchor_position[11];
-
-        //std::cout << "Invalid Input";
-        //return 0;
-    }
+    // std::cout << anchor_position.size() << std::endl;
+    point_1 = anchor_position[0];
+    point_2 = anchor_position[1];
+    point_3 = anchor_position[2];
+    point_4 = anchor_position[3];
+    point_5 = anchor_position[4];
+    point_6 = anchor_position[5];
+    point_7 = anchor_position[6];
+    point_8 = anchor_position[7];
+    point_9 = anchor_position[8];
+    point_10 = anchor_position[9];
+    point_11 = anchor_position[10];
+    point_12 = anchor_position[11];
 
     // Convert dimensions from inches to meters and set screen size
     const float screen_scale = 150.0;
@@ -512,24 +656,6 @@ int main(int argc, char *argv[])
     std::cout << "  Point 12: " << point_12.transpose() << std::endl;
 
 
-    // IMU Orientation Startup Delay
-    /*std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
-    int i = 30;
-    while (i != 0) {
-        std::cout << i << " seconds" << std::endl;
-        i -= 5;
-        Sleep(5000);
-    }*/
-
-    // Open the file for writing
-    std::ofstream outFile("Tracked Location", std::ios::app);
-
-    // Check if the file was opened successfully
-    if (!outFile) {
-        std::cerr << "Error opening file." << std::endl;
-        return 1;
-    }
-
     // Wifi Startup Check
     WSADATA wsaData;
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -538,18 +664,17 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-
     /************************************
-    *********** SOCKETS SETUP ***********
-    ************************************/
+        *********** SOCKETS SETUP ***********
+        ************************************/
 
-    const int num_ports = 1;
-    int ports[num_ports] = { 1234 };
-    SOCKET socks[num_ports];
-    sockaddr_in serverAddrs[num_ports];
-    int recvLens[num_ports];
-    sockaddr_in clientAddrs[num_ports];
-    int clientAddrLens[num_ports] = { sizeof(sockaddr_in) };
+    //    const int num_ports = 1;
+    //    int ports[num_ports] = { 1234 };
+    //    SOCKET socks[num_ports];
+    //    sockaddr_in serverAddrs[num_ports];
+    //    int recvLens[num_ports];
+    //    sockaddr_in clientAddrs[num_ports];
+    //    int clientAddrLens[num_ports] = { sizeof(sockaddr_in) };
 
     for (int i = 0; i < num_ports; ++i) {
         // check if UWB socket connection is good
@@ -579,206 +704,16 @@ int main(int argc, char *argv[])
         }
     }
 
-    // defines buffer size and client address
-    char buffer[1024];
 
-    /**************************************
-    *********** DATA PROCESSING ***********
-    **************************************/
-
-    bool quit = false;
-    while (!quit) {
-
-        // get the current timestamp
-        auto now = std::chrono::system_clock::now();
-        // convert the timestamp to a time_t object
-        std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
-        // set the desired timezone
-        std::tm timeinfo;
-        localtime_s(&timeinfo, &timestamp);
-
-        int hours = timeinfo.tm_hour;
-        int minutes = timeinfo.tm_min;
-        int seconds = timeinfo.tm_sec;
-
-        // Defines variables for location coordinates
-        const int num_tags = 4;
-        float UWB_x[num_tags];
-        float UWB_y[num_tags];
-        float UWB_z[num_tags];
-
-        float roll;
-        float pitch;
-        float yaw;
-        float dt;
-
-        std::vector<std::vector<float>> tag_data;
-        std::vector<float> tag1_data;
-        std::vector<float> tag2_data;
-        std::vector<float> tag3_data;
-        std::vector<float> tag4_data;
-        std::vector<float> distances;
-
-        for (int i = 0; i < num_ports; ++i)
-        {
-            /*std::cout << "Port Num: " << i << std::endl;*/
-
-            // pulls UWB data from first port
-            recvLens[i] = recvfrom(socks[i], buffer, sizeof(buffer), 0, (sockaddr*)&clientAddrs[i], &clientAddrLens[i]);
-
-            // checks if data is received on port
-            if (recvLens[i] <= 0) {
-                continue;
-            }
-
-            std::string data_str(buffer, recvLens[i]);
-            // data_str = "[[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105],[1,1,1,1,1,1,1,1,1,1,1,1,0.191865519,-0.598398983,0.068833105]]";
-
-            // converts string into 2D vector
-            data_str = data_str.substr(1, data_str.length() - 2); // trimming off first and last brackets
-            size_t start = 0;
-            size_t end = 0;
-            do { // iterating through each vector within the 2D vector
-                start = data_str.find("[", end);
-                end = data_str.find("]", start) + 1;
-                //std::cout << data_str.substr(start, end - start) << std::endl;
-                tag_data.push_back(dataProcessing(data_str.substr(start, end - start)));
-            } while (data_str.find(",[", start) != -1);
-
-            // Prints out data received
-            std::cout << std::endl;
-            for (const auto& row : tag_data) {
-                for (const auto& element : row) {
-                    std::cout << element << " ";
-                }
-                std::cout << std::endl;
-            }
-            std::cout << std::endl;
-
-            // Loop through the tags
-            for (int j = 0; j < num_tags; ++j) {
-
-                /*************************************
-                *********** UWB PROCESSING ***********
-                *************************************/
-                for (int k = 0; k < 12; k++) {
-                    distances.push_back(tag_data[j][k]);
-                }
-                roll = 0; //tag_data[j][14];
-                pitch = 0; //tag_data[j][13];
-                yaw = tag_data[j][12];
-
-
-
-                // Define the anchor points
-                std::vector<Eigen::Vector3d> points = {
-                    Eigen::Vector3d(point_1), Eigen::Vector3d(point_2), Eigen::Vector3d(point_3),
-                    Eigen::Vector3d(point_4), Eigen::Vector3d(point_5), Eigen::Vector3d(point_6),
-                    Eigen::Vector3d(point_7), Eigen::Vector3d(point_8), Eigen::Vector3d(point_9),
-                    Eigen::Vector3d(point_10), Eigen::Vector3d(point_11), Eigen::Vector3d(point_12)
-                };
-
-                // Call the multilateration function
-                Eigen::Vector3d result;
-                try {
-                    result = multilateration(points, distances, UWB_previous[j]);
-                    // Update the previous position
-                    UWB_previous[j] = result;
-                }
-                catch (std::exception& e) {
-                    // Use the previous position if a unique solution is not found
-                    result = UWB_previous[j];
-                }
-                distances.clear();
-
-                // Checks for Outliers
-                Eigen::Vector3d UWB_current = { result[0] , result[1] , result[2] };
-                if (abs(UWB_current.norm() - UWB_previous[j].norm()) < 0.25) {
-                    UWB_x[j] = UWB_current[0];
-                    UWB_y[j] = UWB_current[1];
-                    UWB_z[j] = UWB_current[2];
-                }
-                else {
-                    UWB_x[j] = UWB_previous[j][0];
-                    UWB_y[j] = UWB_previous[j][1];
-                    UWB_z[j] = UWB_previous[j][2];
-                    std::cout << "PREVIOUS USED" << std::endl;
-                }
-
-
-                // writes the location data to the console
-                std::cout << "x: " << UWB_x[j] << ", y: " << UWB_y[j] << ", z: " << UWB_z[j] << ", Time: " << hours << ":" << minutes << ":" << seconds << std::endl;
-
-                /*************************************
-                *********** IMU PROCESSING ***********
-                *************************************/
-
-                double PI = M_PI;
-
-                // calculating orientation
-                float zerodir = 180.0; // compass direction (degrees from North) where yaw is 0
-                float compass = zerodir - yaw;
-                if (compass < 0) {
-                    compass += 360;
-                }
-
-                float room_orientation = 20; // compass direction of positive x-axis of the room
-                float theta = compass - room_orientation;
-                if (theta < 0) {
-                    theta += 360;
-                }
-
-                float rtheta = theta * PI / 180;
-
-
-                // Write location data to file
-                outFile << UWB_x[j] << ", " << UWB_y[j] << ", " << UWB_z[j] << ", " << theta << ", " << hours << ", " << minutes << ", " << seconds << std::endl;
-
-                /***************************************
-                *********** REALTIME DISPLAY ***********
-                ***************************************/
-
-                // Convert the object position from meters to pixels
-                int UWB_x_pixel = static_cast<int>(UWB_x[j] * screen_scale);
-                int UWB_y_pixel = static_cast<int>(UWB_y[j] * screen_scale);
-
-                // Calculate line for orientation, currently assuming that North is in the positive x direction
-                int draw_length = 75;
-                int x_top = UWB_x_pixel + draw_length * cos(rtheta);
-                int y_top = UWB_y_pixel + draw_length * sin(rtheta);
-                int x_side_left = UWB_x_pixel + draw_length * cos(rtheta - PI / 4);
-                int y_side_left = UWB_y_pixel + draw_length * sin(rtheta - PI / 4);
-                int x_side_right = UWB_x_pixel + draw_length * cos(rtheta + PI / 4);
-                int y_side_right = UWB_y_pixel + draw_length * sin(rtheta + PI / 4);
-
-                // Draw the object
-
-
-            }
-        }
-
-    }
-
-    // Close the file
-    outFile.close();
-
-    // Read csv file
-    std::cout << "yoo" << std::endl;
-    // Read data from the CSV file
-    std::ifstream inputFile("simdata.csv");
-    if (!inputFile.is_open()) {
-        std::cerr << "Failed to open the CSV file." << std::endl;
-        return 1; // Return an error code or handle the error as needed.
-    }
-
-    std::string line;
-    while (std::getline(inputFile, line)) {
-        // std::cout << line << std::endl;
-    }
-
-    inputFile.close();
+    // IMU Orientation Startup Delay
+    /*std::cout << "Wait 30 seconds for IMU Calibration" << std::endl;
+    int i = 30;
+    while (i != 0) {
+        std::cout << i << " seconds" << std::endl;
+        i -= 5;
+        Sleep(5000);
+    }*/
 
     return a.exec();
 
-    return 0;
 }

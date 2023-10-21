@@ -21,5 +21,6 @@ HEADERS  += mainwindow.h \
 FORMS    += mainwindow.ui
 
 INCLUDEPATH += "..\Eigen"
+INCLUDEPATH += "../QCustomPlot"
 
 LIBS += -lws2_32
