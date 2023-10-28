@@ -1,3 +1,5 @@
+#include <ArduinoJson.h>
+#include <map>
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
 
@@ -20,6 +22,16 @@ uint8_t MIOMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};  // Master IO
 
 // Variables
 unsigned long lastReceptionTime = 0;
+std::map<int, std::map<int, double>> collectedData;
+StaticJsonDocument<512> doc;
+
+// Transmission Functions
+void sendCollectedData() 
+{
+  serializeJson(doc, Serial);
+  Serial.println();
+  doc.clear();
+}
 
 // ESP-NOW Functions
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) 
@@ -31,6 +43,16 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
     case TDOA_TYPE:
       memcpy(&TDoAData, incomingData + 1, sizeof(TDoAData));
       lastReceptionTime = millis();
+
+      collectedData[TDoAData.tag_id][TDoAData.anchor_id] = TDoAData.difference;
+
+      if (doc["tags"][TDoAData.tag_id]["anchors"][TDoAData.anchor_id]) 
+      {
+        sendCollectedData();
+      }
+
+      doc["tags"][TDoAData.tag_id]["anchors"][TDoAData.anchor_id] = TDoAData.difference;
+
       break;
 
     case RESET_TYPE:
