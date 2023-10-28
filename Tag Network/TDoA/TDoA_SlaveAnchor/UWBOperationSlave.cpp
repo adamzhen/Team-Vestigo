@@ -1,18 +1,19 @@
 #include <SPI.h>
-#include <deque>
 #include "UWBOperationSlave.h"
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
 
 // Time Variables
-uint64_t masterTime = 0, slaveTime = 0, tagTime = 0, timeOffset = 0;
-uint64_t lastReceivedMasterTime = 0, lastReceivedSlaveTime = 0, lastReceivedTagTime = 0; 
-uint64_t overflowCounterMaster = 0, overflowCounterSlave = 0, overflowCounterTag = 0;
+uint64_t masterTime = 0, slaveTime = 0, tagTime = 0, syncTime = 0, timeOffset = 0;
+uint64_t lastReceivedMasterTime = 0, lastReceivedSlaveTime = 0, lastReceivedTagTime = 0, lastReceivedSyncTime = 0; 
+uint64_t overflowCounterMaster = 0, overflowCounterSlave = 0, overflowCounterTag = 0, overflowCounterSync = 0;
 uint64_t filteredTimeOffset = 0;
 int timeOffsetSign = 1;
 
 // History Variables
 std::deque<uint64_t> timeDiffHistory;
+std::deque<uint64_t> startupSlaveOffsetTimes;
+std::deque<uint64_t> startupPhaseOffsets;
 const size_t historySize = 20;
 
 // UWB Messages
@@ -29,12 +30,8 @@ static uint64_t poll_rx_ts, resp_tx_ts;
 uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 
 // Kalman Parameters
-double kalman_gain = 0.0;
-double estimate = 0.0;
-double estimate_error = 1.0;  // Initial error
-double process_noise = 0.0001;  // Q
-double measurement_noise = 0.1; // R
-
+uint64_t processNoise;  // Process noise, to be tuned
+uint64_t measurementNoise;  // Measurement noise, to be tuned
 
 // UWB Configs
 dwt_config_t config = 
@@ -115,47 +112,50 @@ void updateTimeOffsets()
 }
 
 //Kalman Functions
-double calculateVariance(const std::deque<uint64_t>& data)
-{
-  if (data.size() < 2) return 0.0;
-
-  // Calculate the mean
-  double mean = 0.0;
-  for (uint64_t val : data) 
-  {
-    mean += val;
-  }
-    mean /= data.size();
-
-  // Calculate variance
-  double variance = 0.0;
-  for (uint64_t val : data) 
-  {
-    variance += (val - mean) * (val - mean);
-  }
-  variance /= (data.size() - 1); // Sample variance
-
-  return variance;
+void initializeKalman(KalmanState &state) {
+  state.frequencyOffset = 0;  // Initial estimate
+  state.phaseOffset = 0;  // Initial estimate
+  state.P[0][0] = 1.0; state.P[0][1] = 0.0;
+  state.P[1][0] = 0.0; state.P[1][1] = 1.0;
 }
 
-void calculateKalmanParameters()
-{
-  if (timeDiffHistory.size() < 2) return;
+void predictKalman(KalmanState &state, uint64_t deltaTime) {
+  // Predicted state
+  uint64_t predictedPhaseOffset = state.phaseOffset + (state.frequencyOffset * deltaTime);
+  uint64_t predictedFrequencyOffset = state.frequencyOffset;  // Assuming constant velocity model
 
-  process_noise = calculateVariance(timeDiffHistory);
-  measurement_noise = process_noise / 2.0;  // A rough estimate; you could refine this further
+  // Predicted error covariance
+  state.P[0][0] += deltaTime * (state.P[1][0] + state.P[0][1]) + deltaTime * deltaTime * state.P[1][1] + processNoise;
+  state.P[0][1] += deltaTime * state.P[1][1];
+  state.P[1][0] += deltaTime * state.P[1][1];
+  state.P[1][1] += processNoise;
+
+  // Update the state variables
+  state.phaseOffset = predictedPhaseOffset;
+  state.frequencyOffset = predictedFrequencyOffset;
 }
 
-void updateKalmanFilter(uint64_t measurement)
-{
-  // Prediction
-  double prediction = estimate; // No control input
-  double prediction_error = estimate_error + process_noise;
 
-  // Update
-  kalman_gain = prediction_error / (prediction_error + measurement_noise);
-  estimate = prediction + kalman_gain * (measurement - prediction);
-  estimate_error = (1 - kalman_gain) * prediction_error;
+void updateKalman(KalmanState &state, uint64_t measuredPhaseOffset) {
+  // Kalman gain
+  uint64_t S = state.P[0][0] + measurementNoise;  // Estimation error
+  uint64_t K[2];  // Kalman gain matrix
+  K[0] = state.P[0][0] / S;
+  K[1] = state.P[1][0] / S;
+
+  // Update the state
+  uint64_t y = measuredPhaseOffset * timeOffsetSign - state.phaseOffset;  // Measurement residual
+  state.phaseOffset += K[0] * y;
+  state.frequencyOffset += K[1] * y;
+
+  // Update error covariance
+  uint64_t P00_temp = state.P[0][0];
+  uint64_t P01_temp = state.P[0][1];
+
+  state.P[0][0] -= K[0] * P00_temp;
+  state.P[0][1] -= K[0] * P01_temp;
+  state.P[1][0] -= K[1] * P00_temp;
+  state.P[1][1] -= K[1] * P01_temp;
 }
 
 // UWB Operation Functions
@@ -166,35 +166,27 @@ void processSyncSignal()
   if (memcmp(sync_rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
   {
     // Compute time offset of sync clock and hardware clock
-    uint64_t receivedMasterTime = 0, receivedSlaveTime = 0;
+    uint64_t receivedMasterTime = 0, receivedSlaveTime = 0, receivedSyncTime = 0;
     receivedSlaveTime = get_rx_timestamp_u64() & 0xFFFFFFFFFF;      
     receivedMasterTime = getUWBTime(receivedMasterTime, sync_rx_buffer, SYNC_MSG_TS_IDX) & 0xFFFFFFFFFF;
+    receivedSyncTime = dwt_readsystimestamphi32();
 
     masterTime = adjustTo64bitTime(receivedMasterTime, lastReceivedMasterTime, overflowCounterMaster) + TWRData.ToF;
     slaveTime = adjustTo64bitTime(receivedSlaveTime, lastReceivedSlaveTime, overflowCounterSlave);
+    syncTime = adjustTo64bitTime(receivedSyncTime, lastReceivedSyncTime, overflowCounterSync);
     updateTimeOffsets();
+
+    updateKalman(slaveKalmanState, timeOffset);
 
     lastReceivedMasterTime = receivedMasterTime;
     lastReceivedSlaveTime = receivedSlaveTime;
-
-    // Update Kalman Filter Parameters
-    if (timeDiffHistory.size() == historySize) 
-    {
-      calculateKalmanParameters();
-    }
-
-    // Update time offset using Kalman Filter ------------ DEBUG THIS NON SENSE ----------------
-    updateKalmanFilter(timeOffset * timeOffsetSign);
-    uint64_t filteredMasterTime = slaveTime + (uint64_t)(estimate / DWT_TIME_UNITS);
-    filteredTimeOffset  = filteredMasterTime - slaveTime;
+    lastReceivedSyncTime = receivedSyncTime;    
      
     // Debug Statements
     Serial.printf("Master Time Received: %.12f\n", (double)masterTime * DWT_TIME_UNITS);
     Serial.printf("Slave Time Received: %.12f\n", (double)slaveTime * DWT_TIME_UNITS);
     Serial.printf("Time Offset: %.12f\n", (double)timeOffset * timeOffsetSign * DWT_TIME_UNITS);
-    Serial.printf("Filtered Master Time: %.12f\n", (double)filteredMasterTime * DWT_TIME_UNITS);
-    Serial.printf("Filtered Time Offset: %.12f\n", (double)filteredTimeOffset * DWT_TIME_UNITS);
-    Serial.printf("Filtered Estimate: %.12f\n", (double)estimate * DWT_TIME_UNITS);
+    Serial.printf("Sync Time: %.12f\n", (double)syncTime * DWT_TIME_UNITS);
   }
 }
 
@@ -216,11 +208,14 @@ void processTagSignal()
     lastReceivedSlaveTime = receivedSlaveTime;
 
     // compute time difference here with filteredTimeOffset
+    uint64_t deltaTime = slaveTime - lastReceivedSyncTime;
+    uint64_t estimatedCurrentSlaveTime = slaveKalmanState.phaseOffset + (slaveKalmanState.frequencyOffset * deltaTime);
+    uint64_t correctedTimeDifference = tagTime - estimatedCurrentSlaveTime;
 
     // Send time difference to MIO via ESP-NOW
     TDoAData.tag_id = blink_rx_buffer[BLINK_MSG_ID_IDX];
     TDoAData.anchor_id = SLAVE_ID;
-    TDoAData.difference = (double) (tagTime - timeOffset * timeOffsetSign + slaveTime); // Change to final timeOffset instead of raw time offset
+    TDoAData.difference = (double) (correctedTimeDifference * DWT_TIME_UNITS);
     sendToPeer(MIOMac, &TDoAData, sizeof(TDoAData));
   }
 }
@@ -290,6 +285,19 @@ void sendSlaveToF()
         dwt_writetxdata(sizeof(tx_resp_msg), tx_resp_msg, 0);
         dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1);
         ret = dwt_starttx(DWT_START_TX_DELAYED);
+
+        uint64_t PLACEHOLDERPLACEHOLDER = 0;
+
+        // Add phase and frequency offset data to history
+        uint64_t phaseOffset = PLACEHOLDERPLACEHOLDER - poll_rx_ts;
+        startupPhaseOffsets.push_back(phaseOffset);
+        startupSlaveOffsetTimes.push_back(poll_rx_ts);
+        
+        // Limit the size of the offset history to avoid excessive memory usage
+        if (startupPhaseOffsets.size() > 100) {
+          startupPhaseOffsets.pop_front();
+          startupSlaveOffsetTimes.pop_front();
+        }
 
         // Error Handling
         if (ret == DWT_SUCCESS)

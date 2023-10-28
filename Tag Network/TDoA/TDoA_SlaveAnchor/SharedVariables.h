@@ -2,6 +2,14 @@
 #define SHARED_VARIABLES_H
 
 #include <Arduino.h>
+#include <deque>
+
+// Device Variables
+extern int SLAVE_ID;
+
+// UWB Variables
+extern std::deque<uint64_t> startupSlaveOffsetTimes;
+extern std::deque<uint64_t> startupPhaseOffsets;
 
 // ESP-NOW Variables
 extern uint8_t slaveMacs[][6];
@@ -47,6 +55,18 @@ extern TWRstruct TWRData;
 extern TDoAstruct TDoAData;
 extern Resetstruct deviceResetFlag;
 
-extern int SLAVE_ID;
+// Kalman Filter Structs
+struct KalmanState {
+  uint64_t frequencyOffset;
+  uint64_t phaseOffset;
+  uint64_t P[2][2];  // Covariance matrix
+};
+
+extern KalmanState slaveKalmanState;
+
+// Kalman Filter Variables
+extern uint64_t processNoise;  // Process noise, to be tuned
+extern uint64_t measurementNoise;  // Measurement noise, to be tuned
+extern uint64_t lastUpdateTime;  // Last update time for the Kalman filter
 
 #endif

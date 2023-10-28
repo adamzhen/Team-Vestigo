@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <dw3000.h>
+#include "SharedVariables.h"
 
 // SPI Pins
 #define PIN_RST 27
@@ -34,12 +35,14 @@
 #define TX_ANT_DLY 16385
 #define RX_ANT_DLY 16385
 
-// Kalman Filter
-#define STATE_DIM 3
-#define MEASURE_DIM 1
-
+// UWB Functions
 void configUWB();
 void sendSlaveToF();
 void receiveTDoASignal();
+
+// Kalman Functions
+void initializeKalman(KalmanState &state);
+void predictKalman(KalmanState &state, uint64_t deltaTime);
+void updateKalman(KalmanState &state, uint64_t measuredPhaseOffset);
 
 #endif
