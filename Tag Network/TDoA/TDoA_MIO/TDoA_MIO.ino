@@ -10,8 +10,6 @@ void setup()
 
 void loop() 
 {
-  Serial.println("Loop");
-
   // System Blackout Reset
   if (millis() - lastReceptionTime > 60000)
   {

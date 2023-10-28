@@ -180,13 +180,7 @@ void processSyncSignal()
 
     lastReceivedMasterTime = receivedMasterTime;
     lastReceivedSlaveTime = receivedSlaveTime;
-    lastReceivedSyncTime = receivedSyncTime;    
-     
-    // Debug Statements
-    Serial.printf("Master Time Received: %.12f\n", (double)masterTime * DWT_TIME_UNITS);
-    Serial.printf("Slave Time Received: %.12f\n", (double)slaveTime * DWT_TIME_UNITS);
-    Serial.printf("Time Offset: %.12f\n", (double)timeOffset * timeOffsetSign * DWT_TIME_UNITS);
-    Serial.printf("Sync Time: %.12f\n", (double)syncTime * DWT_TIME_UNITS);
+    lastReceivedSyncTime = receivedSyncTime;
   }
 }
 

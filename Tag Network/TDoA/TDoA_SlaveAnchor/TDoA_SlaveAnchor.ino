@@ -2,7 +2,7 @@
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
 
-int SLAVE_ID = 1;
+int SLAVE_ID = 2;
 
 uint64_t currentTime = 0;
 uint64_t overflowCounterCurrent = 0;
@@ -12,8 +12,6 @@ KalmanState slaveKalmanState;
 
 void setup() 
 {
-  Serial.begin(115200);
-
   setupESPNOW();
 
   configUWB();

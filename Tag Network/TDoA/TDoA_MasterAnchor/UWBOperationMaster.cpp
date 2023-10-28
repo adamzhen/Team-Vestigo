@@ -61,12 +61,6 @@ void sendSyncSignal()
   // Calculate Sync Time
   uint64_t syncedTime = (((uint64_t)(transmissionTime)) << 8) + TX_ANT_DLY;
 
-  // Debug
-  Serial.print("Master Time: ");
-  Serial.println((double)(((uint64_t)masterTime32bit) << 8)  * DWT_TIME_UNITS, 12);
-  Serial.print("Synced Time: ");
-  Serial.println((double)syncedTime * DWT_TIME_UNITS, 12);
-
   // Copy Sync Time to Sync Packet
   memcpy(&sync_signal_packet[SYNC_MSG_TS_IDX], &syncedTime, SYNC_MSG_TS_LEN);
 
