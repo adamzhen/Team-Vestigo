@@ -20,8 +20,9 @@ void setup()
     uint32_t numSamples = 0;
     std::vector<uint64_t> tofSamples;
     uint64_t averageToF = 1000000;
+    bool stopCollect = false;
 
-    while ((double) (averageToF * DWT_TIME_UNITS) > 1e-6)
+    while (!stopCollect)
     {
       uint64_t startTime = millis();
       while (millis() - startTime < 10000)
@@ -45,11 +46,18 @@ void setup()
       {
         Serial.println("error, not enough samples");
       }
+
+      if ((double) (averageToF * DWT_TIME_UNITS) < 1e-6)
+      {
+        stopCollect = true;
+      }
       
       Serial.print("Slave: ");
-      Serial.println(i);
+      Serial.println(i + 1);
       Serial.print("Average ToF: ");
-      Serial.println(averageToF * DWT_TIME_UNITS, 12);
+      Serial.print(averageToF * DWT_TIME_UNITS, 12);
+      Serial.print(", ");
+      Serial.println(averageToF);
       Serial.print("Num Samples: ");
       Serial.println(numSamples);
     }

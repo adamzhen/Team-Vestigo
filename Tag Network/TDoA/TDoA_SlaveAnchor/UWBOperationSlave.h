@@ -40,9 +40,4 @@ void configUWB();
 void sendSlaveToF();
 void receiveTDoASignal();
 
-// Kalman Functions
-void initializeKalman(KalmanState &state);
-void predictKalman(KalmanState &state, uint64_t deltaTime);
-void updateKalman(KalmanState &state, uint64_t measuredPhaseOffset);
-
 #endif

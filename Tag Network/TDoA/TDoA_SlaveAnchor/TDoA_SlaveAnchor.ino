@@ -1,22 +1,27 @@
+#include <algorithm>
+#include <vector>
 #include "UWBOperationSlave.h"
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
 
-int SLAVE_ID = 2;
+int SLAVE_ID = 4;
 
 uint64_t currentTime = 0;
 uint64_t overflowCounterCurrent = 0;
 uint64_t lastReceivedCurrentTime = 0;
 
-KalmanState slaveKalmanState;
+int64_t lastPhaseOffset = 0;
+double medianFrequencyOffset = 0.0;
+
+bool isStartupComplete = false;
 
 void setup() 
 {
+  Serial.begin(115200);
+
   setupESPNOW();
 
   configUWB();
-
-  initializeKalman(slaveKalmanState);
 }
 
 void loop() 
@@ -28,29 +33,58 @@ void loop()
   if (!TWRData.collectToF) 
   {
     // If system startup has not been finished
-    if (!startupPhaseOffsets.empty() && !startupSlaveOffsetTimes.empty()) 
+    if (!isStartupComplete && !startupPhaseOffsets.empty() && !startupSlaveOffsetTimes.empty()) 
     {
       // Compute average frequency offset
-      uint64_t frequencyOffsetSum = 0;
-      int count = 0;
+      std::vector<double> frequencyOffsets;
       for (int i = 1; i < startupPhaseOffsets.size() - 1; ++i) {
-        uint64_t frequencyOffset = (startupPhaseOffsets[i+1] - startupPhaseOffsets[i-1]) / (startupSlaveOffsetTimes[i+1] - startupSlaveOffsetTimes[i-1]);
-        frequencyOffsetSum += frequencyOffset;
-        count++;
+        Serial.print("Time + 1: ");
+        Serial.println(static_cast<int64_t>(startupSlaveOffsetTimes[i + 1]));
+        Serial.print("Time - 1: ");
+        Serial.println(static_cast<int64_t>(startupSlaveOffsetTimes[i - 1]));
+        Serial.print("Offset + 1: ");
+        Serial.println(startupPhaseOffsets[i + 1]);
+        Serial.print("Offset - 1: ");
+        Serial.println(startupPhaseOffsets[i - 1]);
+        double frequencyOffset = static_cast<double>(startupPhaseOffsets[i+1] - startupPhaseOffsets[i-1]) / static_cast<double>(static_cast<int64_t>(startupSlaveOffsetTimes[i+1]) - static_cast<int64_t>(startupSlaveOffsetTimes[i-1]));
+        if (frequencyOffset != 0)
+        {
+          frequencyOffsets.push_back(frequencyOffset);
+        }
       }
-      uint64_t averageFrequencyOffset = frequencyOffsetSum / count;
 
-      // Initialize Kalman filter with last phase offset and computed average frequency offset
-      uint64_t lastPhaseOffset = startupPhaseOffsets.back();
-      slaveKalmanState.frequencyOffset = averageFrequencyOffset;
-      slaveKalmanState.phaseOffset = lastPhaseOffset;
+      if (frequencyOffsets.size() > 1)
+      {
+        std::sort(frequencyOffsets.begin(), frequencyOffsets.end());
+        medianFrequencyOffset = frequencyOffsets[frequencyOffsets.size() / 2];
+      }
+      else
+      {
+        Serial.println("Collection Error");
+      }
+      
+      lastPhaseOffset = startupPhaseOffsets.back();
+
+      Serial.println("");
+      Serial.println("");
+      Serial.println("");
+      Serial.print("Phase Offset: ");
+      Serial.println(lastPhaseOffset);
+      Serial.print("Frequency Offset: ");
+      Serial.println(medianFrequencyOffset);
+      Serial.println("");
+      Serial.println("");
+      Serial.println("");
+
+      isStartupComplete = true;
     }
 
-    predictKalman(slaveKalmanState, currentTime - lastReceivedCurrentTime);
-
-    lastReceivedCurrentTime = currentTime;
+    lastReceivedCurrentTime = receivedCurrentTime;
 
     receiveTDoASignal();
+
+    // Serial.print("ToF Data: ");
+    // Serial.println(TWRData.ToF);
   }
   else
   {

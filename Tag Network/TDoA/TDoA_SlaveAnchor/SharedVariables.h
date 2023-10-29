@@ -9,7 +9,10 @@ extern int SLAVE_ID;
 
 // UWB Variables
 extern std::deque<uint64_t> startupSlaveOffsetTimes;
-extern std::deque<uint64_t> startupPhaseOffsets;
+extern std::deque<int64_t> startupPhaseOffsets;
+
+extern int64_t lastPhaseOffset; 
+extern double medianFrequencyOffset;
 
 // ESP-NOW Variables
 extern uint8_t slaveMacs[][6];
@@ -54,19 +57,5 @@ struct __attribute__((packed)) Resetstruct : public Data {
 extern TWRstruct TWRData;
 extern TDoAstruct TDoAData;
 extern Resetstruct deviceResetFlag;
-
-// Kalman Filter Structs
-struct KalmanState {
-  uint64_t frequencyOffset;
-  uint64_t phaseOffset;
-  uint64_t P[2][2];  // Covariance matrix
-};
-
-extern KalmanState slaveKalmanState;
-
-// Kalman Filter Variables
-extern uint64_t processNoise;  // Process noise, to be tuned
-extern uint64_t measurementNoise;  // Measurement noise, to be tuned
-extern uint64_t lastUpdateTime;  // Last update time for the Kalman filter
 
 #endif
