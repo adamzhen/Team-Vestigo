@@ -50,10 +50,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
         sendCollectedData();
       }
 
-      // Serial.print("Tag ID: ");
-      // Serial.println(TDoAData.tag_id);
-      // Serial.print("Anchor ID: ");
-      // Serial.println(TDoAData.anchor_id);
       doc["tags"][TDoAData.tag_id - 1]["anchors"][TDoAData.anchor_id - 1] = TDoAData.difference;
 
       break;
