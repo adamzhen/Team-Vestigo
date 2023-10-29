@@ -45,23 +45,16 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
 
       collectedData[TDoAData.tag_id][TDoAData.anchor_id] = TDoAData.difference;
 
-      // Explicitly initialize the intermediate objects
-      if (doc["tags"].isNull()) {
-        doc["tags"] = JsonArray();
-      }
-      if (doc["tags"][TDoAData.tag_id].isNull()) {
-        doc["tags"][TDoAData.tag_id] = JsonObject();
-      }
-      if (doc["tags"][TDoAData.tag_id]["anchors"].isNull()) {
-        doc["tags"][TDoAData.tag_id]["anchors"] = JsonArray();
-      }
-
       if (doc["tags"][TDoAData.tag_id]["anchors"][TDoAData.anchor_id]) 
       {
         sendCollectedData();
       }
 
-      doc["tags"][TDoAData.tag_id]["anchors"][TDoAData.anchor_id] = TDoAData.difference;
+      // Serial.print("Tag ID: ");
+      // Serial.println(TDoAData.tag_id);
+      // Serial.print("Anchor ID: ");
+      // Serial.println(TDoAData.anchor_id);
+      doc["tags"][TDoAData.tag_id - 1]["anchors"][TDoAData.anchor_id - 1] = TDoAData.difference;
 
       break;
 
@@ -125,15 +118,5 @@ void setupESPNOW() {
   peerInfoMIO.ifidx = WIFI_IF_STA;    
   if (esp_now_add_peer(&peerInfoMIO) != ESP_OK){
     return;
-  }
-
-  // Setup JSON doc
-  JsonArray tagsArray = doc.createNestedArray("tags");
-  for (int i = 0; i < MAX_TAGS; ++i) {
-    JsonObject tagObject = tagsArray.createNestedObject();
-    JsonArray anchorsArray = tagObject.createNestedArray("anchors");
-    for (int j = 0; j < MAX_ANCHORS; ++j) {
-      anchorsArray.add(0.0); // Initialize to 0.0 or some invalid value
-    }
   }
 }
