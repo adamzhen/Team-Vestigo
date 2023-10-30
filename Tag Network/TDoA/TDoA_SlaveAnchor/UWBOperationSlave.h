@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 #include <dw3000.h>
-#include "SharedVariables.h"
 
 // SPI Pins
 #define PIN_RST 27

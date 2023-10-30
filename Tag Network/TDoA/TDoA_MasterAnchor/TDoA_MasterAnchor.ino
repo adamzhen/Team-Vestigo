@@ -25,7 +25,7 @@ void setup()
     while (!stopCollect)
     {
       uint64_t startTime = millis();
-      while (millis() - startTime < 10000)
+      while (millis() - startTime < 5000)
       {
         uint64_t ToF = gatherSlaveToF();
         if (ToF != 0) 

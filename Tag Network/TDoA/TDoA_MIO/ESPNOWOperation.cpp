@@ -43,9 +43,16 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
       memcpy(&TDoAData, incomingData + 1, sizeof(TDoAData));
       lastReceptionTime = millis();
 
-      collectedData[TDoAData.tag_id][TDoAData.anchor_id] = TDoAData.difference;
+      collectedData[TDoAData.tag_id - 1][TDoAData.anchor_id - 1] = TDoAData.difference;
 
-      if (doc["tags"][TDoAData.tag_id]["anchors"][TDoAData.anchor_id]) 
+      // Serial.print("TDOA Info: ");
+      // Serial.print(TDoAData.tag_id);
+      // Serial.print(", ");
+      // Serial.print(TDoAData.anchor_id);
+      // Serial.print(", ");
+      // Serial.println(TDoAData.difference, 12);
+
+      if (doc["tags"][TDoAData.tag_id - 1]["anchors"][TDoAData.anchor_id - 1]) 
       {
         sendCollectedData();
       }

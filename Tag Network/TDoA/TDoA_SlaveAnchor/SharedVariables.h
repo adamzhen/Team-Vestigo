@@ -8,11 +8,19 @@
 extern int SLAVE_ID;
 
 // UWB Variables
+extern int64_t lastPhaseOffset; 
+extern double frequencyOffset;
+
+// Time Variables
+extern uint64_t masterTime, slaveTime, tagTime, syncTime, TWRTime; 
+extern uint64_t lastReceivedMasterTime, lastReceivedSlaveTime, lastReceivedTagTime, lastReceivedSyncTime, lastReceivedTWRTime; 
+extern uint64_t overflowCounterMaster, overflowCounterSlave, overflowCounterTag, overflowCounterSync, overflowCounterTWR;
+extern int64_t timeOffset;
+
+// History Variables
+extern std::deque<int64_t> timeDiffHistory;
 extern std::deque<uint64_t> startupSlaveOffsetTimes;
 extern std::deque<int64_t> startupPhaseOffsets;
-
-extern int64_t lastPhaseOffset; 
-extern double medianFrequencyOffset;
 
 // ESP-NOW Variables
 extern uint8_t slaveMacs[][6];

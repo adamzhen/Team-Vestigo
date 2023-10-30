@@ -2,19 +2,7 @@
 #include "UWBOperationSlave.h"
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
-
-// Time Variables
-uint64_t masterTime = 0, slaveTime = 0, tagTime = 0, syncTime = 0, TWRTime = 0, timeOffset = 0;
-uint64_t lastReceivedMasterTime = 0, lastReceivedSlaveTime = 0, lastReceivedTagTime = 0, lastReceivedSyncTime = 0, lastReceivedTWRTime = 0; 
-uint64_t overflowCounterMaster = 0, overflowCounterSlave = 0, overflowCounterTag = 0, overflowCounterSync = 0, overflowCounterTWR = 0;
-uint64_t filteredTimeOffset = 0;
-int timeOffsetSign = 1;
-
-// History Variables
-std::deque<uint64_t> timeDiffHistory;
-std::deque<uint64_t> startupSlaveOffsetTimes;
-std::deque<int64_t> startupPhaseOffsets;
-const size_t historySize = 20;
+#include "TimeFunctions.h"
 
 // UWB Messages
 static uint8_t rx_sync_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0};
@@ -27,7 +15,6 @@ uint8_t sync_rx_buffer[15], TWR_rx_buffer[20], blink_rx_buffer[16];
 uint32_t statusTDoA = 0, statusTWR = 0;
 uint32_t frame_len = 0;
 static uint64_t poll_rx_ts, resp_tx_ts;
-uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 
 // UWB Configs
 dwt_config_t config = 
@@ -49,6 +36,7 @@ dwt_config_t config =
 extern dwt_txconfig_t txconfig_options;
 extern SPISettings _fastSPI;
 
+// Config Function
 void configUWB()
 {
   _fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
@@ -62,49 +50,6 @@ void configUWB()
   
   // Enable LEDs for debugging
   dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
-}
-
-// Time Functions
-uint64_t getUWBTime(uint64_t time, uint8_t buffer[], uint8_t index) 
-{
-  for (int i = 7; i >= 0; i--) 
-  {
-    time <<= 8;
-    time |= buffer[index + i];
-  }
-  return time;
-}
-
-uint64_t adjustTo64bitTime(uint64_t curTime, uint64_t lastTime, uint64_t& overflowCounter) 
-{
-  if (curTime < lastTime) overflowCounter++;
-  return (overflowCounter << 40) | curTime;
-}
-
-void updateTimeOffsets() 
-{
-  uint64_t fracMasterTime = masterTime % unitsPerSecond;
-  uint64_t fracSlaveTime = slaveTime % unitsPerSecond;
-
-  // Calculate the absolute time difference
-  uint64_t absTimeDiff = (fracMasterTime >= fracSlaveTime) ? (fracMasterTime - fracSlaveTime) : (fracSlaveTime - fracMasterTime);
-
-  // Check for wrap-around
-  if (absTimeDiff > unitsPerSecond / 2) 
-  {
-    timeOffset = unitsPerSecond - absTimeDiff;
-    timeOffsetSign = (fracMasterTime >= fracSlaveTime) ? -1 : 1;
-  } else {
-    timeOffset = absTimeDiff;
-    timeOffsetSign = (fracMasterTime >= fracSlaveTime) ? 1 : -1;
-  }
-
-  // Store time difference
-  timeDiffHistory.push_back(timeOffset * timeOffsetSign);
-  if (timeDiffHistory.size() > historySize) 
-  {
-    timeDiffHistory.pop_front();
-  }
 }
 
 // UWB Operation Functions
@@ -121,7 +66,8 @@ void processSyncSignal()
 
     masterTime = adjustTo64bitTime(receivedMasterTime, lastReceivedMasterTime, overflowCounterMaster) + TWRData.ToF;
     syncTime = adjustTo64bitTime(receivedSyncTime, lastReceivedSyncTime, overflowCounterSync);
-    // updateTimeOffsets(); // Basically Not Used RN
+
+    updateTimeOffsets(masterTime, syncTime, timeOffset);
 
     lastReceivedMasterTime = receivedMasterTime;
     lastReceivedSyncTime = receivedSyncTime;
@@ -147,16 +93,29 @@ void processTagSignal()
 
 
     uint64_t deltaTime = slaveTime - syncTime;
-    uint64_t estimatedCurrentSlaveTime = static_cast<uint64_t>(static_cast<int64_t>(syncTime) + lastPhaseOffset + static_cast<int64_t>(medianFrequencyOffset * static_cast<double>(deltaTime)));
-    uint64_t correctedTimeDifference = tagTime - estimatedCurrentSlaveTime;
+    uint64_t correctedDeltaTime = static_cast<uint64_t>((1 + frequencyOffset) * static_cast<double>(deltaTime));
+    uint64_t estimatedMasterTime = masterTime + correctedDeltaTime;
+    uint64_t correctedTimeDifference = tagTime - estimatedMasterTime;
 
     // Debug
+    Serial.println("");
+    Serial.println("");
+    Serial.print("Sync Time: ");
+    Serial.println(syncTime * DWT_TIME_UNITS, 12);
+    Serial.print("Slave Time: ");
+    Serial.println(slaveTime * DWT_TIME_UNITS, 12);
     Serial.print("Delta Time: ");
     Serial.println(deltaTime * DWT_TIME_UNITS, 12);
-    Serial.print("Estimated Current Slave Time: ");
-    Serial.println(estimatedCurrentSlaveTime * DWT_TIME_UNITS, 12);
+    Serial.print("Frequency Offset: ");
+    Serial.println(frequencyOffset, 12);
+    Serial.print("Corrected Delta Time: ");
+    Serial.println(correctedDeltaTime * DWT_TIME_UNITS, 12);
+    Serial.print("Estimated Master Time: ");
+    Serial.println(estimatedMasterTime * DWT_TIME_UNITS, 12);
     Serial.print("Corrected Time Difference: ");
     Serial.println(correctedTimeDifference * DWT_TIME_UNITS, 12);
+    Serial.println("");
+    Serial.println("");
 
     // Send time difference to MIO via ESP-NOW
     TDoAData.tag_id = blink_rx_buffer[BLINK_MSG_ID_IDX];
