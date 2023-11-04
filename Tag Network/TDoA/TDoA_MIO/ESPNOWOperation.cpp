@@ -23,13 +23,38 @@ uint8_t MIOMac[6] = {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10};
 unsigned long lastReceptionTime = 0;
 std::map<int, std::map<int, double>> collectedData;
 StaticJsonDocument<1024> doc;
+constexpr int ANCHORS = 6;
 
 // Transmission Functions
-void sendCollectedData() 
+void sendCollectedData(const std::map<int, double>& data, int tag_id) 
 {
+  // Find the smallest TDoA value
+  double minTDoA = std::numeric_limits<double>::max();
+  for (const auto& anchorData : data) 
+  {
+    if (anchorData.second < minTDoA) 
+    {
+      minTDoA = anchorData.second;
+    }
+  }
+  
+  // Normalize and store in JSON document
+  for (const auto& anchorData : data) 
+  {
+    doc["tags"][tag_id]["anchors"][anchorData.first] = anchorData.second - minTDoA;
+  }
+
+  // Serialize and send the data
   serializeJson(doc, Serial);
   Serial.println();
+
+  // Clear the JSON document for next use
   doc.clear();
+}
+
+bool isDataCollectedForTag(const std::map<int, double>& data) 
+{
+  return data.size() == ANCHORS;
 }
 
 // ESP-NOW Functions
@@ -40,10 +65,15 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
   switch(dataType) 
   {
     case TDOA_TYPE:
+    {
       memcpy(&TDoAData, incomingData + 1, sizeof(TDoAData));
       lastReceptionTime = millis();
 
-      collectedData[TDoAData.tag_id - 1][TDoAData.anchor_id - 1] = TDoAData.difference;
+      // Calculate the TDoA and store it
+      int tagIndex = TDoAData.tag_id - 1;
+      int anchorIndex = TDoAData.anchor_id - 1;
+      double tdoaValue = static_cast<double>(TDoAData.difference) * DWT_TIME_UNITS * SPEED_OF_LIGHT;
+      collectedData[tagIndex][anchorIndex] = tdoaValue;
 
       // Serial.print("TDOA Info: ");
       // Serial.print(TDoAData.tag_id);
@@ -52,14 +82,14 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
       // Serial.print(", ");
       // Serial.println(TDoAData.difference, 12);
 
-      if (doc["tags"][TDoAData.tag_id - 1]["anchors"][TDoAData.anchor_id - 1]) 
+      if (isDataCollectedForTag(collectedData[tagIndex])) 
       {
-        sendCollectedData();
+        sendCollectedData(collectedData[tagIndex], tagIndex);
+        collectedData[tagIndex].clear();
       }
 
-      doc["tags"][TDoAData.tag_id - 1]["anchors"][TDoAData.anchor_id - 1] = TDoAData.difference;
-
       break;
+    }
 
     case RESET_TYPE:
       ESP.restart();

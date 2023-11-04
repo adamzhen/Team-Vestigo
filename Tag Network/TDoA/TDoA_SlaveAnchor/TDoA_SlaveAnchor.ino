@@ -5,7 +5,7 @@
 #include "TimeFunctions.h"
 #include "SharedVariables.h"
 
-int SLAVE_ID = 6;
+int SLAVE_ID = 2;
 
 int64_t lastPhaseOffset = 0;
 double frequencyOffset = 0.0;
@@ -35,6 +35,11 @@ void loop()
         double frequencyOffset = static_cast<double>(startupPhaseOffsets[i+1] - startupPhaseOffsets[i-1]) / static_cast<double>(static_cast<int64_t>(startupSlaveOffsetTimes[i+1]) - static_cast<int64_t>(startupSlaveOffsetTimes[i-1]));
         if (frequencyOffset != 0)
         {
+          Serial.print("PHASE OFFSET 3: ");
+          Serial.println(startupPhaseOffsets[i+1]);
+          Serial.print("PHASE OFFSET 1: ");
+          Serial.println(startupPhaseOffsets[i-1]);
+          Serial.print("")
           frequencyOffsets.push_back(frequencyOffset);
         }
       }

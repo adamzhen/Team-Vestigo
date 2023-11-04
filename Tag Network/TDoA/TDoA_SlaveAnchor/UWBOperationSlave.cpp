@@ -59,18 +59,15 @@ void processSyncSignal()
 
   if (memcmp(sync_rx_buffer, rx_sync_msg, sizeof(SYNC_MSG_TS_IDX)) == 0) 
   {
-    // Compute time offset of sync clock and hardware clock
-    uint64_t receivedMasterTime = 0, receivedSyncTime = 0;
-    receivedSyncTime = get_rx_timestamp_u64() & 0xFFFFFFFFFF;      
-    receivedMasterTime = getUWBTime(receivedMasterTime, sync_rx_buffer, SYNC_MSG_TS_IDX) & 0xFFFFFFFFFF;
+    syncTime = get_rx_timestamp_u64() & 0xFFFFFFFFFF;
 
+    // Calculate Master Time
+    uint64_t receivedMasterTime = 0;      
+    receivedMasterTime = getUWBTime(receivedMasterTime, sync_rx_buffer, SYNC_MSG_TS_IDX) & 0xFFFFFFFFFF;
     masterTime = adjustTo64bitTime(receivedMasterTime, lastReceivedMasterTime, overflowCounterMaster) + TWRData.ToF;
-    syncTime = adjustTo64bitTime(receivedSyncTime, lastReceivedSyncTime, overflowCounterSync);
+    lastReceivedMasterTime = receivedMasterTime;
 
     updateTimeOffsets(masterTime, syncTime, timeOffset);
-
-    lastReceivedMasterTime = receivedMasterTime;
-    lastReceivedSyncTime = receivedSyncTime;
   }
 }
 
@@ -80,22 +77,22 @@ void processTagSignal()
 
   if (memcmp(blink_rx_buffer, blink_msg, sizeof(BLINK_MSG_ID_IDX)) == 0) 
   {
-    // Compute time offset of sync clock and hardware clock
-    uint64_t receivedTagTime = 0, receivedSlaveTime = 0;
-    receivedSlaveTime = get_rx_timestamp_u64() & 0xFFFFFFFFFF;      
+    slaveTime = get_rx_timestamp_u64() & 0xFFFFFFFFFF; 
+
+    // Calculate Tag Time
+    uint64_t receivedTagTime = 0;
     receivedTagTime = getUWBTime(receivedTagTime, blink_rx_buffer, BLINK_MSG_TS_IDX) & 0xFFFFFFFFFF;
-
     tagTime = adjustTo64bitTime(receivedTagTime, lastReceivedTagTime, overflowCounterTag);
-    slaveTime = adjustTo64bitTime(receivedSlaveTime, lastReceivedSlaveTime, overflowCounterSlave);
-
     lastReceivedTagTime = receivedTagTime;
-    lastReceivedSlaveTime = receivedSlaveTime;
 
+    // Compute TDoA between Slave and Tag
+    uint64_t deltaTime = subtractWithWrapAround(slaveTime, syncTime);
+    uint64_t correctedDeltaTime = multiplyWithOverflow(deltaTime, 1.0 + frequencyOffset);
+    uint64_t estimatedMasterTime = addWithOverflow(masterTime, correctedDeltaTime);
+    uint64_t correctedTimeDifference = subtractWithWrapAround(tagTime, estimatedMasterTime);
 
-    uint64_t deltaTime = slaveTime - syncTime;
-    uint64_t correctedDeltaTime = static_cast<uint64_t>((1 + frequencyOffset) * static_cast<double>(deltaTime));
-    uint64_t estimatedMasterTime = masterTime + correctedDeltaTime;
-    uint64_t correctedTimeDifference = tagTime - estimatedMasterTime;
+    // Mask the higher 32 bits off and send only the lower 32 bits
+    uint32_t lower32BitsOfTimeDifference = static_cast<uint32_t>(correctedTimeDifference & 0xFFFFFFFF);
 
     // Debug
     Serial.println("");
@@ -120,7 +117,7 @@ void processTagSignal()
     // Send time difference to MIO via ESP-NOW
     TDoAData.tag_id = blink_rx_buffer[BLINK_MSG_ID_IDX];
     TDoAData.anchor_id = SLAVE_ID;
-    TDoAData.difference = (double) (correctedTimeDifference * DWT_TIME_UNITS);
+    TDoAData.difference = lower32BitsOfTimeDifference;
     sendToPeer(MIOMac, &TDoAData, sizeof(TDoAData));
   }
 }

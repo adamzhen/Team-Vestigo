@@ -13,6 +13,7 @@ void loop()
   // System Blackout Reset
   if (millis() - lastReceptionTime > 60000)
   {
+    lastReceptionTime = millis();
     Serial.println("Total System Failure, Restarting Network");
     deviceResetFlag.reset = true;
 

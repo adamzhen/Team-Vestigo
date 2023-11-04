@@ -41,7 +41,7 @@ struct __attribute__((packed)) Data {
 struct __attribute__((packed)) TDoAstruct : public Data {
   int anchor_id = 0; 
   int tag_id = 0;
-  double difference = 0.0;
+  uint32_t difference = 0;
   TDoAstruct() {
     type = TDOA_TYPE;
   }
