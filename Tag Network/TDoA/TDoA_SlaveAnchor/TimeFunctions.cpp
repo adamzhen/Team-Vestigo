@@ -11,12 +11,6 @@ uint64_t lastReceivedMasterTime = 0, lastReceivedTagTime = 0, lastReceivedTWRTim
 uint64_t overflowCounterMaster = 0, overflowCounterTag = 0, overflowCounterTWR = 0;
 int64_t timeOffset = 0;
 
-// History Variables
-std::deque<int64_t> timeDiffHistory;
-std::deque<uint64_t> startupSlaveOffsetTimes;
-std::deque<int64_t> startupPhaseOffsets;
-const size_t historySize = 20;
-
 // Constants
 uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
 

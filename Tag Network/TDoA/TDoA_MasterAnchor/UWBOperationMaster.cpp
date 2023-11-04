@@ -5,6 +5,7 @@
 // Time Variables
 uint64_t transmissionDelay = 1500 * UUS_TO_DWT_TIME;
 uint64_t unitsPerSecond = static_cast<uint64_t>(1.0 / DWT_TIME_UNITS);
+double frequencyOffset = 0.0;
 
 // UWB Messages
 static uint8_t sync_signal_packet[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'M', 'A', 0xE0, 0, 0, 0, 0, 0, 0, 0};
@@ -108,13 +109,15 @@ uint64_t gatherSlaveToF()
         // Compute reception and transmission times
         uint32_t poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
         int32_t rtd_init, rtd_resp;
-        float clockOffsetRatio;
+        double clockOffsetRatio;
 
         poll_tx_ts = dwt_readtxtimestamplo32();
         resp_rx_ts = dwt_readrxtimestamplo32();
 
         /* Read carrier integrator value and calculate clock offset ratio. See NOTE 11 below. */
-        clockOffsetRatio = ((float)dwt_readclockoffset()) / (uint32_t)(1 << 26);
+        clockOffsetRatio = ((double)dwt_readclockoffset()) / (uint32_t)(1 << 26);
+        Serial.print("ClockOffsetRatio: ");
+        Serial.println(clockOffsetRatio, 12);
 
         /* Get timestamps embedded in response message. */
         resp_msg_get_ts(&TWR_rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
@@ -122,6 +125,8 @@ uint64_t gatherSlaveToF()
 
         rtd_init = resp_rx_ts - poll_tx_ts;
         rtd_resp = resp_tx_ts - poll_rx_ts;
+
+        frequencyOffset = clockOffsetRatio;
 
         // Return final ToF
         return (rtd_init - rtd_resp * (1 - clockOffsetRatio)) / 2.0;

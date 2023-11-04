@@ -31,6 +31,7 @@ struct __attribute__((packed)) TDoAstruct : public Data {
 struct __attribute__((packed)) TWRstruct : public Data {
   bool collectToF = false;
   uint64_t ToF = 0;
+  double frequencyOffset = 0.0;
   TWRstruct() {
     type = TWR_TYPE;
   }
@@ -49,5 +50,6 @@ extern Resetstruct deviceResetFlag;
 
 // UWB Variables
 extern uint64_t averageToF;
+extern double frequencyOffset;
 
 #endif

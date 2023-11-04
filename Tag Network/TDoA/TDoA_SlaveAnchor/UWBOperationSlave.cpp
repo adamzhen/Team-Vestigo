@@ -87,7 +87,7 @@ void processTagSignal()
 
     // Compute TDoA between Slave and Tag
     uint64_t deltaTime = subtractWithWrapAround(slaveTime, syncTime);
-    uint64_t correctedDeltaTime = multiplyWithOverflow(deltaTime, 1.0 + frequencyOffset);
+    uint64_t correctedDeltaTime = multiplyWithOverflow(deltaTime, 1.0 - TWRData.frequencyOffset);
     uint64_t estimatedMasterTime = addWithOverflow(masterTime, correctedDeltaTime);
     uint64_t correctedTimeDifference = subtractWithWrapAround(tagTime, estimatedMasterTime);
 
@@ -104,7 +104,7 @@ void processTagSignal()
     Serial.print("Delta Time: ");
     Serial.println(deltaTime * DWT_TIME_UNITS, 12);
     Serial.print("Frequency Offset: ");
-    Serial.println(frequencyOffset, 12);
+    Serial.println(TWRData.frequencyOffset, 12);
     Serial.print("Corrected Delta Time: ");
     Serial.println(correctedDeltaTime * DWT_TIME_UNITS, 12);
     Serial.print("Estimated Master Time: ");
@@ -186,24 +186,7 @@ void sendSlaveToF()
         // Transmit response message
         dwt_writetxdata(sizeof(tx_resp_msg), tx_resp_msg, 0);
         dwt_writetxfctrl(sizeof(tx_resp_msg), 0, 1);
-        ret = dwt_starttx(DWT_START_TX_DELAYED);
-
-        // Current TWR Time
-        uint64_t receivedTWRTime = 0;
-        receivedTWRTime = dwt_readsystimestamphi32();
-        TWRTime = adjustTo64bitTime(receivedTWRTime, lastReceivedTWRTime, overflowCounterTWR);
-        lastReceivedTWRTime = receivedTWRTime;        
-
-        // Add phase and frequency offset data to history
-        int64_t phaseOffset = static_cast<int64_t> (TWRTime - poll_rx_ts);
-        startupPhaseOffsets.push_back(phaseOffset);
-        startupSlaveOffsetTimes.push_back(poll_rx_ts);
-        
-        // Limit the size of the offset history to avoid excessive memory usage
-        if (startupPhaseOffsets.size() > 100) {
-          startupPhaseOffsets.pop_front();
-          startupSlaveOffsetTimes.pop_front();
-        }
+        ret = dwt_starttx(DWT_START_TX_DELAYED);     
 
         // Error Handling
         if (ret == DWT_SUCCESS)

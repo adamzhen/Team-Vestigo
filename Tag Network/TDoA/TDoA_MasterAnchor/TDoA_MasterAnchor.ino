@@ -12,14 +12,22 @@ void setup()
 
   configUWB();
 
+  delay(10000);
+
   for (int i = 0; i < 6; i++) 
   {
     TWRData.collectToF = true;
     sendToPeer(slaveMacs[i], &TWRData, sizeof(TWRData));
 
+    // ToF Averaging Variables
     uint32_t numSamples = 0;
     std::vector<uint64_t> tofSamples;
     uint64_t averageToF = 1000000;
+
+    // Frequency Offset Averaging Variables
+    std::vector<double> frequencyOffsetSamples;
+    double averageFrequencyOffset = 1.0;
+
     bool stopCollect = false;
 
     while (!stopCollect)
@@ -30,6 +38,7 @@ void setup()
         uint64_t ToF = gatherSlaveToF();
         if (ToF != 0) 
         {
+          frequencyOffsetSamples.push_back(frequencyOffset);
           tofSamples.push_back(ToF);
           numSamples++;
         }
@@ -39,6 +48,8 @@ void setup()
       
       if (numSamples > 10)
       {
+        std::sort(frequencyOffsetSamples.begin(), frequencyOffsetSamples.end());
+        averageFrequencyOffset = frequencyOffsetSamples[numSamples / 2];
         std::sort(tofSamples.begin(), tofSamples.end());
         averageToF = tofSamples[numSamples / 2];
       } 
@@ -47,7 +58,7 @@ void setup()
         Serial.println("error, not enough samples");
       }
 
-      if ((double) (averageToF * DWT_TIME_UNITS) < 1e-6)
+      if ((double) (averageToF * DWT_TIME_UNITS) < 1e-6 && std::abs(averageFrequencyOffset) < 1)
       {
         stopCollect = true;
       }
@@ -58,12 +69,15 @@ void setup()
       Serial.print(averageToF * DWT_TIME_UNITS, 12);
       Serial.print(", ");
       Serial.println(averageToF);
+      Serial.print("Frequency Offset: ");
+      Serial.println(averageFrequencyOffset, 12);
       Serial.print("Num Samples: ");
       Serial.println(numSamples);
     }
 
     TWRData.collectToF = false;
     TWRData.ToF = averageToF;
+    TWRData.frequencyOffset = averageFrequencyOffset;
     sendToPeer(slaveMacs[i], &TWRData, sizeof(TWRData));
   }
 }
