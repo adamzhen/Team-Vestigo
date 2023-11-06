@@ -10,5 +10,5 @@ void setup()
 void loop()
 {
   sendBlink();
-  delay(500);
+  delay(125);
 }

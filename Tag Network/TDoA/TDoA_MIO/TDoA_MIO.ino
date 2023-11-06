@@ -3,7 +3,7 @@
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(256000);
 
   setupESPNOW();
 }
@@ -11,7 +11,7 @@ void setup()
 void loop() 
 {
   // System Blackout Reset
-  if (millis() - lastReceptionTime > 60000)
+  if (millis() - lastReceptionTime > 60000 && false) //disabled for now
   {
     lastReceptionTime = millis();
     Serial.println("Total System Failure, Restarting Network");

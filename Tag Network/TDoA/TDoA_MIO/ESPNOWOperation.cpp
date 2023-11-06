@@ -41,7 +41,7 @@ void sendCollectedData(const std::map<int, double>& data, int tag_id)
   // Normalize and store in JSON document
   for (const auto& anchorData : data) 
   {
-    doc["tags"][tag_id]["anchors"][anchorData.first] = anchorData.second - minTDoA;
+    doc["tags"][tag_id]["anchors"][anchorData.first] = anchorData.second;
   }
 
   // Serialize and send the data
@@ -72,7 +72,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
       // Calculate the TDoA and store it
       int tagIndex = TDoAData.tag_id - 1;
       int anchorIndex = TDoAData.anchor_id - 1;
-      double tdoaValue = static_cast<double>(TDoAData.difference) * DWT_TIME_UNITS * SPEED_OF_LIGHT;
+      uint32_t maskedDifference = TDoAData.difference & 0xFFFF;
+      double tdoaValue = static_cast<double>(maskedDifference) * DWT_TIME_UNITS;
       collectedData[tagIndex][anchorIndex] = tdoaValue;
 
       // Serial.print("TDOA Info: ");

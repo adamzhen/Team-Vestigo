@@ -4,6 +4,12 @@
 #include "ESPNOWOperation.h"
 #include "SharedVariables.h"
 
+//Global Variables
+uint64_t loopCount = 1;
+uint64_t anchorCount = 0;
+std::vector<double> frequencyOffsetReferences;
+double checkTolerance = 1e-2;
+
 void setup() 
 {
   Serial.begin(115200);
@@ -79,6 +85,8 @@ void setup()
     TWRData.ToF = averageToF;
     TWRData.frequencyOffset = averageFrequencyOffset;
     sendToPeer(slaveMacs[i], &TWRData, sizeof(TWRData));
+
+    frequencyOffsetReferences.push_back(averageFrequencyOffset);
   }
 }
 
@@ -86,6 +94,37 @@ void loop()
 {
   sendSyncSignal();
   delay(250);
+
+  // Calibration Process
+  if (loopCount % 16 == 0 && false) //disabled for now
+  {
+    int i = anchorCount % 6;
+    TWRData.collectToF = true;
+    sendToPeer(slaveMacs[i], &TWRData, sizeof(TWRData));
+    bool stopCollect = false;
+
+    while (!stopCollect)
+    {
+      uint64_t ToF = gatherSlaveToF();
+      if (ToF != 0 && std::abs(frequencyOffsetReferences[i] - frequencyOffset) < checkTolerance)
+      {
+        Serial.print("Reference: ");
+        Serial.println(frequencyOffsetReferences[i], 12);
+        frequencyOffsetReferences[i] = frequencyOffset;
+        stopCollect = true;
+      }
+
+      delay(5);
+    }
+
+    TWRData.collectToF = false;
+    TWRData.frequencyOffset = frequencyOffset;
+    sendToPeer(slaveMacs[i], &TWRData, sizeof(TWRData));
+
+    anchorCount++;
+  }
+
+  loopCount++;
 }
 
 
