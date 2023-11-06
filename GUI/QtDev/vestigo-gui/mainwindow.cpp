@@ -12,7 +12,7 @@
 #include "mapwidget.h"
 #include "tagdata.h"
 
-TagData tagData(4, 13); // Declare and construct TagData before using it
+TagData tagData(4, 7); // Declare and construct TagData before using it
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -21,8 +21,8 @@ MainWindow::MainWindow(QWidget *parent) :
     timer(nullptr)       // Initialize to nullptr
 {
     ui->setupUi(this);
-    //setGeometry(0, 0, 500, 500);
-    showMaximized();
+    setGeometry(0, 0, 1300, 700);
+    //showMaximized();
 
     mapWidget = new MapWidget(tagData); // Use 'new' to allocate on the heap
     setCentralWidget(mapWidget);
@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent) :
 }
 
 void MainWindow::updateStatusBar(const QString& locationData) {
+    statusBar()->setStyleSheet("QStatusBar { color: #e8e8e8; }");
     statusBar()->showMessage(locationData);
 }
 

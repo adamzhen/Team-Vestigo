@@ -14,9 +14,18 @@
 
 class CrewMember : public QGraphicsEllipseItem {
 public:
-    CrewMember(qreal x, qreal y, double angle = 45);
+    CrewMember(qreal x, qreal y, std::string color, int rect_width, int rect_length, double room_width, double room_length, double room_height, int margin, double angle = 45);
 
-    void updatePosition(double x, double y, double yaw, qreal scalex, qreal scaley);
+    int rectWidth;
+    int rectLength;
+    double roomWidth;
+    double roomLength;
+    double roomHeight;
+    double scaleX;
+    double scaleY;
+    int margin;
+
+    void updatePosition(double x, double y, double z, double yaw);
     void updateFOV();
 
 private:

@@ -3,6 +3,7 @@
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QGraphicsRectItem>
 #include "crewmember.h"
 #include "tagdata.h"
 #include <Eigen/Dense>
@@ -12,6 +13,11 @@ class MapWidget : public QGraphicsView {
     Q_OBJECT
 
 public:
+    QGraphicsTextItem *timeText;
+    int rectWidth = 500;
+    int rectLength = 500;
+    int margin = 20;
+
     MapWidget(TagData& tagDataInstance, QGraphicsView *parent = nullptr); // Make the parent argument optional
 
     ~MapWidget();
@@ -24,7 +30,9 @@ private:
     TagData& tagData;
     Eigen::Matrix<double, Eigen::Dynamic, 4> crew_positions;  // Assuming you use Eigen; Adjust accordingly
 
-    std::vector<CrewMember*> crewMembers;  // Vector of 4 CrewMember objects
+    std::vector<CrewMember*> crewMembers;  // Vector of CrewMember objects
+    std::vector<std::string> crewColors = {"#E07C79", "#B2A2E0", "#96C9E0", "#E0D98D"};
+
 signals:
     void locationUpdated(const QString& locationData);
 

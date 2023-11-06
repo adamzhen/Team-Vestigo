@@ -78,6 +78,7 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     }
 
     readDimensions(read_filename, room_length, room_width, anchor_positions);
+    room_height = room_length/2;
 
     cout << anchor_positions.size() << endl;
 
@@ -98,7 +99,7 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     }
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
     GetCommState(hSerial, &dcbSerialParams);
-    dcbSerialParams.BaudRate = CBR_9600;
+    dcbSerialParams.BaudRate = CBR_115200;
     dcbSerialParams.ByteSize = 8;
     dcbSerialParams.StopBits = ONESTOPBIT;
     dcbSerialParams.Parity = NOPARITY;
@@ -364,8 +365,8 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
     // Loop through the tags
     for (int j = 0; j < num_tags; ++j) {
 
-        distances = raw_data.row(j).head(12);
-        yaw = raw_data(j, 12);
+        distances = raw_data.row(j).head(num_data_pts-1);
+        yaw = raw_data(j, num_data_pts-1);
         TAG_DATA(j, 3) = yaw;
 
         // Call the multilateration function

@@ -25,7 +25,6 @@
 #include <thread>
 #include <random>
 #include <sys/stat.h>
-#include "RootFinder.h"
 
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
@@ -49,6 +48,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     MainWindow w;
+    w.setStyleSheet("QMainWindow {background-color: #000000;}"); // Dark blue background
     w.show();
 
     return a.exec();

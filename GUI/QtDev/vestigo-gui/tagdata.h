@@ -33,10 +33,11 @@ public:
     // static constants for use in Eigen matrices
     const static int static_num_tags = 4;
     const static int static_num_tag_data_pts = 4;
-    const static int static_num_data_pts = 13;
+    const static int static_num_data_pts = 7;
 
     double room_length;
     double room_width;
+    double room_height; // height of 1 floor
 
     TagData(int tags, int data_pts);
 

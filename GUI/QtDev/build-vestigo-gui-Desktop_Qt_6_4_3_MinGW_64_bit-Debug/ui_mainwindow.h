@@ -14,7 +14,6 @@
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QStatusBar>
-#include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -23,8 +22,6 @@ class Ui_MainWindow
 {
 public:
     QWidget *centralwidget;
-    QWidget *verticalLayoutWidget;
-    QVBoxLayout *verticalLayout;
     QMenuBar *menuBar;
     QStatusBar *statusBar;
 
@@ -35,12 +32,6 @@ public:
         MainWindow->resize(800, 600);
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName("centralwidget");
-        verticalLayoutWidget = new QWidget(centralwidget);
-        verticalLayoutWidget->setObjectName("verticalLayoutWidget");
-        verticalLayoutWidget->setGeometry(QRect(0, 0, 801, 441));
-        verticalLayout = new QVBoxLayout(verticalLayoutWidget);
-        verticalLayout->setObjectName("verticalLayout");
-        verticalLayout->setContentsMargins(0, 0, 0, 0);
         MainWindow->setCentralWidget(centralwidget);
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName("menuBar");
