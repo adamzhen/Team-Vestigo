@@ -26,7 +26,7 @@
 
 #include "ICM_20948.h" // Click here to get the library: http://librarymanager/All#SparkFun_ICM_20948_IMU
 #include <ArduinoJson.h>
-#include <WiFiUdp.h>
+//#include <WiFiUdp.h>
 #include <vector>
 #include <math.h>
 #include <WiFi.h>
@@ -50,8 +50,8 @@ SFE_MAX1704X lipo(MAX1704X_MAX17048); // Allow access to all the 17048 features
 #define LED_PIN 13
 
 //#define DEBUG // used for debugging
-#define TRANSMIT
-#define PRINT
+#define SERIALTRANSMIT
+//#define PRINT
 //#define FUELGAUGE
 
 #ifdef USE_SPI
@@ -60,61 +60,12 @@ ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
 ICM_20948_I2C myICM; // Otherwise create an ICM_20948_I2C object
 #endif
 
-// Wifi creds
-const char *ssid;
-const char *password;
-const char *host;  
-
-const int network = 1; // 0 = Router, 1 = Adam's hotspot, 2 = Aiden's hotspot 
-const int port = 1234;
+unsigned long startTime;
 
 void setup()
 {
-  SERIAL_PORT.begin(9600); // Start the serial console
+  SERIAL_PORT.begin(115200); // Start the serial console
 
-const char *Aiden_laptop = "192.168.8.101";
-const char *Evan_laptop = "192.168.8.162";
-const char *Adam_laptop = "192.168.8.203";
-const char *Adam_laptop_LAN = "192.168.8.148";
-const char *Aiden_PC = "192.168.8.122";
-const char *Aiden_laptop_LAN = "192.168.8.219";
-const char *Aiden_PC_LAN = "192.168.8.132";
-
-#ifdef TRANSMIT
-  // Setting WiFi
-  if (network == 0) {
-    ssid = "Vestigo-Router";
-    password = "Vestigo&2023";
-    //host = Aiden_laptop; 
-    // host = Evan_laptop;
-    // host = Adam_laptop;
-    // host = Aiden_PC;
-    // host = Adam_laptop_LAN; 
-    // host = Aiden_laptop_LAN;
-    host = Aiden_PC_LAN;
-  } 
-  else if (network == 1){
-    ssid = "UMAT_WiFi";
-    password = "andito21";
-    host = "192.168.31.177"; 
-  
-  } 
-  else if (network == 2){
-    ssid = "FREE WIFI NO MALWARE";
-    password = "Playadel2005?";
-    host = "192.168."; 
-  }
-
-  // Connecting to WiFi
-  SERIAL_PORT.print("Connecting to ");
-  SERIAL_PORT.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    SERIAL_PORT.println("Connecting to Wifi... ");
-  }
-  SERIAL_PORT.println("Wifi connected");
-#endif
 #ifndef QUAT_ANIMATION
   SERIAL_PORT.println(F("ICM-20948 Example"));
 #endif
@@ -265,30 +216,49 @@ const char *Aiden_PC_LAN = "192.168.8.132";
       ;
   }
 #endif
+
+  startTime = micros(); // declare a variable to hold the start time
+
 }
 
 // Simulating random movement of tags
-std::vector<float> update_loc(const std::vector<float>& loc){ 
+std::vector<float> update_loc(const std::vector<float>& loc){
+
+  static double n = 0;
+  n += 0.002;
+
   std::vector<float> nloc;
-  float mx = 20; // Maximum movement
-  float d = 5.08; // Dimension of simulated cube room
-  float dc; // Displacement from center
+
+  float mx = 5; // Maximum movement
+  float d = 2.5; // Dimension of simulated cube room
   
   for (const auto& el : loc){
     // Calculate random movement based on the element's proximity to the center
-    float random_movement = random(-mx, mx) / 100.0;
+    float random_movement;
+    if (asin(n) < 0){
+      random_movement = (random(0, 2*mx) - mx*1.5) / 100;
+    } else {
+      random_movement = (random(0, 2*mx) - mx*0.5) / 100;
+    }
     
     // Add random movement to the current element
     float nel = el + random_movement; // new element
     if (nel<0 || nel>d){
-      nel = el - random_movement;
-    }
+      nel = el - 2*random_movement;
+    } 
     nloc.push_back(nel);
+#ifndef SERIALTRANSMIT
+    Serial.print(nel);
+    Serial.print(", ");
+#endif
   }
+#ifndef SERIALTRANSMIT
+  Serial.println("");
+#endif
+  nloc[2] = nloc[2] / 2;
 
   return nloc;
 }
-
 
 float roll = 0;
 float pitch = 0;
@@ -297,14 +267,13 @@ float accX;
 float accY;
 float accZ;
 unsigned long dt;
-std::vector<float> loc_1{1,1,1};
-std::vector<float> loc_2{4,4,1};
-std::vector<float> loc_3{1,4,1};
-std::vector<float> loc_4{4,1,1};
+std::vector<float> loc_1{2,2,0};
+std::vector<float> loc_2{4,4,0};
+std::vector<float> loc_3{1,4,0};
+std::vector<float> loc_4{4,1,0};
 
 void loop()
 {
-  unsigned long startTime = micros(); // declare a variable to hold the start time
 
   // Read any DMP data waiting in the FIFO
   // Note:
@@ -469,7 +438,7 @@ void loop()
       SERIAL_PORT.print(pitch, 1);
       SERIAL_PORT.print(F(" Yaw:"));
       SERIAL_PORT.println(yaw, 1);
-      SERIAL_PORT.print(F("Ax:"));
+      // SERIAL_PORT.print(F("Ax:"));
       // SERIAL_PORT.print(accX-gx, 1);
       // SERIAL_PORT.print(F(" Ay:"));
       // SERIAL_PORT.print(accY-gy, 1);
@@ -507,20 +476,22 @@ void loop()
 #endif
 
 
-#ifdef TRANSMIT
   // Simulates position of tags and anchors
-  std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}, {0, 0, 2.54}, {0, 5.08, 2.54}, {5.08, 0, 2.54}, {5.08, 5.08, 2.54}, {2.54, 0, 2.54}, {0, 2.54, 2.54}};
+  //std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}, {0, 0, 2.54}, {0, 5.08, 2.54}, {5.08, 0, 2.54}, {5.08, 5.08, 2.54}, {2.54, 0, 2.54}, {0, 2.54, 2.54}};
+  std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}};
   loc_1 = update_loc(loc_1);
   loc_2 = update_loc(loc_2);
   loc_3 = update_loc(loc_3);
   loc_4 = update_loc(loc_4);
   // Initializes tag data vectors
-  std::vector<float> tag_1{1,1,1,1,1,1,1,1,1,1,1,1,yaw};
-  std::vector<float> tag_2{1,1,1,1,1,1,1,1,1,1,1,1,yaw};
-  std::vector<float> tag_3{1,1,1,1,1,1,1,1,1,1,1,1,yaw};
-  std::vector<float> tag_4{1,1,1,1,1,1,1,1,1,1,1,1,yaw};
+  dt = (micros() - startTime);
+  yaw = dt/1000000;
+  std::vector<float> tag_1{1,1,1,1,1,1,yaw};
+  std::vector<float> tag_2{1,1,1,1,1,1,yaw};
+  std::vector<float> tag_3{1,1,1,1,1,1,yaw};
+  std::vector<float> tag_4{1,1,1,1,1,1,yaw};
   // Calculates simulated distances
-  for (int i=0; i<12; i++){
+  for (int i=0; i<anchors.size(); i++){
     tag_1[i] = sqrt( (anchors[i][0]-loc_1[0])*(anchors[i][0]-loc_1[0]) + (anchors[i][1]-loc_1[1])*(anchors[i][1]-loc_1[1]) + (anchors[i][2]-loc_1[2])*(anchors[i][2]-loc_1[2]) );
     tag_2[i] = sqrt( (anchors[i][0]-loc_2[0])*(anchors[i][0]-loc_2[0]) + (anchors[i][1]-loc_2[1])*(anchors[i][1]-loc_2[1]) + (anchors[i][2]-loc_2[2])*(anchors[i][2]-loc_2[2]) );
     tag_3[i] = sqrt( (anchors[i][0]-loc_3[0])*(anchors[i][0]-loc_3[0]) + (anchors[i][1]-loc_3[1])*(anchors[i][1]-loc_3[1]) + (anchors[i][2]-loc_3[2])*(anchors[i][2]-loc_3[2]) );
@@ -537,7 +508,7 @@ void loop()
   StaticJsonDocument<1024> doc;
   int tag_id = 0;
   for (const auto& row : all_data) {
-    JsonArray data = doc.createNestedArray(String(++tag_id));
+    JsonArray data = doc.createNestedArray();
     for (const auto& element : row) {
       data.add(element);
     }
@@ -546,12 +517,14 @@ void loop()
   byte buffer[1024];
   size_t nBytes = serializeJson(doc, buffer, sizeof(buffer));
 
+  // Serial.println(yaw);
+#ifdef SERIALTRANSMIT
   Serial.write('<'); // Start delimiter
   Serial.write(buffer, nBytes); // Write the raw JSON data
   Serial.write('>'); // End delimiter
+#endif
 
   all_data.clear();
-#endif 
 
   if (myICM.status != ICM_20948_Stat_FIFOMoreDataAvail) // If more data is available then we should read it right away, otherwise wait
   {
@@ -576,5 +549,6 @@ void loop()
 
   Serial.println();
 #endif
+
 
 }
