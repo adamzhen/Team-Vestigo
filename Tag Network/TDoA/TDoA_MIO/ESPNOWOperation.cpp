@@ -26,35 +26,11 @@ StaticJsonDocument<1024> doc;
 constexpr int ANCHORS = 6;
 
 // Transmission Functions
-void sendCollectedData(const std::map<int, double>& data, int tag_id) 
+void sendCollectedData() 
 {
-  // Find the smallest TDoA value
-  double minTDoA = std::numeric_limits<double>::max();
-  for (const auto& anchorData : data) 
-  {
-    if (anchorData.second < minTDoA) 
-    {
-      minTDoA = anchorData.second;
-    }
-  }
-  
-  // Normalize and store in JSON document
-  for (const auto& anchorData : data) 
-  {
-    doc["tags"][tag_id]["anchors"][anchorData.first] = anchorData.second;
-  }
-
-  // Serialize and send the data
   serializeJson(doc, Serial);
   Serial.println();
-
-  // Clear the JSON document for next use
   doc.clear();
-}
-
-bool isDataCollectedForTag(const std::map<int, double>& data) 
-{
-  return data.size() == ANCHORS;
 }
 
 // ESP-NOW Functions
@@ -70,11 +46,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
       lastReceptionTime = millis();
 
       // Calculate the TDoA and store it
-      int tagIndex = TDoAData.tag_id - 1;
-      int anchorIndex = TDoAData.anchor_id - 1;
-      uint32_t maskedDifference = TDoAData.difference & 0xFFFF;
-      double tdoaValue = static_cast<double>(maskedDifference) * DWT_TIME_UNITS;
-      collectedData[tagIndex][anchorIndex] = tdoaValue;
+      collectedData[TDoAData.tag_id - 1][TDoAData.anchor_id - 1] = (double) (TDoAData.difference * DWT_TIME_UNITS);
 
       // Serial.print("TDOA Info: ");
       // Serial.print(TDoAData.tag_id);
@@ -83,10 +55,14 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
       // Serial.print(", ");
       // Serial.println(TDoAData.difference, 12);
 
-      if (isDataCollectedForTag(collectedData[tagIndex])) 
+      if (doc["tags"][TDoAData.tag_id - 1]["anchors"][TDoAData.anchor_id - 1]) 
       {
-        sendCollectedData(collectedData[tagIndex], tagIndex);
-        collectedData[tagIndex].clear();
+
+        sendCollectedData();
+      }
+      else 
+      {
+        doc["tags"][TDoAData.tag_id - 1]["anchors"][TDoAData.anchor_id - 1] = (double) (TDoAData.difference * DWT_TIME_UNITS);
       }
 
       break;
