@@ -55,26 +55,33 @@ SOURCES       = ..\vestigo-gui\main.cpp \
 		..\vestigo-gui\mainwindow.cpp \
 		..\RootFinder.cpp \
 		..\vestigo-gui\mapwidget.cpp \
+		..\vestigo-gui\summaryscene.cpp \
 		..\vestigo-gui\tagdata.cpp release\moc_mainwindow.cpp \
-		release\moc_mapwidget.cpp
+		release\moc_mapwidget.cpp \
+		release\moc_summaryscene.cpp
 OBJECTS       = release/main.o \
 		release/crewmember.o \
 		release/mainwindow.o \
 		release/RootFinder.o \
 		release/mapwidget.o \
+		release/summaryscene.o \
 		release/tagdata.o \
 		release/moc_mainwindow.o \
-		release/moc_mapwidget.o
+		release/moc_mapwidget.o \
+		release/moc_summaryscene.o
 
 DIST          =  ..\vestigo-gui\mainwindow.h \
 		..\RootFinder.h \
 		..\vestigo-gui\crewmember.h \
+		..\vestigo-gui\json.hpp \
 		..\vestigo-gui\mapwidget.h \
+		..\vestigo-gui\summaryscene.h \
 		..\vestigo-gui\tagdata.h ..\vestigo-gui\main.cpp \
 		..\vestigo-gui\crewmember.cpp \
 		..\vestigo-gui\mainwindow.cpp \
 		..\RootFinder.cpp \
 		..\vestigo-gui\mapwidget.cpp \
+		..\vestigo-gui\summaryscene.cpp \
 		..\vestigo-gui\tagdata.cpp
 QMAKE_TARGET  = plot-examples
 DESTDIR        = release\ #avoid trailing-slash linebreak
@@ -87,7 +94,7 @@ first: all
 all: Makefile.Release  release/plot-examples.exe
 
 release/plot-examples.exe: C:/Qt/6.4.3/mingw_64/lib/libQt6PrintSupport.a C:/Qt/6.4.3/mingw_64/lib/libQt6Widgets.a C:/Qt/6.4.3/mingw_64/lib/libQt6Gui.a C:/Qt/6.4.3/mingw_64/lib/libQt6Core.a C:/Qt/6.4.3/mingw_64/lib/libQt6EntryPoint.a ui_mainwindow.h $(OBJECTS) 
-	$(LINKER) $(LFLAGS) -o $(DESTDIR_TARGET) $(OBJECTS) $(LIBS)
+	$(LINKER) $(LFLAGS) -o $(DESTDIR_TARGET) @release\object_script.plot-examples.Release $(LIBS)
 
 qmake: FORCE
 	@$(QMAKE) -o Makefile.Release ..\vestigo-gui\vestigo-gui.pro -spec win32-g++ "CONFIG+=debug" "CONFIG+=qml_debug"
@@ -95,10 +102,10 @@ qmake: FORCE
 qmake_all: FORCE
 
 dist:
-	$(ZIP) plot-examples.zip $(SOURCES) $(DIST) ..\vestigo-gui\vestigo-gui.pro C:\Qt\6.4.3\mingw_64\mkspecs\features\spec_pre.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\device_config.prf C:\Qt\6.4.3\mingw_64\mkspecs\common\sanitize.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\gcc-base.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\g++-base.conf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\windows_vulkan_sdk.prf C:\Qt\6.4.3\mingw_64\mkspecs\common\windows-vulkan.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\g++-win32.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\windows-desktop.conf C:\Qt\6.4.3\mingw_64\mkspecs\qconfig.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_ext_freetype.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_ext_libjpeg.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_ext_libpng.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_concurrent.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_concurrent_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_core.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_core_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_dbus.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_dbus_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_designer.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_designer_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_designercomponents_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_devicediscovery_support_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_entrypoint_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_fb_support_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_freetype_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_gui.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_gui_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_harfbuzz_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_help.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_help_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_jpeg_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsanimation.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsanimation_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsfolderlistmodel.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsfolderlistmodel_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsqmlmodels.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsqmlmodels_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssettings.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssettings_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssharedimage.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssharedimage_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labswavefrontmesh.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labswavefrontmesh_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_linguist.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_linguist_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_network.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_network_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_opengl.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_opengl_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_openglwidgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_openglwidgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_packetprotocol_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_png_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_printsupport.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_printsupport_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qml.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qml_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlcompiler_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlcore.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlcore_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmldebug_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmldom_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlintegration.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlintegration_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmllocalstorage.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmllocalstorage_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlmodels.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlmodels_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmltest.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmltest_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlworkerscript.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlworkerscript_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlxmllistmodel.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlxmllistmodel_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quick.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quick_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2impl.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2impl_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrolstestutilsprivate_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2quickimpl.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2quickimpl_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2utils.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2utils_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicklayouts.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicklayouts_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickparticles_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickshapes_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicktemplates2.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicktemplates2_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicktestutilsprivate_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickwidgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickwidgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_sql.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_sql_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svg.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svg_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svgwidgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svgwidgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_testlib.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_testlib_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_tools_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_uiplugin.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_uitools.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_uitools_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_widgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_widgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_xml.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_xml_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_zlib_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\features\qt_functions.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qt_config.prf C:\Qt\6.4.3\mingw_64\mkspecs\win32-g++\qmake.conf C:\Qt\6.4.3\mingw_64\mkspecs\features\spec_post.prf .qmake.stash C:\Qt\6.4.3\mingw_64\mkspecs\features\exclusive_builds.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\toolchain.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\default_pre.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\default_pre.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\resolve_config.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\exclusive_builds_post.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\default_post.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\build_pass.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qml_debug.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\entrypoint.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\precompile_header.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\warn_on.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qt.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\resources_functions.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\resources.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\moc.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\opengl.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\uic.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qmake_use.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\file_copies.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\windows.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\testcase_targets.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\exceptions.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\yacc.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\lex.prf ..\vestigo-gui\vestigo-gui.pro C:\Qt\6.4.3\mingw_64\lib\Qt6PrintSupport.prl C:\Qt\6.4.3\mingw_64\lib\Qt6Widgets.prl C:\Qt\6.4.3\mingw_64\lib\Qt6Gui.prl C:\Qt\6.4.3\mingw_64\lib\Qt6Core.prl C:\Qt\6.4.3\mingw_64\lib\Qt6EntryPoint.prl    C:\Qt\6.4.3\mingw_64\mkspecs\features\data\dummy.cpp ..\vestigo-gui\mainwindow.h ..\RootFinder.h ..\vestigo-gui\crewmember.h ..\vestigo-gui\mapwidget.h ..\vestigo-gui\tagdata.h  ..\vestigo-gui\main.cpp ..\vestigo-gui\crewmember.cpp ..\vestigo-gui\mainwindow.cpp ..\RootFinder.cpp ..\vestigo-gui\mapwidget.cpp ..\vestigo-gui\tagdata.cpp ..\vestigo-gui\mainwindow.ui    
+	$(ZIP) plot-examples.zip $(SOURCES) $(DIST) ..\vestigo-gui\vestigo-gui.pro C:\Qt\6.4.3\mingw_64\mkspecs\features\spec_pre.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\device_config.prf C:\Qt\6.4.3\mingw_64\mkspecs\common\sanitize.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\gcc-base.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\g++-base.conf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\windows_vulkan_sdk.prf C:\Qt\6.4.3\mingw_64\mkspecs\common\windows-vulkan.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\g++-win32.conf C:\Qt\6.4.3\mingw_64\mkspecs\common\windows-desktop.conf C:\Qt\6.4.3\mingw_64\mkspecs\qconfig.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_ext_freetype.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_ext_libjpeg.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_ext_libpng.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_concurrent.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_concurrent_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_core.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_core_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_dbus.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_dbus_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_designer.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_designer_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_designercomponents_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_devicediscovery_support_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_entrypoint_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_fb_support_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_freetype_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_gui.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_gui_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_harfbuzz_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_help.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_help_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_jpeg_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsanimation.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsanimation_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsfolderlistmodel.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsfolderlistmodel_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsqmlmodels.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labsqmlmodels_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssettings.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssettings_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssharedimage.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labssharedimage_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labswavefrontmesh.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_labswavefrontmesh_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_linguist.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_linguist_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_network.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_network_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_opengl.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_opengl_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_openglwidgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_openglwidgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_packetprotocol_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_png_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_printsupport.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_printsupport_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qml.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qml_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlcompiler_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlcore.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlcore_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmldebug_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmldom_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlintegration.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlintegration_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmllocalstorage.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmllocalstorage_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlmodels.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlmodels_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmltest.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmltest_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlworkerscript.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlworkerscript_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlxmllistmodel.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_qmlxmllistmodel_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quick.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quick_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2impl.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrols2impl_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickcontrolstestutilsprivate_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2quickimpl.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2quickimpl_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2utils.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickdialogs2utils_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicklayouts.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicklayouts_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickparticles_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickshapes_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicktemplates2.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicktemplates2_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quicktestutilsprivate_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickwidgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_quickwidgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_sql.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_sql_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svg.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svg_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svgwidgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_svgwidgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_testlib.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_testlib_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_tools_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_uiplugin.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_uitools.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_uitools_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_widgets.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_widgets_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_xml.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_xml_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\modules\qt_lib_zlib_private.pri C:\Qt\6.4.3\mingw_64\mkspecs\features\qt_functions.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qt_config.prf C:\Qt\6.4.3\mingw_64\mkspecs\win32-g++\qmake.conf C:\Qt\6.4.3\mingw_64\mkspecs\features\spec_post.prf .qmake.stash C:\Qt\6.4.3\mingw_64\mkspecs\features\exclusive_builds.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\toolchain.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\default_pre.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\default_pre.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\resolve_config.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\exclusive_builds_post.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\default_post.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\build_pass.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qml_debug.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\entrypoint.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\precompile_header.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\warn_on.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qt.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\resources_functions.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\resources.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\moc.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\opengl.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\uic.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\qmake_use.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\file_copies.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\win32\windows.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\testcase_targets.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\exceptions.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\yacc.prf C:\Qt\6.4.3\mingw_64\mkspecs\features\lex.prf ..\vestigo-gui\vestigo-gui.pro C:\Qt\6.4.3\mingw_64\lib\Qt6PrintSupport.prl C:\Qt\6.4.3\mingw_64\lib\Qt6Widgets.prl C:\Qt\6.4.3\mingw_64\lib\Qt6Gui.prl C:\Qt\6.4.3\mingw_64\lib\Qt6Core.prl C:\Qt\6.4.3\mingw_64\lib\Qt6EntryPoint.prl    C:\Qt\6.4.3\mingw_64\mkspecs\features\data\dummy.cpp ..\vestigo-gui\mainwindow.h ..\RootFinder.h ..\vestigo-gui\crewmember.h ..\vestigo-gui\json.hpp ..\vestigo-gui\mapwidget.h ..\vestigo-gui\summaryscene.h ..\vestigo-gui\tagdata.h  ..\vestigo-gui\main.cpp ..\vestigo-gui\crewmember.cpp ..\vestigo-gui\mainwindow.cpp ..\RootFinder.cpp ..\vestigo-gui\mapwidget.cpp ..\vestigo-gui\summaryscene.cpp ..\vestigo-gui\tagdata.cpp ..\vestigo-gui\mainwindow.ui    
 
 clean: compiler_clean 
-	-$(DEL_FILE) release\main.o release\crewmember.o release\mainwindow.o release\RootFinder.o release\mapwidget.o release\tagdata.o release\moc_mainwindow.o release\moc_mapwidget.o
+	-$(DEL_FILE) release\main.o release\crewmember.o release\mainwindow.o release\RootFinder.o release\mapwidget.o release\summaryscene.o release\tagdata.o release\moc_mainwindow.o release\moc_mapwidget.o release\moc_summaryscene.o
 
 distclean: clean 
 	-$(DEL_FILE) .qmake.stash
@@ -123,9 +130,9 @@ compiler_moc_predefs_clean:
 release/moc_predefs.h: C:/Qt/6.4.3/mingw_64/mkspecs/features/data/dummy.cpp
 	g++ -fno-keep-inline-dllexport -O2 -Wall -Wextra -Wextra -dM -E -o release\moc_predefs.h C:\Qt\6.4.3\mingw_64\mkspecs\features\data\dummy.cpp
 
-compiler_moc_header_make_all: release/moc_mainwindow.cpp release/moc_mapwidget.cpp
+compiler_moc_header_make_all: release/moc_mainwindow.cpp release/moc_mapwidget.cpp release/moc_summaryscene.cpp
 compiler_moc_header_clean:
-	-$(DEL_FILE) release\moc_mainwindow.cpp release\moc_mapwidget.cpp
+	-$(DEL_FILE) release\moc_mainwindow.cpp release\moc_mapwidget.cpp release\moc_summaryscene.cpp
 release/moc_mainwindow.cpp: ../vestigo-gui/mainwindow.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QMainWindow \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qmainwindow.h \
@@ -267,6 +274,15 @@ release/moc_mainwindow.cpp: ../vestigo-gui/mainwindow.h \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/QTimer \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qtimer.h \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qbasictimer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QPushButton \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qpushbutton.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qabstractbutton.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QTabWidget \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QVBoxLayout \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qboxlayout.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qlayout.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qlayoutitem.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgridlayout.h \
 		../vestigo-gui/mapwidget.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsView \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsview.h \
@@ -278,10 +294,11 @@ release/moc_mainwindow.cpp: ../vestigo-gui/mainwindow.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qframe.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsscene.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsScene \
-		../vestigo-gui/crewmember.h \
-		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsRectItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsitem.h \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/qpainterpath.h \
+		../vestigo-gui/crewmember.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsPathItem \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QPainterPath \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QColor \
@@ -552,6 +569,13 @@ release/moc_mainwindow.cpp: ../vestigo-gui/mainwindow.h \
 		../Eigen/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h \
 		../vestigo-gui/RootFinder.h \
+		../vestigo-gui/json.hpp \
+		../vestigo-gui/summaryscene.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QString \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QMap \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QVector \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvector.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QPointF \
 		release/moc_predefs.h \
 		C:/Qt/6.4.3/mingw_64/bin/moc.exe
 	C:\Qt\6.4.3\mingw_64\bin\moc.exe $(DEFINES) --include "C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/build-vestigo-gui-Desktop_Qt_6_4_3_MinGW_64_bit-Debug/release/moc_predefs.h" -IC:/Qt/6.4.3/mingw_64/mkspecs/win32-g++ -I"C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/vestigo-gui" -I"C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/Eigen" -IC:/Qt/6.4.3/mingw_64/include -IC:/Qt/6.4.3/mingw_64/include/QtPrintSupport -IC:/Qt/6.4.3/mingw_64/include/QtWidgets -IC:/Qt/6.4.3/mingw_64/include/QtGui -IC:/Qt/6.4.3/mingw_64/include/QtCore -I. -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++ -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++/x86_64-w64-mingw32 -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++/backward -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include-fixed -IC:/Qt/Tools/mingw1120_64/x86_64-w64-mingw32/include ..\vestigo-gui\mainwindow.h -o release\moc_mainwindow.cpp
@@ -701,10 +725,11 @@ release/moc_mapwidget.cpp: ../vestigo-gui/mapwidget.h \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qnativeinterface.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsscene.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsScene \
-		../vestigo-gui/crewmember.h \
-		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsRectItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsitem.h \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/qpainterpath.h \
+		../vestigo-gui/crewmember.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsPathItem \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QPainterPath \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QColor \
@@ -978,9 +1003,157 @@ release/moc_mapwidget.cpp: ../vestigo-gui/mapwidget.h \
 		../Eigen/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h \
 		../vestigo-gui/RootFinder.h \
+		../vestigo-gui/json.hpp \
 		release/moc_predefs.h \
 		C:/Qt/6.4.3/mingw_64/bin/moc.exe
 	C:\Qt\6.4.3\mingw_64\bin\moc.exe $(DEFINES) --include "C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/build-vestigo-gui-Desktop_Qt_6_4_3_MinGW_64_bit-Debug/release/moc_predefs.h" -IC:/Qt/6.4.3/mingw_64/mkspecs/win32-g++ -I"C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/vestigo-gui" -I"C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/Eigen" -IC:/Qt/6.4.3/mingw_64/include -IC:/Qt/6.4.3/mingw_64/include/QtPrintSupport -IC:/Qt/6.4.3/mingw_64/include/QtWidgets -IC:/Qt/6.4.3/mingw_64/include/QtGui -IC:/Qt/6.4.3/mingw_64/include/QtCore -I. -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++ -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++/x86_64-w64-mingw32 -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++/backward -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include-fixed -IC:/Qt/Tools/mingw1120_64/x86_64-w64-mingw32/include ..\vestigo-gui\mapwidget.h -o release\moc_mapwidget.cpp
+
+release/moc_summaryscene.cpp: ../vestigo-gui/summaryscene.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QMainWindow \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qmainwindow.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtwidgetsglobal.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtguiglobal.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qglobal.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qconfig-bootstrapped.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qconfig.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtcore-config.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtconfigmacros.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtcoreexports.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsystemdetection.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qprocessordetection.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcompilerdetection.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtypeinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontainerfwd.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsysinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qlogging.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qflags.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcompare_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qatomic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbasicatomic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qatomic_bootstrap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qgenericatomic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qatomic_cxx11.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qglobalstatic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qnumeric.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qversiontagging.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qforeach.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtgui-config.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtguiexports.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtwidgets-config.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtwidgetsexports.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qwidget.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qwindowdefs.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobjectdefs.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qnamespace.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtmetamacros.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobjectdefs_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qwindowdefs_win.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobject.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstring.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qchar.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearray.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qrefcount.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qarraydata.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qpair.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qarraydatapointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qarraydataops.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontainertools_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearrayalgorithms.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearrayview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringfwd.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringliteral.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringalgorithms.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qanystringview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qutf8stringview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringtokenizer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringbuilder.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qlist.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qhashfunctions.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiterator.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearraylist.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringlist.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qalgorithms.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringmatcher.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcoreevent.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qscopedpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmetatype.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcompare.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qscopeguard.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qdatastream.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiodevicebase.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiterable.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmetacontainer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontainerinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtaggedpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmath.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobject_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbindingstorage.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmargins.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qaction.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qkeysequence.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qicon.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsize.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpixmap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpaintdevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qrect.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qpoint.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qcolor.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qrgb.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qrgba64.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsharedpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qshareddata.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsharedpointer_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qimage.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpixelformat.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtransform.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpolygon.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qregion.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qline.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvariant.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qdebug.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtextstream.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringconverter_base.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontiguouscache.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qshareddata_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qset.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qhash.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvarlengtharray.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpalette.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qbrush.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qfont.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qfontmetrics.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qfontinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qsizepolicy.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qcursor.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qbitmap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qevent.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiodevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qurl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qeventpoint.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qvector2d.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qvectornd.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpointingdevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qinputdevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qscreen.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QList \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QObject \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QRect \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QSize \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QSizeF \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/QTransform \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qnativeinterface.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtabwidget.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QString \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QMap \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QVector \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvector.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QPointF \
+		release/moc_predefs.h \
+		C:/Qt/6.4.3/mingw_64/bin/moc.exe
+	C:\Qt\6.4.3\mingw_64\bin\moc.exe $(DEFINES) --include "C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/build-vestigo-gui-Desktop_Qt_6_4_3_MinGW_64_bit-Debug/release/moc_predefs.h" -IC:/Qt/6.4.3/mingw_64/mkspecs/win32-g++ -I"C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/vestigo-gui" -I"C:/Users/Adam Zheng/Team-Vestigo/GUI/QtDev/Eigen" -IC:/Qt/6.4.3/mingw_64/include -IC:/Qt/6.4.3/mingw_64/include/QtPrintSupport -IC:/Qt/6.4.3/mingw_64/include/QtWidgets -IC:/Qt/6.4.3/mingw_64/include/QtGui -IC:/Qt/6.4.3/mingw_64/include/QtCore -I. -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++ -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++/x86_64-w64-mingw32 -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include/c++/backward -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include -IC:/Qt/Tools/mingw1120_64/lib/gcc/x86_64-w64-mingw32/11.2.0/include-fixed -IC:/Qt/Tools/mingw1120_64/x86_64-w64-mingw32/include ..\vestigo-gui\summaryscene.h -o release\moc_summaryscene.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
@@ -1146,6 +1319,15 @@ release/main.o: ../vestigo-gui/main.cpp ../vestigo-gui/mainwindow.h \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/QTimer \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qtimer.h \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qbasictimer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QPushButton \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qpushbutton.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qabstractbutton.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QTabWidget \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QVBoxLayout \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qboxlayout.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qlayout.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qlayoutitem.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgridlayout.h \
 		../vestigo-gui/mapwidget.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsView \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsview.h \
@@ -1157,10 +1339,11 @@ release/main.o: ../vestigo-gui/main.cpp ../vestigo-gui/mainwindow.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qframe.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsscene.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsScene \
-		../vestigo-gui/crewmember.h \
-		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsRectItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsitem.h \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/qpainterpath.h \
+		../vestigo-gui/crewmember.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsPathItem \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QPainterPath \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QColor \
@@ -1431,7 +1614,21 @@ release/main.o: ../vestigo-gui/main.cpp ../vestigo-gui/mainwindow.h \
 		../Eigen/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h \
 		../vestigo-gui/RootFinder.h \
-		ui_mainwindow.h
+		../vestigo-gui/json.hpp \
+		../vestigo-gui/summaryscene.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QString \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QMap \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QVector \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvector.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QPointF \
+		ui_mainwindow.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QVariant \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QMenuBar \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qmenubar.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qmenu.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QStatusBar \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qstatusbar.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QWidget
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\main.o ..\vestigo-gui\main.cpp
 
 release/crewmember.o: ../vestigo-gui/crewmember.cpp ../vestigo-gui/crewmember.h \
@@ -1755,6 +1952,15 @@ release/mainwindow.o: ../vestigo-gui/mainwindow.cpp ../vestigo-gui/mainwindow.h 
 		C:/Qt/6.4.3/mingw_64/include/QtCore/QTimer \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qtimer.h \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qbasictimer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QPushButton \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qpushbutton.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qabstractbutton.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QTabWidget \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QVBoxLayout \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qboxlayout.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qlayout.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qlayoutitem.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgridlayout.h \
 		../vestigo-gui/mapwidget.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsView \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsview.h \
@@ -1766,10 +1972,11 @@ release/mainwindow.o: ../vestigo-gui/mainwindow.cpp ../vestigo-gui/mainwindow.h 
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qframe.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsscene.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsScene \
-		../vestigo-gui/crewmember.h \
-		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsRectItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsitem.h \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/qpainterpath.h \
+		../vestigo-gui/crewmember.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsPathItem \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QPainterPath \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QColor \
@@ -2040,7 +2247,21 @@ release/mainwindow.o: ../vestigo-gui/mainwindow.cpp ../vestigo-gui/mainwindow.h 
 		../Eigen/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h \
 		../vestigo-gui/RootFinder.h \
+		../vestigo-gui/json.hpp \
+		../vestigo-gui/summaryscene.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QString \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QMap \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QVector \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvector.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QPointF \
 		ui_mainwindow.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QVariant \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QMenuBar \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qmenubar.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qmenu.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QStatusBar \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qstatusbar.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QWidget \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/QDebug \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QScreen \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QMessageBox \
@@ -2439,10 +2660,11 @@ release/mapwidget.o: ../vestigo-gui/mapwidget.cpp ../vestigo-gui/mapwidget.h \
 		C:/Qt/6.4.3/mingw_64/include/QtCore/qnativeinterface.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsscene.h \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsScene \
-		../vestigo-gui/crewmember.h \
-		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsRectItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qgraphicsitem.h \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/qpainterpath.h \
+		../vestigo-gui/crewmember.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsEllipseItem \
 		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QGraphicsPathItem \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QPainterPath \
 		C:/Qt/6.4.3/mingw_64/include/QtGui/QColor \
@@ -2715,8 +2937,169 @@ release/mapwidget.o: ../vestigo-gui/mapwidget.cpp ../vestigo-gui/mapwidget.h \
 		../Eigen/Eigen/src/Eigenvalues/RealSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h \
-		../vestigo-gui/RootFinder.h
+		../vestigo-gui/RootFinder.h \
+		../vestigo-gui/json.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\mapwidget.o ..\vestigo-gui\mapwidget.cpp
+
+release/summaryscene.o: ../vestigo-gui/summaryscene.cpp ../vestigo-gui/summaryscene.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/QMainWindow \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qmainwindow.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtwidgetsglobal.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtguiglobal.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qglobal.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qconfig-bootstrapped.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qconfig.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtcore-config.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtconfigmacros.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtcoreexports.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsystemdetection.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qprocessordetection.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcompilerdetection.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtypeinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontainerfwd.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsysinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qlogging.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qflags.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcompare_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qatomic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbasicatomic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qatomic_bootstrap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qgenericatomic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qatomic_cxx11.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qglobalstatic.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qnumeric.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qversiontagging.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qforeach.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtgui-config.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtguiexports.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtwidgets-config.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtwidgetsexports.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qwidget.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qwindowdefs.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobjectdefs.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qnamespace.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtmetamacros.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobjectdefs_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qwindowdefs_win.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobject.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstring.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qchar.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearray.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qrefcount.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qarraydata.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qpair.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qarraydatapointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qarraydataops.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontainertools_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearrayalgorithms.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearrayview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringfwd.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringliteral.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringalgorithms.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qanystringview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qutf8stringview.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringtokenizer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringbuilder.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qlist.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qhashfunctions.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiterator.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbytearraylist.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringlist.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qalgorithms.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringmatcher.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcoreevent.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qscopedpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmetatype.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcompare.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qscopeguard.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qdatastream.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiodevicebase.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiterable.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmetacontainer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontainerinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtaggedpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmath.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qobject_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qbindingstorage.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmargins.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qaction.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qkeysequence.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qicon.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsize.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpixmap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpaintdevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qrect.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qpoint.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qcolor.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qrgb.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qrgba64.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsharedpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qshareddata.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qsharedpointer_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qimage.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpixelformat.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtransform.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpolygon.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qregion.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qline.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvariant.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qdebug.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qtextstream.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qstringconverter_base.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcontiguouscache.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qmap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qshareddata_impl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qset.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qhash.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvarlengtharray.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpalette.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qbrush.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qfont.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qfontmetrics.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qfontinfo.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qsizepolicy.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qcursor.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qbitmap.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qevent.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qiodevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qpointer.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qurl.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qeventpoint.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qvector2d.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qvectornd.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpointingdevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qinputdevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qscreen.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QList \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QObject \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QRect \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QSize \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QSizeF \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/QTransform \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qnativeinterface.h \
+		C:/Qt/6.4.3/mingw_64/include/QtWidgets/qtabwidget.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QString \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QMap \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QVector \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qvector.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QPointF \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QFile \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qfile.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qfiledevice.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QTextStream \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QDateTime \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qdatetime.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qcalendar.h \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/qlocale.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/QPainter \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpainter.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qtextoption.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/qpen.h \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/QImage \
+		C:/Qt/6.4.3/mingw_64/include/QtCore/QDebug \
+		C:/Qt/6.4.3/mingw_64/include/QtGui/QPaintEvent
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\summaryscene.o ..\vestigo-gui\summaryscene.cpp
 
 release/tagdata.o: ../vestigo-gui/tagdata.cpp ../vestigo-gui/tagdata.h \
 		../Eigen/Eigen/Dense \
@@ -2960,7 +3343,8 @@ release/tagdata.o: ../vestigo-gui/tagdata.cpp ../vestigo-gui/tagdata.h \
 		../Eigen/Eigen/src/Eigenvalues/RealSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h \
 		../Eigen/Eigen/src/Eigenvalues/SelfAdjointEigenSolver_LAPACKE.h \
-		../vestigo-gui/RootFinder.h
+		../vestigo-gui/RootFinder.h \
+		../vestigo-gui/json.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\tagdata.o ..\vestigo-gui\tagdata.cpp
 
 release/moc_mainwindow.o: release/moc_mainwindow.cpp 
@@ -2968,6 +3352,9 @@ release/moc_mainwindow.o: release/moc_mainwindow.cpp
 
 release/moc_mapwidget.o: release/moc_mapwidget.cpp 
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\moc_mapwidget.o release\moc_mapwidget.cpp
+
+release/moc_summaryscene.o: release/moc_summaryscene.cpp 
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\moc_summaryscene.o release\moc_summaryscene.cpp
 
 ####### Install
 

@@ -1,0 +1,10 @@
+release/main.o
+release/crewmember.o
+release/mainwindow.o
+release/RootFinder.o
+release/mapwidget.o
+release/summaryscene.o
+release/tagdata.o
+release/moc_mainwindow.o
+release/moc_mapwidget.o
+release/moc_summaryscene.o

@@ -44,9 +44,13 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QPushButton>
+#include <QTabWidget>
+#include <QVBoxLayout>
 #include "mapwidget.h"
 #include "crewmember.h"
 #include "tagdata.h"
+#include "summaryscene.h"
 
 namespace Ui {
 class MainWindow;
@@ -64,10 +68,18 @@ public:
 private:
     Ui::MainWindow *ui;
     MapWidget *mapWidget; // Declaration of mapWidget
-    QTimer *timer;        // Declaration of timer
+    SummaryScene *summaryScene;
+    QTabWidget *tabWidget;
+    QWidget *playbackPage;
+    QWidget *summaryPage;
+
+    void setupTabs();
+
+    QTimer *vis_timer;        // Declaration of timer
     QString demoName;
     QTimer dataTimer;
-    int currentDemoIndex;
+
+    bool isPlaying = false;
 };
 
 #endif // MAINWINDOW_H

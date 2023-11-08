@@ -18,12 +18,15 @@ SOURCES += main.cpp\
            mainwindow.cpp \
          ../RootFinder.cpp \
     mapwidget.cpp \
+    summaryscene.cpp \
     tagdata.cpp
 
 HEADERS  += mainwindow.h \
          ../RootFinder.h \
          crewmember.h \
+         json.hpp \
          mapwidget.h \
+         summaryscene.h \
          tagdata.h
 
 

@@ -477,8 +477,8 @@ void loop()
 
 
   // Simulates position of tags and anchors
-  //std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}, {0, 0, 2.54}, {0, 5.08, 2.54}, {5.08, 0, 2.54}, {5.08, 5.08, 2.54}, {2.54, 0, 2.54}, {0, 2.54, 2.54}};
-  std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}};
+  std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}, {0, 0, 2.54}, {0, 5.08, 2.54}, {5.08, 0, 2.54}, {5.08, 5.08, 2.54}, {2.54, 0, 2.54}, {0, 2.54, 2.54}};
+  //std::vector<std::vector<float>> anchors{{0, 0, 0}, {0, 5.08, 0}, {5.08, 0, 0}, {5.08, 5.08, 0}, {2.54, 0, 0}, {0, 2.54, 0}};
   loc_1 = update_loc(loc_1);
   loc_2 = update_loc(loc_2);
   loc_3 = update_loc(loc_3);
@@ -486,10 +486,10 @@ void loop()
   // Initializes tag data vectors
   dt = (micros() - startTime);
   yaw = dt/1000000;
-  std::vector<float> tag_1{1,1,1,1,1,1,yaw};
-  std::vector<float> tag_2{1,1,1,1,1,1,yaw};
-  std::vector<float> tag_3{1,1,1,1,1,1,yaw};
-  std::vector<float> tag_4{1,1,1,1,1,1,yaw};
+  std::vector<float> tag_1{1,1,1,1,1,1,1,1,1,1,1,1,0};
+  std::vector<float> tag_2{1,1,1,1,1,1,1,1,1,1,1,1,0};
+  std::vector<float> tag_3{1,1,1,1,1,1,1,1,1,1,1,1,0};
+  std::vector<float> tag_4{1,1,1,1,1,1,1,1,1,1,1,1,0};
   // Calculates simulated distances
   for (int i=0; i<anchors.size(); i++){
     tag_1[i] = sqrt( (anchors[i][0]-loc_1[0])*(anchors[i][0]-loc_1[0]) + (anchors[i][1]-loc_1[1])*(anchors[i][1]-loc_1[1]) + (anchors[i][2]-loc_1[2])*(anchors[i][2]-loc_1[2]) );
@@ -503,28 +503,18 @@ void loop()
   all_data.push_back(tag_2);
   all_data.push_back(tag_3);
   all_data.push_back(tag_4);
-
-  // Serial write all data
+  
   StaticJsonDocument<1024> doc;
-  int tag_id = 0;
-  for (const auto& row : all_data) {
-    JsonArray data = doc.createNestedArray();
-    for (const auto& element : row) {
-      data.add(element);
+  for (int tag_id = 0; tag_id < 4; tag_id++) {
+    for (int i = 0; i < 13; i++) {
+      doc["tags"][tag_id]["anchors"][i] = all_data[tag_id][i];
     }
   }
-  
-  byte buffer[1024];
-  size_t nBytes = serializeJson(doc, buffer, sizeof(buffer));
-
-  // Serial.println(yaw);
 #ifdef SERIALTRANSMIT
-  Serial.write('<'); // Start delimiter
-  Serial.write(buffer, nBytes); // Write the raw JSON data
-  Serial.write('>'); // End delimiter
+  serializeJson(doc, Serial);
 #endif
-
-  all_data.clear();
+  Serial.println();
+  doc.clear();
 
   if (myICM.status != ICM_20948_Stat_FIFOMoreDataAvail) // If more data is available then we should read it right away, otherwise wait
   {
@@ -550,5 +540,6 @@ void loop()
   Serial.println();
 #endif
 
+  delay(400);
 
 }

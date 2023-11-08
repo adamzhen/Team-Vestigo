@@ -16,12 +16,14 @@
 #include <iomanip>
 #include <thread>
 #include "RootFinder.h"
+#include "json.hpp"
 
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #pragma comment(lib, "ws2_32.lib")
 using namespace Eigen;
+using json = nlohmann::json;
 
 class TagData {
 public:
@@ -33,7 +35,7 @@ public:
     // static constants for use in Eigen matrices
     const static int static_num_tags = 4;
     const static int static_num_tag_data_pts = 4;
-    const static int static_num_data_pts = 7;
+    const static int static_num_data_pts = 13;
 
     double room_length;
     double room_width;
@@ -56,6 +58,10 @@ public:
     Matrix<double, static_num_data_pts, 1> dataProcessing(std::string str);
 
     Matrix<double, static_num_tags, static_num_tag_data_pts> readTagData();
+
+    MatrixXd parseJsonData(const json& jsonData);
+
+    json readJsonFromSerial();
 
 private:
     const double screen_scale = 150.0;

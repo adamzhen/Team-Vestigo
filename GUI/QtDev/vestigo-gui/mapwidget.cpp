@@ -42,6 +42,10 @@ MapWidget::MapWidget(TagData& tagDataInstance, QGraphicsView *parent)
     scene->setSceneRect(0, 0, 2*rectWidth, rectLength);
     scene->setBackgroundBrush(QColor("#000000"));
 
+}
+
+void MapWidget::drawBackground() {
+
     // Create the border as a rectangle item
     // The border's width is the pen width, so we reduce the size of the rect item by twice the pen width
     // to ensure that the border is drawn inside the scene.
@@ -58,16 +62,16 @@ MapWidget::MapWidget(TagData& tagDataInstance, QGraphicsView *parent)
     setScene(scene);
 
     // Assuming you have the positions of anchors in a variable named anchor_positions
-//    for (int i = 0; i < tagData.anchor_positions.rows(); ++i) {
-//        QGraphicsEllipseItem* anchor = new QGraphicsEllipseItem(scaleX*(tagData.anchor_positions(i, 0)) - 5, scaleY*(tagData.anchor_positions(i, 1)) - 5, 10, 10);
-//        anchor->setBrush(Qt::red);
-//        scene->addItem(anchor);
-//    }
+    //    for (int i = 0; i < tagData.anchor_positions.rows(); ++i) {
+    //        QGraphicsEllipseItem* anchor = new QGraphicsEllipseItem(scaleX*(tagData.anchor_positions(i, 0)) - 5, scaleY*(tagData.anchor_positions(i, 1)) - 5, 10, 10);
+    //        anchor->setBrush(Qt::red);
+    //        scene->addItem(anchor);
+    //    }
 
     // Create and display crew member objects
     crew_positions = tagData.readTagData();
     for (int i = 0; i < crew_positions.rows(); ++i) {
-        CrewMember* crew = new CrewMember(crew_positions(i, 0), crew_positions(i, 1), crewColors[i], rectWidth, rectLength, tagData.room_width, tagData.room_length, tagData.room_height, margin);
+        CrewMember* crew = new CrewMember(0, 0, crewColors[i], rectWidth, rectLength, tagData.room_width, tagData.room_length, tagData.room_height, margin);
         crewMembers.push_back(crew);  // Add to the vector
         scene->addItem(crew);
     }
@@ -112,7 +116,11 @@ MapWidget::MapWidget(TagData& tagDataInstance, QGraphicsView *parent)
     timeText->setDefaultTextColor(Qt::white);
     timeText->setFont(timeFont);
     timeText->setPos((2*rectWidth+margin)/2 - timeText->boundingRect().width()/2, rectLength + 20);
-
+}
+void MapWidget::clearBackground() {
+    scene->clear();
+    setScene(scene);
+    crewMembers.clear();
 }
 
 void MapWidget::updateCrewPositions() {
@@ -131,8 +139,9 @@ void MapWidget::updateCrewPositions() {
     // Update current time
     timeText->setPlainText(QString::fromStdString(getCurrentTime()));
 
+    count++;
     // Send location data to be displayed on status bar
-    QString locationData = QString("TAG 1: %1, %2, %3, TAG 2: %4, %5, %6, TAG 3: %7, %8, %9, TAG 4: %10, %11, %12")
+    QString locationData = QString("TAG 1: %1, %2, %3, TAG 2: %4, %5, %6, TAG 3: %7, %8, %9, TAG 4: %10, %11, %12 | Count: %13")
                                .arg(crew_positions(0, 0), 0, 'f', 2)
                                .arg(crew_positions(0, 1), 0, 'f', 2)
                                .arg(crew_positions(0, 2), 0, 'f', 2)
@@ -144,7 +153,8 @@ void MapWidget::updateCrewPositions() {
                                .arg(crew_positions(2, 2), 0, 'f', 2)
                                .arg(crew_positions(3, 0), 0, 'f', 2)
                                .arg(crew_positions(3, 1), 0, 'f', 2)
-                               .arg(crew_positions(3, 2), 0, 'f', 2);
+                               .arg(crew_positions(3, 2), 0, 'f', 2)
+                               .arg(count);
     emit locationUpdated(locationData);
 }
 

@@ -17,6 +17,7 @@
 #include <random>
 #include <sys/stat.h>
 #include "RootFinder.h"
+#include "json.hpp"
 
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
@@ -29,6 +30,7 @@ using std::endl;
 using std::vector;
 using std::string;
 using std::runtime_error;
+using json = nlohmann::json;
 
 const double inch_to_meter = 0.0254;
 
@@ -69,7 +71,7 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     ***********************************/
 
     cout << "Tracking Startup..." << endl;
-    string read_filename = "dev";
+    string read_filename = "dev-sim";
 
     // Checks for existing file
     struct stat buffer;
@@ -78,7 +80,7 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     }
 
     readDimensions(read_filename, room_length, room_width, anchor_positions);
-    room_height = room_length/2;
+    room_height = 2;
 
     cout << anchor_positions.size() << endl;
 
@@ -252,7 +254,14 @@ Matrix<double, TagData::static_num_data_pts, 1> TagData::dataProcessing(string s
     size_t start = str.find("[") + 2;
     size_t end = str.find(",");
 
-    while (str.find("]", start) != string::npos) {
+    cout << str << endl;
+    int c = 0;
+    for (int i = 0; i < static_num_data_pts; i++) {
+        c++;
+        cout << "(" << str.substr(start, end - start) << ")" << endl;
+        if (str.substr(start, end - start) == "") {
+            continue;
+        }
         tempData.push_back(stof(str.substr(start, end - start)));
         start = end + 1;
         end = str.find(",", start);
@@ -267,6 +276,82 @@ Matrix<double, TagData::static_num_data_pts, 1> TagData::dataProcessing(string s
     return data;
 }
 
+MatrixXd TagData::parseJsonData(const json& jsonData) {
+    MatrixXd tag_data(4, 13); // Assuming we have 6 anchors for each tag
+
+    if (!jsonData["tags"].is_array()) {
+        throw runtime_error("JSON 'tags' field is not an array");
+    }
+
+    int tagIndex = 0;
+    for (const auto& tag : jsonData["tags"]) {
+        if (tag.is_null()) {
+            continue; // Skip null entries
+        }
+
+        if (!tag["anchors"].is_array()) {
+            throw runtime_error("JSON 'anchors' field is not an array for tag " + std::to_string(tagIndex));
+        }
+
+        int anchorIndex = 0;
+        for (const auto& anchorDistance : tag["anchors"]) {
+            if (anchorDistance.is_number()) {
+                tag_data(tagIndex, anchorIndex) = anchorDistance.get<double>();
+            }
+            else {
+                tag_data(tagIndex, anchorIndex) = std::numeric_limits<double>::quiet_NaN(); // Handle non-number entries
+            }
+            ++anchorIndex;
+        }
+
+        ++tagIndex;
+    }
+
+    return tag_data;
+}
+
+json TagData::readJsonFromSerial() {
+    DWORD bytesRead;
+    char c;
+    string completeMessage;
+    bool messageStarted = false;
+
+    while (true) {
+        if (!ReadFile(hSerial, &c, 1, &bytesRead, NULL) || bytesRead == 0) {
+            throw runtime_error("Failed to read bytes from serial port");
+        }
+
+        // Start message capture if opening brace is detected.
+        if (c == '{' && !messageStarted) {
+            messageStarted = true;
+        }
+
+        // If we have started capturing the message, append characters.
+        if (messageStarted) {
+            completeMessage += c;
+
+            // Check for newline as a delimiter to end the capture.
+            if (c == '\n') {
+                // Try parsing to see if it's valid JSON, if not keep reading.
+                try {
+                    auto jsonData = json::parse(completeMessage);
+                    if (!jsonData.empty()) {
+                        // Successfully parsed JSON, return it.
+                        return jsonData;
+                    }
+                }
+                catch (const json::parse_error& e) {
+                    // Parse error could mean we don't have the full message yet.
+                    // Log it, clear the message, and reset flag to continue reading.
+                    std::cerr << "JSON parse error: " << e.what() << '\n';
+                    completeMessage.clear();
+                    messageStarted = false;
+                }
+            }
+        }
+    }
+}
+
 
 Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagData::readTagData() {
 
@@ -279,9 +364,6 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
     tm timeinfo;
     localtime_s(&timeinfo, &timestamp);
 
-    int year = timeinfo.tm_year + 1900;
-    int month = timeinfo.tm_mon + 1;
-    int day = timeinfo.tm_mday;
     int hours = timeinfo.tm_hour;
     int minutes = timeinfo.tm_min;
     int seconds = timeinfo.tm_sec;
@@ -305,48 +387,15 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
     //        // Handle the error, if needed.
     //        throw runtime_error("Failed to purge the buffers");
     //    }
+
     constexpr size_t BUFFER_SIZE = 1024;  // Choose an appropriate buffer size
 
     char buffer[BUFFER_SIZE];
     std::string completeMessage;
 
-    while (!donereading) {
-        DWORD bytesRead;
-        if (!ReadFile(hSerial, buffer, BUFFER_SIZE, &bytesRead, NULL) || bytesRead == 0) {
-            // Handle error
-            std::cerr << "Bytes Read: " << bytesRead << std::endl;
-            throw std::runtime_error("Bytes Not Correctly Read, In Loop");
-        }
-
-        for (DWORD i = 0; i < bytesRead; ++i) {
-            char c = buffer[i];
-
-            if (c == '<') {
-                // Start of a message
-                completeMessage.clear();
-                completeMessage += c;  // Include the '<' character in the message
-                reading = true;
-            } else if (c == '>' && !completeMessage.empty()) {
-                // End of a message
-                size_t start = 1, end = 0;
-                for (int u = 0; u < num_tags; ++u) {
-                    end = completeMessage.find("]", start);
-                    raw_data.row(u) = dataProcessing(completeMessage.substr(start, end - start + 1)).transpose();
-                    start = end + 2;
-                }
-
-                // Reset the completeMessage for the next read
-                completeMessage.clear();
-                if (reading){
-                    donereading = true;
-                    break;
-                }
-            } else if (!completeMessage.empty()) {
-                // Append to the message if we are in the middle of reading
-                completeMessage += c;
-            }
-        }
-    }
+    // Read json data from the serial port
+    json jsonData = readJsonFromSerial();
+    raw_data = parseJsonData(jsonData);
 
     // Prints out data received
     // cout << raw_data << endl;
@@ -365,8 +414,8 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
     // Loop through the tags
     for (int j = 0; j < num_tags; ++j) {
 
-        distances = raw_data.row(j).head(num_data_pts-1);
-        yaw = raw_data(j, num_data_pts-1);
+        distances = raw_data.row(j).head(num_data_pts);
+        yaw = 0; //raw_data(j, num_data_pts-1);
         TAG_DATA(j, 3) = yaw;
 
         // Call the multilateration function
@@ -385,6 +434,7 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
 
         if (result.exit_type == ExitType::AboveMaxIterations)
         {
+            //cout << Tags_current << endl;
             throw runtime_error("Max Iterations in LM");
         }
 
@@ -399,15 +449,12 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
         {
             TAG_DATA.block<1,3>(j, 0) = Tags_current;
         }
-        else if (displayIterations > 0)
-        {
-            TAG_DATA.block<1,3>(j, 0) = Tags_previous.row(j);
-            cout << "PREVIOUS USED" << endl;
-        }
         else
         {
             TAG_DATA.block<1,3>(j, 0) = Tags_current;
         }
+
+        Tags_previous.row(j) = Tags_current.transpose();
 
         // writes the location data to the console
         cout << "x: " << TAG_DATA.row(j)[0] << ", y: " << TAG_DATA.row(j)[1] << ", z: " << TAG_DATA.row(j)[2] << ", yaw: " << TAG_DATA.row(j)[3] << ", Time: " << timeString << endl;

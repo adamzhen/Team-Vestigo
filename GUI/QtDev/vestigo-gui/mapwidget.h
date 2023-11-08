@@ -18,11 +18,15 @@ public:
     int rectLength = 500;
     int margin = 20;
 
+    int count = 0;
+
     MapWidget(TagData& tagDataInstance, QGraphicsView *parent = nullptr); // Make the parent argument optional
 
     ~MapWidget();
 
     void updateCrewPositions();
+    void drawBackground();
+    void clearBackground();
 
 private:
     QGraphicsScene* scene;

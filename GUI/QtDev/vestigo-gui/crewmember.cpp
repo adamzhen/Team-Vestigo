@@ -1,5 +1,6 @@
 #include "crewmember.h"
 #include "qbrush.h"
+#include <iostream>
 
 CrewMember::CrewMember(qreal x, qreal y, std::string crewColor, int rect_width, int rect_length, double room_width, double room_length, double room_height, int margin, double angle)
     : QGraphicsEllipseItem(x, y, 20, 20), fovAngle(angle), rectWidth(rect_width), rectLength(rect_length),
@@ -17,6 +18,7 @@ CrewMember::CrewMember(qreal x, qreal y, std::string crewColor, int rect_width, 
 }
 
 void CrewMember::updatePosition(double x, double y, double z, double yaw) {
+
     if (z < roomHeight){
         setPos(scaleX*x, scaleY*y); // scalex*x, scaley*y
     } else {
