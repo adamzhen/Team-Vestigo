@@ -12,10 +12,9 @@
 #include "mapwidget.h"
 #include "tagdata.h"
 
-TagData tagData(4, 13); // Declare and construct TagData before using it
-
 void MainWindow::setupTabs() {
-    // Assuming we are inside the MainWindow constructor or setup function
+
+    TagData tagData(4, 13);
 
     // Live visualization page setup
     mapWidget = new MapWidget(tagData);
@@ -47,12 +46,13 @@ void MainWindow::setupTabs() {
     connect(vis_timer, &QTimer::timeout, mapWidget, &MapWidget::updateCrewPositions);
 
     // Connect the start button to start the data reading and visualization
-    connect(startButton, &QPushButton::clicked, this, [this, startButton]() {
+    connect(startButton, &QPushButton::clicked, this, [this, startButton, &tagData]() {
         isPlaying = !isPlaying;
         if (isPlaying){
             // Start the timer with the desired DELAY in milliseconds
-            vis_timer->start(100); // Example: 1000 ms delay
+            tagData.setupSerial();
             mapWidget->drawBackground();
+            vis_timer->start(100); // Example: 1000 ms delay
             startButton->setText("Stop Visualization");
         } else {
             vis_timer->stop();
