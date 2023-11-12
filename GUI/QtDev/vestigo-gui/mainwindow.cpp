@@ -73,35 +73,12 @@ void MainWindow::setupTabs() {
     summaryPage = new QWidget(this);
     summaryPage->setStyleSheet("QWidget { background-color: #000000; }");
 
-    // Create a text input box
-    QLineEdit *fileInput = new QLineEdit(summaryPage);
-    fileInput->setGeometry(20, 20, 200, 30); // Position and size the input box
-    fileInput->setStyleSheet("QLineEdit { color: white; background-color: black; }");
-    // Create a Load File button
-    QPushButton *loadFileButton = new QPushButton("Load File", summaryPage);
-    loadFileButton->setGeometry(230, 20, 120, 30); // Position and size the button next to the input box
-    loadFileButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #336699;" // Normal background color
-        "    color: white;"              // Text color
-        "    border: 2px solid #000000;" // Border color and width
-        "    border-radius: 5px;"       // Rounded corners with radius of 10px
-        "    padding: 5px;"             // Padding around the text
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #5588cc;" // Background color when hovered
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #224466;" // Background color when pressed
-        "}"
-        );
-
-    // Connect the Load File button to the appropriate slot or lambda function
-    SummaryScene *summaryScene = new SummaryScene(this);
-    connect(loadFileButton, &QPushButton::clicked, [summaryScene, fileInput, this]() {
-        QString filename = fileInput->text();
-        summaryScene->loadFile(filename);
-    });
+    // Assuming SummaryScene is a QWidget that you want to display
+    SummaryScene *summaryScene = new SummaryScene(this); // Replace 'this' with appropriate parent or constructor parameters
+    // Assuming you want to fill the entire summary tab with the SummaryScene widget
+    QVBoxLayout *summaryLayout = new QVBoxLayout; // Create a layout for the summary page
+    summaryLayout->addWidget(summaryScene); // Add the summary scene to the layout
+    summaryPage->setLayout(summaryLayout); // Set the layout to the summary page widget
 
 
     // Tab widget setup
