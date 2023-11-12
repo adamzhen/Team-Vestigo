@@ -3,7 +3,6 @@ debug/crewmember.o
 debug/mainwindow.o
 debug/RootFinder.o
 debug/mapwidget.o
-debug/playback.o
 debug/summaryscene.o
 debug/tagdata.o
 debug/moc_mainwindow.o

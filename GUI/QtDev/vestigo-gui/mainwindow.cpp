@@ -11,7 +11,6 @@
 #include <QTimer>
 #include "mapwidget.h"
 #include "tagdata.h"
-#include "playback.h"
 
 void MainWindow::setupTabs() {
 
@@ -69,81 +68,6 @@ void MainWindow::setupTabs() {
     // Playback page setup
     playbackPage = new QWidget(this);
     playbackPage->setStyleSheet("QWidget { background-color: #000000; }");
-
-    QPushButton *playPauseButton = new QPushButton("Play/Pause", playbackPage);
-    startButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #336699;" // Normal background color
-        "    color: white;"              // Text color
-        "    border: 2px solid #000000;"    // Border color and width
-        "    border-radius: 5px;"       // Rounded corners with radius of 10px
-        "    padding: 5px;"              // Padding around the text
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #5588cc;" // Background color when hovered
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #224466;" // Background color when pressed
-        "}"
-        );
-    QPushButton *fastForwardButton = new QPushButton(">>", playbackPage);
-    startButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #336699;" // Normal background color
-        "    color: white;"              // Text color
-        "    border: 2px solid #000000;"    // Border color and width
-        "    border-radius: 5px;"       // Rounded corners with radius of 10px
-        "    padding: 5px;"              // Padding around the text
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #5588cc;" // Background color when hovered
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #224466;" // Background color when pressed
-        "}"
-        );
-    QPushButton *rewindButton = new QPushButton("<<", playbackPage);
-    startButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #336699;" // Normal background color
-        "    color: white;"              // Text color
-        "    border: 2px solid #000000;"    // Border color and width
-        "    border-radius: 5px;"       // Rounded corners with radius of 10px
-        "    padding: 5px;"              // Padding around the text
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #5588cc;" // Background color when hovered
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #224466;" // Background color when pressed
-        "}"
-        );
-    Playback *playback = new Playback(this);
-    connect(playback, &Playback::updatePositions, this, &CrewMember::updatePosition);
-    connect(playPauseButton, &QPushButton::clicked, this, [this, playPauseButton]() {
-        isPlaying = !isPlaying;
-        if (isPlaying){
-            // Start the timer with the desired DELAY in milliseconds
-            mapWidget->drawBackground();
-            playPauseButton->setText("Pause");
-        } else {
-            playPauseButton->setText("Play");
-        }
-    });
-    connect(fastForwardButton, &QPushButton::clicked, this, [this, fastForwardButton]() {
-
-    });
-    connect(rewindButton, &QPushButton::clicked, this, [this, rewindButton]() {
-    });
-
-
-
-
-
-
-
-
-
 
     // Summary page setup
     summaryPage = new QWidget(this);

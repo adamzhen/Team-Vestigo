@@ -3,7 +3,6 @@ release/crewmember.o
 release/mainwindow.o
 release/RootFinder.o
 release/mapwidget.o
-release/playback.o
 release/summaryscene.o
 release/tagdata.o
 release/moc_mainwindow.o
