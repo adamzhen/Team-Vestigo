@@ -60,11 +60,11 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
         std::cerr << "Error opening file." << endl;
     }
     // write header
-//    outFile << "Time, ";
-//    for (int i = 0; i < num_tags; ++i) {
-//        outFile << "Tag " << i + 1 << " X, " << "Tag " << i + 1 << " Y, " << "Tag " << i + 1 << " Z, ";
-//    }
-//    outFile << endl;
+    outFile << "Time, ";
+    for (int i = 0; i < num_tags; ++i) {
+        outFile << "Tag " << i + 1 << " X, " << "Tag " << i + 1 << " Y, " << "Tag " << i + 1 << " Z, ";
+    }
+    outFile << endl;
 
     /***********************************
     *********** ROOM CONFIG ***********
@@ -89,11 +89,6 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     for (int i = 0; i < anchor_positions.rows(); ++i) {
         cout << "  Point " << (i + 1) << ": " << anchor_positions.row(i) << endl;
     }
-
-
-}
-
-void TagData::setupSerial(){
 
     /*************************************
     *********** SERIAL STARTUP ***********

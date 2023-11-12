@@ -44,7 +44,7 @@ MapWidget::MapWidget(TagData& tagDataInstance, QGraphicsView *parent)
 
 }
 
-void MapWidget::drawBackground(){
+void MapWidget::drawBackground() {
 
     // Create the border as a rectangle item
     // The border's width is the pen width, so we reduce the size of the rect item by twice the pen width

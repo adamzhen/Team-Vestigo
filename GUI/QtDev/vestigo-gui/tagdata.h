@@ -43,9 +43,6 @@ public:
 
     TagData(int tags, int data_pts);
 
-    // Function to setup serial communication
-    void setupSerial();
-
     // Function to get dimensions of room from user input
     double* getDimensions();
 
