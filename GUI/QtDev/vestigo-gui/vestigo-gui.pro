@@ -18,6 +18,7 @@ SOURCES += main.cpp\
            mainwindow.cpp \
          ../RootFinder.cpp \
     mapwidget.cpp \
+    playback.cpp \
     summaryscene.cpp \
     tagdata.cpp
 
@@ -26,6 +27,7 @@ HEADERS  += mainwindow.h \
          crewmember.h \
          json.hpp \
          mapwidget.h \
+         playback.h \
          summaryscene.h \
          tagdata.h
 

@@ -69,6 +69,70 @@ void MainWindow::setupTabs() {
     playbackPage = new QWidget(this);
     playbackPage->setStyleSheet("QWidget { background-color: #000000; }");
 
+    QPushButton *playPauseButton = new QPushButton("Play/Pause", playbackPage);
+    startButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #336699;" // Normal background color
+        "    color: white;"              // Text color
+        "    border: 2px solid #000000;"    // Border color and width
+        "    border-radius: 5px;"       // Rounded corners with radius of 10px
+        "    padding: 5px;"              // Padding around the text
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #5588cc;" // Background color when hovered
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #224466;" // Background color when pressed
+        "}"
+        );
+    QPushButton *fastForwardButton = new QPushButton(">>", playbackPage);
+    startButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #336699;" // Normal background color
+        "    color: white;"              // Text color
+        "    border: 2px solid #000000;"    // Border color and width
+        "    border-radius: 5px;"       // Rounded corners with radius of 10px
+        "    padding: 5px;"              // Padding around the text
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #5588cc;" // Background color when hovered
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #224466;" // Background color when pressed
+        "}"
+        );
+    QPushButton *rewindButton = new QPushButton("<<", playbackPage);
+    startButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #336699;" // Normal background color
+        "    color: white;"              // Text color
+        "    border: 2px solid #000000;"    // Border color and width
+        "    border-radius: 5px;"       // Rounded corners with radius of 10px
+        "    padding: 5px;"              // Padding around the text
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #5588cc;" // Background color when hovered
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #224466;" // Background color when pressed
+        "}"
+        );
+    connect(playPauseButton, &QPushButton::clicked, this, [this, playPauseButton]() {
+        isPlaying = !isPlaying;
+        if (isPlaying){
+            // Start the timer with the desired DELAY in milliseconds
+            mapWidget->drawBackground();
+            playPauseButton->setText("Pause");
+        } else {
+            playPauseButton->setText("Play");
+        }
+    });
+    connect(fastForwardButton, &QPushButton::clicked, this, [this, fastForwardButton]() {
+
+    });
+    connect(rewindButton, &QPushButton::clicked, this, [this, rewindButton]() {
+    });
+
     // Summary page setup
     summaryPage = new QWidget(this);
     summaryPage->setStyleSheet("QWidget { background-color: #000000; }");
@@ -102,13 +166,21 @@ void MainWindow::setupTabs() {
         QString filename = fileInput->text();
         summaryScene->loadFile(filename);
         QLabel *imageLabel = new QLabel(summaryPage);
-        imageLabel->setGeometry(0, 0, 700, 700); // Adjust the position and size as needed
+        int imageWidth = 600; // Example width
+        int imageHeight = 600; // Example height
+        int xPosition = (summaryPage->width() - imageWidth) / 2;
+        int yPosition = (summaryPage->height() - imageHeight) / 2;
 
-    // Load the image
-        QPixmap imagePixmap(filename + "density_map.png"); // Load the image from the file path
+        imageLabel->setGeometry(xPosition, yPosition, imageWidth, imageHeight);
+
+        // Optional: Style the QLabel
+        imageLabel->setStyleSheet("QLabel { border: 2px solid #ffffff; }"); // White border for the image label
+
+        // Load the image
+        QPixmap imagePixmap(filename + "density_map.png"); // Adjust the file path as needed
         if (!imagePixmap.isNull()) {
-            imageLabel->setPixmap(imagePixmap.scaled(700, 700, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-            imageLabel->show();
+            imageLabel->setPixmap(imagePixmap.scaled(imageWidth, imageHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            imageLabel->show(); // Show the label with the image
         }
     });
 
