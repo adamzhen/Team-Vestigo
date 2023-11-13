@@ -37,6 +37,8 @@ const double inch_to_meter = 0.0254;
 
 TagData::TagData(int tags, int data_pts) : QThread(), num_tags(tags), num_data_pts(data_pts) {
 
+    bool sim = false;
+
     /******** TIME TRACKING ********/
     // get the current timestamp
     auto now = std::chrono::system_clock::now();
@@ -61,18 +63,24 @@ TagData::TagData(int tags, int data_pts) : QThread(), num_tags(tags), num_data_p
         std::cerr << "Error opening file." << endl;
     }
     // write header
-    outFile << "Time, ";
-    for (int i = 0; i < num_tags; ++i) {
-        outFile << "Tag " << i + 1 << " X, " << "Tag " << i + 1 << " Y, " << "Tag " << i + 1 << " Z, ";
-    }
-    outFile << endl;
+//    outFile << "Time, ";
+//    for (int i = 0; i < num_tags; ++i) {
+//        outFile << "Tag " << i + 1 << " X, " << "Tag " << i + 1 << " Y, " << "Tag " << i + 1 << " Z, ";
+//    }
+//    outFile << endl;
 
     /***********************************
     *********** ROOM CONFIG ***********
     ***********************************/
 
     cout << "Tracking Startup..." << endl;
-    string read_filename = "dev";
+    string read_filename;
+    if (sim){
+        read_filename = "dev-sim";
+    } else {
+        read_filename = "dev";
+    }
+
 
     // Checks for existing file
     struct stat buffer;
@@ -95,14 +103,22 @@ TagData::TagData(int tags, int data_pts) : QThread(), num_tags(tags), num_data_p
     *********** SERIAL STARTUP ***********
     *************************************/
 
-    hSerial = CreateFile(TEXT("COM8"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (sim){
+        hSerial = CreateFile(TEXT("COM3"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    } else {
+        hSerial = CreateFile(TEXT("COM8"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    }
     if (hSerial == INVALID_HANDLE_VALUE) {
         // Handle error
         throw runtime_error("Connection Not Init Properly");
     }
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
     GetCommState(hSerial, &dcbSerialParams);
-    dcbSerialParams.BaudRate = CBR_256000;
+    if (sim){
+        dcbSerialParams.BaudRate = CBR_115200;
+    } else {
+        dcbSerialParams.BaudRate = CBR_256000;
+    }
     dcbSerialParams.ByteSize = 8;
     dcbSerialParams.StopBits = ONESTOPBIT;
     dcbSerialParams.Parity = NOPARITY;
@@ -307,7 +323,6 @@ MatrixXd TagData::parseJsonData(const json& jsonData) {
         ++tagIndex;
     }
 
-    cout << tag_data << endl;
     return tag_data;
 }
 
@@ -316,7 +331,7 @@ json TagData::readJsonFromSerial() {
     char c;
     string completeMessage;
     bool messageStarted = false;
-    cout << "reading Json" << endl;
+    //cout << "reading Json" << endl;
 
     while (true) {
 
@@ -479,7 +494,7 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
 }
 
 Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagData::processTagData(MatrixXd raw_data) {
-    cout << "processTagData" << endl;
+    //cout << "processTagData" << endl;
     /******** TIME TRACKING ********/
     // get the current timestamp
     auto now = std::chrono::system_clock::now();
@@ -518,49 +533,52 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
     outFile << timeString << ", ";
 
     // Loop through the tags
-    for (int j = 1; j < num_tags; ++j) {
+    for (int j = 0; j < num_tags; ++j) {
 
         distances = raw_data.row(j).head(num_data_pts);
         yaw = 0; //raw_data(j, num_data_pts-1);
         TAG_DATA(j, 3) = yaw;
 
-        // Call the multilateration function
-        Vector3d Tags_current;
-        LMsolution result;
-        try
-        {
-            result = RootFinder::LevenbergMarquardt(anchor_positions, distances, Tags_previous.row(j).transpose());
-            Tags_current = result.solution;
-            // cout << Tags_current << endl;
-        }
-        catch (_exception& e)
-        {
-            Tags_current = Tags_previous.row(j).transpose();
-            throw runtime_error("Exception in LM");
-        }
+        if (j>0){
 
-        if (result.exit_type == ExitType::AboveMaxIterations)
-        {
-            throw runtime_error("Max Iterations in LM");
-        }
+            // Call the multilateration function
+            Vector3d Tags_current;
+            LMsolution result;
+            try
+            {
+                result = RootFinder::LevenbergMarquardt(anchor_positions, distances, Tags_previous.row(j).transpose());
+                Tags_current = result.solution;
+                // cout << Tags_current << endl;
+            }
+            catch (_exception& e)
+            {
+                Tags_current = Tags_previous.row(j).transpose();
+                throw runtime_error("Exception in LM");
+            }
 
-        if (result.exit_type == ExitType::BelowDynamicTolerance)
-        {
-            cout << "DYNAMIC TOLERANCE EXIT WARNING. Iterations: " << result.iterations << endl;
-        }
+            if (result.exit_type == ExitType::AboveMaxIterations)
+            {
+                throw runtime_error("Max Iterations in LM");
+            }
 
-        distances.setZero();
+            if (result.exit_type == ExitType::BelowDynamicTolerance)
+            {
+                cout << "DYNAMIC TOLERANCE EXIT WARNING. Iterations: " << result.iterations << endl;
+            }
 
-        if (abs(Tags_current.norm() - Tags_previous.row(j).norm()) < 0.25)
-        {
-            TAG_DATA.block<1,3>(j, 0) = Tags_current;
-        }
-        else
-        {
-            TAG_DATA.block<1,3>(j, 0) = Tags_current;
-        }
+            distances.setZero();
 
-        Tags_previous.row(j) = Tags_current.transpose();
+            if (abs(Tags_current.norm() - Tags_previous.row(j).norm()) < 0.25)
+            {
+                TAG_DATA.block<1,3>(j, 0) = Tags_current;
+            }
+            else
+            {
+                TAG_DATA.block<1,3>(j, 0) = Tags_current;
+            }
+
+            Tags_previous.row(j) = Tags_current.transpose();
+        }
 
         // writes the location data to the console
         cout << "x: " << TAG_DATA.row(j)[0] << ", y: " << TAG_DATA.row(j)[1] << ", z: " << TAG_DATA.row(j)[2] << ", Time: " << timeString << endl;
@@ -584,7 +602,7 @@ void TagData::run() {
     while (true) {
         MatrixXd raw_data(num_tags, num_data_pts);
         json jsonData = readJsonFromSerial();
-        cout << jsonData << endl;
+        //cout << jsonData << endl;
         raw_data = parseJsonData(jsonData);
         // Emit a signal with the new data
         emit newDataAvailable(raw_data);

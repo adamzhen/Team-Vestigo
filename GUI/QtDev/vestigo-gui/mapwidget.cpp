@@ -126,7 +126,7 @@ void MapWidget::clearBackground() {
 }
 
 void MapWidget::updateCrewPositions(const Eigen::MatrixXd& raw_data) {
-    std::cout << "updateCrewPositions()" << std::endl;
+    //std::cout << "updateCrewPositions()" << std::endl;
 
     // Here, fetch or update the crew_positions data
     crew_positions = tagData.processTagData(raw_data);

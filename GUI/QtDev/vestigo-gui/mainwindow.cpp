@@ -16,10 +16,24 @@ void MainWindow::setupTabs() {
 
     // Initialize mapWidget with tagData
     mapWidget = new MapWidget(tagData);
-    // ... [MapWidget style setup code]
+    mapWidget->setStyleSheet("QWidget { background-color: #000000; }");
 
     QPushButton *startButton = new QPushButton("Start Visualization", mapWidget);
-    // ... [StartButton style setup code]
+    startButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #abe08d;" // Normal background color
+        "    color: white;"              // Text color
+        "    border: 2px solid #000000;"    // Border color and width
+        "    border-radius: 5px;"       // Rounded corners with radius of 10px
+        "    padding: 10px;"              // Padding around the text
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #41851b;" // Background color when hovered
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #bff2a2;" // Background color when pressed
+        "}"
+        );
 
     // Connect TagData thread signal to mapWidget
     connect(&tagData, &TagData::newDataAvailable, mapWidget, &MapWidget::updateCrewPositions);
