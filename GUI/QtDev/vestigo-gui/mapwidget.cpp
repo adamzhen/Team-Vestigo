@@ -71,8 +71,9 @@ void MapWidget::drawBackground() {
     //    }
 
     // Create and display crew member objects
-    crew_positions = tagData.readTagData();
-    for (int i = 0; i < crew_positions.rows(); ++i) {
+    // crew_positions = tagData.readTagData();
+    crew_positions.setZero();
+    for (int i = 0; i < 4; ++i) {
         CrewMember* crew = new CrewMember(0, 0, crewColors[i], rectWidth, rectLength, tagData.room_width, tagData.room_length, tagData.room_height, margin);
         crewMembers.push_back(crew);  // Add to the vector
         scene->addItem(crew);

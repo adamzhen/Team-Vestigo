@@ -436,43 +436,46 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
         yaw = 0; //raw_data(j, num_data_pts-1);
         TAG_DATA(j, 3) = yaw;
 
-        // Call the multilateration function
-        Vector3d Tags_current;
-        LMsolution result;
-        try
-        {
-            result = RootFinder::LevenbergMarquardt(anchor_positions, distances, Tags_previous.row(j).transpose());
-            Tags_current = result.solution;
-            // cout << Tags_current << endl;
-        }
-        catch (_exception& e)
-        {
-            Tags_current = Tags_previous.row(j).transpose();
-            throw runtime_error("Exception in LM");
-        }
+        if (j>0){
 
-        if (result.exit_type == ExitType::AboveMaxIterations)
-        {
-            throw runtime_error("Max Iterations in LM");
-        }
+            // Call the multilateration function
+            Vector3d Tags_current;
+            LMsolution result;
+            try
+            {
+                result = RootFinder::LevenbergMarquardt(anchor_positions, distances, Tags_previous.row(j).transpose());
+                Tags_current = result.solution;
+                // cout << Tags_current << endl;
+            }
+            catch (_exception& e)
+            {
+                Tags_current = Tags_previous.row(j).transpose();
+                throw runtime_error("Exception in LM");
+            }
 
-        if (result.exit_type == ExitType::BelowDynamicTolerance)
-        {
-            cout << "DYNAMIC TOLERANCE EXIT WARNING. Iterations: " << result.iterations << endl;
-        }
+            if (result.exit_type == ExitType::AboveMaxIterations)
+            {
+                throw runtime_error("Max Iterations in LM");
+            }
 
-        distances.setZero();
+            if (result.exit_type == ExitType::BelowDynamicTolerance)
+            {
+                cout << "DYNAMIC TOLERANCE EXIT WARNING. Iterations: " << result.iterations << endl;
+            }
 
-        if (abs(Tags_current.norm() - Tags_previous.row(j).norm()) < 0.25)
-        {
-            TAG_DATA.block<1,3>(j, 0) = Tags_current;
-        }
-        else
-        {
-            TAG_DATA.block<1,3>(j, 0) = Tags_current;
-        }
+            distances.setZero();
 
-        Tags_previous.row(j) = Tags_current.transpose();
+            if (abs(Tags_current.norm() - Tags_previous.row(j).norm()) < 0.25)
+            {
+                TAG_DATA.block<1,3>(j, 0) = Tags_current;
+            }
+            else
+            {
+                TAG_DATA.block<1,3>(j, 0) = Tags_current;
+            }
+
+            Tags_previous.row(j) = Tags_current.transpose();
+        }
 
         // writes the location data to the console
         cout << "x: " << TAG_DATA.row(j)[0] << ", y: " << TAG_DATA.row(j)[1] << ", z: " << TAG_DATA.row(j)[2] << ", Time: " << timeString << endl;
