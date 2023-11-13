@@ -2,7 +2,9 @@
 #include <ctime>
 #include "mapwidget.h"
 #include "tagdata.h"
+#include "Eigen/Dense"
 
+using namespace Eigen;
 
 std::string getCurrentTime(){
     /******** TIME TRACKING ********/
@@ -123,11 +125,11 @@ void MapWidget::clearBackground() {
     crewMembers.clear();
 }
 
-void MapWidget::updateCrewPositions() {
+void MapWidget::updateCrewPositions(const Eigen::MatrixXd& raw_data) {
     std::cout << "updateCrewPositions()" << std::endl;
 
     // Here, fetch or update the crew_positions data
-    crew_positions = tagData.readTagData();
+    crew_positions = tagData.processTagData(raw_data);
 
     // Current dimensions of the window or view
     // QRectF viewRect = this->viewport()->rect();

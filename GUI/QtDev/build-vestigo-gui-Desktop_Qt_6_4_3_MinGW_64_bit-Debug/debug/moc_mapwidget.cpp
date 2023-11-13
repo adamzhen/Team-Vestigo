@@ -26,11 +26,14 @@ QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 namespace {
 struct qt_meta_stringdata_MapWidget_t {
-    uint offsetsAndSizes[8];
+    uint offsetsAndSizes[14];
     char stringdata0[10];
     char stringdata1[16];
     char stringdata2[1];
     char stringdata3[13];
+    char stringdata4[20];
+    char stringdata5[16];
+    char stringdata6[9];
 };
 #define QT_MOC_LITERAL(ofs, len) \
     uint(sizeof(qt_meta_stringdata_MapWidget_t::offsetsAndSizes) + ofs), len 
@@ -39,12 +42,18 @@ Q_CONSTINIT static const qt_meta_stringdata_MapWidget_t qt_meta_stringdata_MapWi
         QT_MOC_LITERAL(0, 9),  // "MapWidget"
         QT_MOC_LITERAL(10, 15),  // "locationUpdated"
         QT_MOC_LITERAL(26, 0),  // ""
-        QT_MOC_LITERAL(27, 12)   // "locationData"
+        QT_MOC_LITERAL(27, 12),  // "locationData"
+        QT_MOC_LITERAL(40, 19),  // "updateCrewPositions"
+        QT_MOC_LITERAL(60, 15),  // "Eigen::MatrixXd"
+        QT_MOC_LITERAL(76, 8)   // "raw_data"
     },
     "MapWidget",
     "locationUpdated",
     "",
-    "locationData"
+    "locationData",
+    "updateCrewPositions",
+    "Eigen::MatrixXd",
+    "raw_data"
 };
 #undef QT_MOC_LITERAL
 } // unnamed namespace
@@ -55,7 +64,7 @@ Q_CONSTINIT static const uint qt_meta_data_MapWidget[] = {
       10,       // revision
        0,       // classname
        0,    0, // classinfo
-       1,   14, // methods
+       2,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -63,10 +72,16 @@ Q_CONSTINIT static const uint qt_meta_data_MapWidget[] = {
        1,       // signalCount
 
  // signals: name, argc, parameters, tag, flags, initial metatype offsets
-       1,    1,   20,    2, 0x06,    1 /* Public */,
+       1,    1,   26,    2, 0x06,    1 /* Public */,
+
+ // slots: name, argc, parameters, tag, flags, initial metatype offsets
+       4,    1,   29,    2, 0x0a,    3 /* Public */,
 
  // signals: parameters
     QMetaType::Void, QMetaType::QString,    3,
+
+ // slots: parameters
+    QMetaType::Void, 0x80000000 | 5,    6,
 
        0        // eod
 };
@@ -82,7 +97,10 @@ Q_CONSTINIT const QMetaObject MapWidget::staticMetaObject = { {
         QtPrivate::TypeAndForceComplete<MapWidget, std::true_type>,
         // method 'locationUpdated'
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
-        QtPrivate::TypeAndForceComplete<const QString &, std::false_type>
+        QtPrivate::TypeAndForceComplete<const QString &, std::false_type>,
+        // method 'updateCrewPositions'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<const Eigen::MatrixXd &, std::false_type>
     >,
     nullptr
 } };
@@ -94,6 +112,7 @@ void MapWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         (void)_t;
         switch (_id) {
         case 0: _t->locationUpdated((*reinterpret_cast< std::add_pointer_t<QString>>(_a[1]))); break;
+        case 1: _t->updateCrewPositions((*reinterpret_cast< std::add_pointer_t<Eigen::MatrixXd>>(_a[1]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
@@ -127,13 +146,13 @@ int MapWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 1)
+        if (_id < 2)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 1;
+        _id -= 2;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 1)
+        if (_id < 2)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 1;
+        _id -= 2;
     }
     return _id;
 }

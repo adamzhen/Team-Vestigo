@@ -15,6 +15,8 @@
 #include <vector>
 #include <iomanip>
 #include <thread>
+#include <QThread>
+#include <QObject>
 #include "RootFinder.h"
 #include "json.hpp"
 
@@ -25,7 +27,10 @@
 using namespace Eigen;
 using json = nlohmann::json;
 
-class TagData {
+class TagData : public QThread {
+    Q_OBJECT
+
+
 public:
 
     PositionMatrix anchor_positions; // Anchor Positions in x,y,z
@@ -43,6 +48,8 @@ public:
 
     TagData(int tags, int data_pts);
 
+    void run() override;
+
     // Function to get dimensions of room from user input
     double* getDimensions();
 
@@ -58,6 +65,8 @@ public:
     Matrix<double, static_num_data_pts, 1> dataProcessing(std::string str);
 
     Matrix<double, static_num_tags, static_num_tag_data_pts> readTagData();
+
+    Matrix<double, static_num_tags, static_num_tag_data_pts> processTagData(MatrixXd raw_data);
 
     MatrixXd parseJsonData(const json& jsonData);
 
@@ -83,6 +92,10 @@ private:
     // Output file
     std::ofstream outFile; // Declare the ofstream object
     std::string outFileName;
+
+signals:
+    void newDataAvailable(const MatrixXd &);
+
 };
 
 #endif // TAGDATA_H

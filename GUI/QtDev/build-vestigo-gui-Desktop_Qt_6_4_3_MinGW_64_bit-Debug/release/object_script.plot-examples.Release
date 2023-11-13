@@ -10,3 +10,4 @@ release/moc_mainwindow.o
 release/moc_mapwidget.o
 release/moc_playback.o
 release/moc_summaryscene.o
+release/moc_tagdata.o

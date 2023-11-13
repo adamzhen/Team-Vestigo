@@ -12,58 +12,37 @@
 #include "mapwidget.h"
 #include "tagdata.h"
 
-TagData tagData(4, 13); // Declare and construct TagData before using it
-
 void MainWindow::setupTabs() {
-    // Assuming we are inside the MainWindow constructor or setup function
 
-    // Live visualization page setup
+    // Initialize mapWidget with tagData
     mapWidget = new MapWidget(tagData);
-    mapWidget->setStyleSheet("QWidget { background-color: #000000; }");
+    // ... [MapWidget style setup code]
 
-    // Add a start button to the live visualization page
     QPushButton *startButton = new QPushButton("Start Visualization", mapWidget);
-    startButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #336699;" // Normal background color
-        "    color: white;"              // Text color
-        "    border: 2px solid #000000;"    // Border color and width
-        "    border-radius: 5px;"       // Rounded corners with radius of 10px
-        "    padding: 5px;"              // Padding around the text
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #5588cc;" // Background color when hovered
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #224466;" // Background color when pressed
-        "}"
-        );
+    // ... [StartButton style setup code]
 
+    // Connect TagData thread signal to mapWidget
+    connect(&tagData, &TagData::newDataAvailable, mapWidget, &MapWidget::updateCrewPositions);
 
-    // Create a QTimer
-    vis_timer = new QTimer(this); // Allocate QTimer on the heap
-
-    // Connect the timer's timeout signal to the mapWidget's updateCrewPositions slot
-    connect(vis_timer, &QTimer::timeout, mapWidget, &MapWidget::updateCrewPositions);
-
-    // Connect the start button to start the data reading and visualization
+    // Modify the start button connection
     connect(startButton, &QPushButton::clicked, this, [this, startButton]() {
         isPlaying = !isPlaying;
-        if (isPlaying){
-            // Start the timer with the desired DELAY in milliseconds
-            vis_timer->start(800); // Example: 50 ms delay
+        if (isPlaying) {
+            tagData.start(); // Start the TagData thread
             mapWidget->drawBackground();
             startButton->setText("Stop Visualization");
         } else {
-            vis_timer->stop();
+            tagData.terminate(); // Safely terminate the TagData thread
             mapWidget->clearBackground();
             startButton->setText("Start Visualization");
         }
-
     });
 
-    // MainWindow constructor or setup function continues
+    // Additional MainWindow setup code
     connect(mapWidget, &MapWidget::locationUpdated, this, &MainWindow::updateStatusBar);
+
+    // ... [Rest of MainWindow constructor or setup function]
+
 
     // Playback page setup
     playbackPage = new QWidget(this);
@@ -205,6 +184,7 @@ void MainWindow::setupTabs() {
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
+    tagData(4, 13),
     mapWidget(nullptr),  // Initialize to nullptr or with a new instance
     vis_timer(nullptr)       // Initialize to nullptr
 {

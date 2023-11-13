@@ -24,7 +24,6 @@ public:
 
     ~MapWidget();
 
-    void updateCrewPositions();
     void drawBackground();
     void clearBackground();
 
@@ -39,6 +38,10 @@ private:
 
 signals:
     void locationUpdated(const QString& locationData);
+
+public slots:
+    void updateCrewPositions(const Eigen::MatrixXd& raw_data);
+
 
     // ... [Other member variables and functions]
 };

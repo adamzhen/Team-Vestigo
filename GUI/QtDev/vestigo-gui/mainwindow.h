@@ -67,6 +67,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    TagData tagData; // TagData as a member variable
     MapWidget *mapWidget; // Declaration of mapWidget
     SummaryScene *summaryScene;
     QTabWidget *tabWidget;
