@@ -13,18 +13,27 @@
 #include <QVector>
 #include <QPointF>
 #include <QPaintEvent>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QVBoxLayout>
+#include <iostream>
+#include <QLabel>
 
 inline bool operator<(const QPointF& a, const QPointF& b) {
     if (a.x() == b.x()) return a.y() < b.y();
     return a.x() < b.x();
 }
-SummaryScene::SummaryScene(QWidget *parent)
-    : QMainWindow(parent){
+SummaryScene::SummaryScene(QWidget *parent){
     // Example usage
+    setMinimumSize(400,300);
     QString inputCsv = "12Hr_TestRun.csv";
     QString outputCsv = "percentage_output.csv";
-    QString combinedDensityMap = "density_map.png";
+    QString combinedDensityMap = inputCsv + "density_map.png";
     QString referenceImage = "octant_reference.png";
+    imageLabel = new QLabel(this);
+    imageLabel->setGeometry(10,10,400,400);
+    imageLabel->setAlignment(Qt::AlignCenter);
+    imageLabel->setStyleSheet("QLabel { background-color: white; }");
     calculateAndWriteOctantPercentages(inputCsv, outputCsv);
     createCombinedDensityMapImage(inputCsv, combinedDensityMap);
     createOctantReferenceImage(referenceImage);
@@ -32,6 +41,16 @@ SummaryScene::SummaryScene(QWidget *parent)
 
 SummaryScene::~SummaryScene() {
 
+}
+void SummaryScene::loadFile(const QString& filename) {
+    currentFilename = filename;
+
+    // Process the file and update the visuals
+    calculateAndWriteOctantPercentages(currentFilename, currentFilename + "_output.csv");
+    createCombinedDensityMapImage(currentFilename, "density_map.png");
+    combinedImage.save(currentFilename + "density_map.png");
+    QPixmap pixmap(currentFilename + "density_map.png");
+    imageLabel->setPixmap(pixmap.scaled(imageLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 QPointF SummaryScene::roundPointToGrid(const QPointF& point, double gridSize) {
     double x = round(point.x() / gridSize) * gridSize;
@@ -156,10 +175,25 @@ void SummaryScene::calculateAndWriteOctantPercentages(const QString &inputFilena
     inputFile.close();
     outputFile.close();
 }
+void SummaryScene::update() {
+    qDebug() << "Custom update called";
+    repaint(); // Force a repaint
+}
 
 void SummaryScene::paintEvent(QPaintEvent *event) {
     QPainter painter(this);
-    drawDensityMap(painter, this->size());
+
+    qDebug() << "Paint event called with rect:" << this->rect();
+
+    if (!combinedImage.isNull()) {
+        qDebug() << "Drawing image";
+        painter.drawImage(this->rect(), combinedImage);
+    } else {
+        qDebug() << "Drawing fallback content";
+        // Drawing a simple rectangle as fallback
+        painter.setPen(Qt::blue);
+        painter.drawRect(10, 10, 100, 100);
+    }
 }
 
 void SummaryScene::drawDensityMap(QPainter &painter, const QSize &windowSize) {
@@ -197,8 +231,8 @@ void SummaryScene::createCombinedDensityMapImage(const QString &inputFilename, c
     const int singleImageSize = 500; // Size of the image for a single floor
     const int titleSpace = 50; // Space for the title
     const int combinedImageWidth = singleImageSize * 2; // Double the width to place images side by side
-    QImage combinedImage(combinedImageWidth, singleImageSize + titleSpace, QImage::Format_ARGB32);
-    combinedImage.fill(Qt::white);
+    combinedImage = QImage(combinedImageWidth, singleImageSize + titleSpace, QImage::Format_ARGB32);
+    combinedImage.fill(Qt::black);
 
     QPainter painter(&combinedImage);
     painter.setRenderHint(QPainter::Antialiasing); // Optional, for smoother edges
@@ -207,13 +241,15 @@ void SummaryScene::createCombinedDensityMapImage(const QString &inputFilename, c
     QFont font = painter.font();
     font.setPointSize(16); // Larger font size for the titles
     painter.setFont(font);
+    QPen textPen(Qt::white);
+    painter.setPen(textPen);
 
     // Draw titles
     painter.drawText(QRect(0, 0, singleImageSize, titleSpace), Qt::AlignCenter, "Floor 1");
     painter.drawText(QRect(singleImageSize, 0, singleImageSize, titleSpace), Qt::AlignCenter, "Floor 2");
 
     // Set up the pen for the outline of the floor circles
-    QPen floorOutlinePen(Qt::black);
+    QPen floorOutlinePen(Qt::white);
     floorOutlinePen.setWidth(2); // Set the width of the outline for the floors
     painter.setPen(floorOutlinePen);
 
@@ -266,7 +302,6 @@ void SummaryScene::createCombinedDensityMapImage(const QString &inputFilename, c
     }
 
     file.close();
-    painter.end();
     combinedImage.save(combinedImageFilename, "PNG");
 }
 
@@ -333,5 +368,6 @@ void SummaryScene::createOctantReferenceImage(const QString &imageFilename) {
     painter.end();
     image.save(imageFilename, "PNG");
 }
+
 
 

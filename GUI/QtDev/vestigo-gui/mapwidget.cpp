@@ -124,6 +124,7 @@ void MapWidget::clearBackground() {
 }
 
 void MapWidget::updateCrewPositions() {
+    std::cout << "updateCrewPositions()" << std::endl;
 
     // Here, fetch or update the crew_positions data
     crew_positions = tagData.readTagData();

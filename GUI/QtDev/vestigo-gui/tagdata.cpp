@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include "RootFinder.h"
 #include "json.hpp"
+#include <windows.h>
 
 #define BUF_SIZE 1024
 #define WINSOCK_DEPRECATED_NO_WARNINGS
@@ -71,7 +72,7 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     ***********************************/
 
     cout << "Tracking Startup..." << endl;
-    string read_filename = "dev-sim";
+    string read_filename = "dev";
 
     // Checks for existing file
     struct stat buffer;
@@ -80,7 +81,7 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     }
 
     readDimensions(read_filename, room_length, room_width, anchor_positions);
-    room_height = 2;
+    room_height = 10;
 
     cout << anchor_positions.size() << endl;
 
@@ -94,14 +95,14 @@ TagData::TagData(int tags, int data_pts) : num_tags(tags), num_data_pts(data_pts
     *********** SERIAL STARTUP ***********
     *************************************/
 
-    hSerial = CreateFile(TEXT("COM3"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    hSerial = CreateFile(TEXT("COM7"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (hSerial == INVALID_HANDLE_VALUE) {
         // Handle error
         throw runtime_error("Connection Not Init Properly");
     }
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
     GetCommState(hSerial, &dcbSerialParams);
-    dcbSerialParams.BaudRate = CBR_115200;
+    dcbSerialParams.BaudRate = CBR_256000;
     dcbSerialParams.ByteSize = 8;
     dcbSerialParams.StopBits = ONESTOPBIT;
     dcbSerialParams.Parity = NOPARITY;
@@ -317,6 +318,7 @@ json TagData::readJsonFromSerial() {
     bool messageStarted = false;
 
     while (true) {
+
         if (!ReadFile(hSerial, &c, 1, &bytesRead, NULL) || bytesRead == 0) {
             throw runtime_error("Failed to read bytes from serial port");
         }
@@ -354,7 +356,7 @@ json TagData::readJsonFromSerial() {
 
 
 Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagData::readTagData() {
-
+    cout << "readTagData" << endl;
     /******** TIME TRACKING ********/
     // get the current timestamp
     auto now = std::chrono::system_clock::now();
@@ -412,7 +414,7 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
     outFile << timeString << ", ";
 
     // Loop through the tags
-    for (int j = 0; j < num_tags; ++j) {
+    for (int j = 1; j < num_tags; ++j) {
 
         distances = raw_data.row(j).head(num_data_pts);
         yaw = 0; //raw_data(j, num_data_pts-1);
@@ -425,6 +427,7 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
         {
             result = RootFinder::LevenbergMarquardt(anchor_positions, distances, Tags_previous.row(j).transpose());
             Tags_current = result.solution;
+            // cout << Tags_current << endl;
         }
         catch (_exception& e)
         {
@@ -434,7 +437,6 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
 
         if (result.exit_type == ExitType::AboveMaxIterations)
         {
-            //cout << Tags_current << endl;
             throw runtime_error("Max Iterations in LM");
         }
 
@@ -457,7 +459,7 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
         Tags_previous.row(j) = Tags_current.transpose();
 
         // writes the location data to the console
-        cout << "x: " << TAG_DATA.row(j)[0] << ", y: " << TAG_DATA.row(j)[1] << ", z: " << TAG_DATA.row(j)[2] << ", yaw: " << TAG_DATA.row(j)[3] << ", Time: " << timeString << endl;
+        cout << "x: " << TAG_DATA.row(j)[0] << ", y: " << TAG_DATA.row(j)[1] << ", z: " << TAG_DATA.row(j)[2] << ", Time: " << timeString << endl;
 
         // writes data to output csv file
         outFile << TAG_DATA.row(j)[0] << ", " << TAG_DATA.row(j)[1] << ", " << TAG_DATA.row(j)[2];
