@@ -261,7 +261,7 @@ void SummaryScene::createCombinedDensityMapImage(const QString &inputFilename, c
     painter.setPen(Qt::NoPen);
 
     // Set up the brush for the density points (blue fill)
-    QColor fillColor(Qt::blue);
+    QColor fillColor(Qt::green);
     painter.setBrush(fillColor);
 
     QMap<QPointF, int> firstFloorFrequencyMap;

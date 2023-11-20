@@ -51,6 +51,7 @@
 #include "crewmember.h"
 #include "tagdata.h"
 #include "summaryscene.h"
+#include "playback.h"
 
 namespace Ui {
 class MainWindow;
@@ -73,6 +74,7 @@ private:
     QTabWidget *tabWidget;
     QWidget *playbackPage;
     QWidget *summaryPage;
+    Playback* playback;
 
     void setupTabs();
 

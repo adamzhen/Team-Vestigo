@@ -106,7 +106,7 @@ TagData::TagData(int tags, int data_pts) : QThread(), num_tags(tags), num_data_p
     if (sim){
         hSerial = CreateFile(TEXT("COM3"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     } else {
-        hSerial = CreateFile(TEXT("COM8"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+        hSerial = CreateFile(TEXT("COM7"), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     }
     if (hSerial == INVALID_HANDLE_VALUE) {
         // Handle error
@@ -531,9 +531,10 @@ Matrix<double, TagData::static_num_tags, TagData::static_num_tag_data_pts> TagDa
                << std::setfill('0') << std::setw(2) << seconds;
     // Convert the string stream to a string
     std::string timeString = timeStream.str();
+    int timeSec = hours*3600 + minutes*60 + seconds;
 
     // Write timestamp in HH:MM:SS format
-    outFile << timeString << ", ";
+    outFile << std::to_string(timeSec) << ", ";
 
     // Loop through the tags
     for (int j = 0; j < num_tags; ++j) {

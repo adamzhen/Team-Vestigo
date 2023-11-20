@@ -11,6 +11,8 @@
 #include <QTimer>
 #include "mapwidget.h"
 #include "tagdata.h"
+#include <QSlider>
+#include "playback.h"
 
 void MainWindow::setupTabs() {
 
@@ -21,17 +23,17 @@ void MainWindow::setupTabs() {
     QPushButton *startButton = new QPushButton("Start Visualization", mapWidget);
     startButton->setStyleSheet(
         "QPushButton {"
-        "    background-color: #abe08d;" // Normal background color
-        "    color: white;"              // Text color
-        "    border: 2px solid #000000;"    // Border color and width
-        "    border-radius: 5px;"       // Rounded corners with radius of 10px
-        "    padding: 10px;"              // Padding around the text
+        "    background-color: #41851b;" // Normal background color
+        "    color: black;"              // Text color
+        "    border: 1px solid #000000;"    // Border color and width
+        "    border-radius: 2px;"       // Rounded corners with radius of 10px
+        "    padding: 5px;"              // Padding around the text
         "}"
         "QPushButton:hover {"
-        "    background-color: #41851b;" // Background color when hovered
+        "    background-color: #abe08d;" // Background color when hovered
         "}"
         "QPushButton:pressed {"
-        "    background-color: #bff2a2;" // Background color when pressed
+        "    background-color: #41851b;" // Background color when pressed
         "}"
         );
 
@@ -60,10 +62,41 @@ void MainWindow::setupTabs() {
 
     // Playback page setup
     playbackPage = new QWidget(this);
+    playback = new Playback(playbackPage);
+    playback->setGeometry(400,75,1200,550);
     playbackPage->setStyleSheet("QWidget { background-color: #000000; }");
 
+    QLineEdit *playbackInput = new QLineEdit(playbackPage);
+    playbackInput->setStyleSheet("QLineEdit { color: white; background-color: black; }");
+    playbackInput->setGeometry(10, 10, 200, 30); // Adjust geometry as needed
+
+    QPushButton *loadButton = new QPushButton("Load Playback", playbackPage);
+    loadButton->setGeometry(220, 10, 120, 30);
+    loadButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #336699;" // Normal background color
+        "    color: white;"              // Text color
+        "    border: 2px solid #000000;"    // Border color and width
+        "    border-radius: 5px;"       // Rounded corners with radius of 10px
+        "    padding: 5px;"              // Padding around the text
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #5588cc;" // Background color when hovered
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #224466;" // Background color when pressed
+        "}"
+        );
+    connect(loadButton, &QPushButton::clicked, this, [this, playbackInput]() {
+        QString filePath = playbackInput->text();
+        playback->loadCSV(filePath);
+        playback->drawPlayback();
+        playback->initializeCrewMembers();
+    });
+
     QPushButton *playPauseButton = new QPushButton("Play/Pause", playbackPage);
-    startButton->setStyleSheet(
+    playPauseButton->setGeometry(750, 700, 120, 30);
+    playPauseButton->setStyleSheet(
         "QPushButton {"
         "    background-color: #336699;" // Normal background color
         "    color: white;"              // Text color
@@ -79,7 +112,8 @@ void MainWindow::setupTabs() {
         "}"
         );
     QPushButton *fastForwardButton = new QPushButton(">>", playbackPage);
-    startButton->setStyleSheet(
+    fastForwardButton->setGeometry(850, 700, 120, 30);
+    fastForwardButton->setStyleSheet(
         "QPushButton {"
         "    background-color: #336699;" // Normal background color
         "    color: white;"              // Text color
@@ -95,7 +129,8 @@ void MainWindow::setupTabs() {
         "}"
         );
     QPushButton *rewindButton = new QPushButton("<<", playbackPage);
-    startButton->setStyleSheet(
+    rewindButton->setGeometry(650, 700, 120, 30);
+    rewindButton->setStyleSheet(
         "QPushButton {"
         "    background-color: #336699;" // Normal background color
         "    color: white;"              // Text color
@@ -111,21 +146,26 @@ void MainWindow::setupTabs() {
         "}"
         );
     connect(playPauseButton, &QPushButton::clicked, this, [this, playPauseButton]() {
-        isPlaying = !isPlaying;
-        if (isPlaying){
-            // Start the timer with the desired DELAY in milliseconds
-            mapWidget->drawBackground();
-            playPauseButton->setText("Pause");
-        } else {
+        if (playback->isCurrentlyPlaying()) {
+            playback->stopPlayback();
             playPauseButton->setText("Play");
+        } else {
+            playback->startPlayback();
+            playPauseButton->setText("Pause");
         }
     });
+
+    // Connect fast forward and rewind buttons
     connect(fastForwardButton, &QPushButton::clicked, this, [this, fastForwardButton]() {
-
+        playback->fastForward();
     });
+
     connect(rewindButton, &QPushButton::clicked, this, [this, rewindButton]() {
+        playback->reverse();
     });
-
+    QSlider *slider = new QSlider(Qt::Horizontal, playbackPage);
+    slider->setGeometry(665, 750, 300, 30);
+    connect(slider, &QSlider::valueChanged, playback, &Playback::setCurrentFrame);
     // Summary page setup
     summaryPage = new QWidget(this);
     summaryPage->setStyleSheet("QWidget { background-color: #000000; }");
@@ -204,8 +244,8 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     setGeometry(0, 0, 1300, 700);
+    playback = new Playback(this);
     //showMaximized();
-
     // Setup the tabs
     setupTabs();
 
@@ -220,6 +260,7 @@ void MainWindow::updateStatusBar(const QString& locationData) {
 
 MainWindow::~MainWindow()
 {
-    delete ui; // QTimer and MapWidget will be deleted automatically since they are children of MainWindow
+    delete ui;
+    delete playback;// QTimer and MapWidget will be deleted automatically since they are children of MainWindow
 }
 
