@@ -37,7 +37,7 @@ const double inch_to_meter = 0.0254;
 
 TagData::TagData(int tags, int data_pts) : QThread(), num_tags(tags), num_data_pts(data_pts) {
 
-    bool sim = false;
+    bool sim = true;
 
     /******** TIME TRACKING ********/
     // get the current timestamp

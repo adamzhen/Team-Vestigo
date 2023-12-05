@@ -39,7 +39,7 @@ void Playback::drawPlayback() {
     // The border's width is the pen width, so we reduce the size of the rect item by twice the pen width
     // to ensure that the border is drawn inside the scene.
     qDebug() << "Drawing playback scene";
-    int borderWidth = 20;
+    int borderWidth = 2;
     QGraphicsRectItem *floorRect1 = playbackScene->addRect(0, 0, rectWidth - 2 * borderWidth, rectLength - 2 * borderWidth);
     QGraphicsRectItem *floorRect2 = playbackScene->addRect(rectWidth+margin, 0, rectWidth - 2 * borderWidth, rectLength - 2 * borderWidth);
     qDebug() << "Added floor rectangles and other items to the scene";
