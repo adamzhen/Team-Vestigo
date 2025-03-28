@@ -9,9 +9,9 @@
 ******** GEN VARIABLES AND STRUCTS ********
 ******************************************/
 
-float distances[4][13] = {0};
-bool received[4] = {false};
-int num_tags = 4;
+float distances[3][13] = {0};
+bool received[3] = {false};
+int num_tags = 2;
 
 volatile bool ackReceived = false;
 volatile bool resetInProgress = false;
@@ -34,11 +34,13 @@ rangingData offDeviceRangingData;
 
 uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
-  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2
-  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
-  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4
+  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG2
+  
   {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 };
+
+//   {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG3 defunct
+//   {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG4 missing
 
 /******************************************
 ************ NETWORK FUNCTIONS ************
@@ -70,7 +72,7 @@ bool waitForAck() {
 ////////////// WIP ///////////////////////////
 void sendJson() {
   StaticJsonDocument<1024> doc;
-  for (int tag_id = 0; tag_id < 4; tag_id++) {
+  for (int tag_id = 0; tag_id < 2; tag_id++) {
     for (int i = 0; i < 13; i++) {
       doc["tags"][tag_id]["anchors"][i] = distances[tag_id][i];
     }
@@ -123,7 +125,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     } 
     else if (!resetInProgress) {
       sendJson();
-      for(int i = 0; i < 4; i++) {
+      for(int i = 0; i < 2; i++) {
         received[i] = false;
         for (int j = 0; j < 13; j++) {
           distances[i][j] = 0;
@@ -131,7 +133,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       } 
     }
     else {
-      for(int i = 0; i < 4; i++) {
+      for(int i = 0; i < 2; i++) {
         received[i] = false;
         for (int j = 0; j < 13; j++) {
           distances[i][j] = 0;
@@ -202,7 +204,7 @@ void setup_esp_now() {
 **************************************/
 
 void setup() {
-  Serial.begin(256000);
+  Serial.begin(250000);
 
   setup_esp_now();
   esp_now_register_recv_cb(OnDataRecv);
@@ -241,7 +243,7 @@ void loop() {
     // Serial.println();
     resetInProgress = true;
     onDeviceRangingData.run_ranging = true;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 2; i++) {
       sendResetFlagToTag(i);
     }
     sendToPeer(macs[0], &onDeviceRangingData);
