@@ -9,7 +9,7 @@
 ******** GEN VARIABLES AND STRUCTS ********
 ******************************************/
 
-float distances[2][13] = {0};
+float distances[2][12] = {0};
 bool received[2] = {false};
 int num_tags = 2;
 
@@ -20,7 +20,7 @@ const unsigned long timeoutDuration = 750;
 const unsigned long timeoutCascadeDuration = 3000;
 
 typedef struct __attribute__((packed)) rangingData {
-  float data[13] = {0};
+  float data[12] = {0};
   int tag_id = 0; 
   bool run_ranging; 
 } rangingData;
@@ -34,11 +34,11 @@ rangingData offDeviceRangingData;
 
 uint8_t macs[][6] = {
   {0xD4, 0xD4, 0xDA, 0x46, 0x0C, 0xA8}, // TAG1
-  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG3
+  {0xD4, 0xD4, 0xDA, 0x46, 0x66, 0x54}, // TAG2
   {0x08, 0x3A, 0x8D, 0x83, 0x44, 0x10}  // Master IO
 };
 
-//  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG2 defunct
+//  {0xD4, 0xD4, 0xDA, 0x46, 0x6C, 0x6C}, // TAG3 defunct
 //  {0x54, 0x43, 0xB2, 0x7D, 0xC4, 0x44}, // TAG4 missing
 
 /******************************************
@@ -72,7 +72,7 @@ bool waitForAck() {
 void sendJson() {
   StaticJsonDocument<1024> doc;
   for (int tag_id = 0; tag_id < num_tags; tag_id++) {
-    for (int i = 0; i < 13; i++) {
+    for (int i = 0; i < 12; i++) {
       doc["tags"][tag_id]["anchors"][i] = distances[tag_id][i];
     }
   }
@@ -126,7 +126,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       sendJson();
       for(int i = 0; i < num_tags; i++) {
         received[i] = false;
-        for (int j = 0; j < 13; j++) {
+        for (int j = 0; j < 12; j++) {
           distances[i][j] = 0;
         }
       } 
@@ -134,7 +134,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     else {
       for(int i = 0; i < num_tags; i++) {
         received[i] = false;
-        for (int j = 0; j < 13; j++) {
+        for (int j = 0; j < 12; j++) {
           distances[i][j] = 0;
         }
       }

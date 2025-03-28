@@ -16,15 +16,15 @@ std::vector<std::pair<int, std::vector<float>>> keys;
 std::vector<float> clock_offset;
 std::vector<float> averages;
 
-const int tag_id = 4;
-const int num_tags = 4;
+const int tag_id = 2;
+const int num_tags = 2;
 volatile bool ackReceived = false;
 
 unsigned long lastRangingTime = 0;
 const unsigned long UWBtimeoutDuration = 1000;
 
 typedef struct __attribute__((packed)) rangingData {
-  float data[13];
+  float data[12];
   int tag_id = 0;
   bool run_ranging; 
 } rangingData;
@@ -412,7 +412,7 @@ void setup() {
   }
 
   // Enabling LEDs here for debug so that for each TX the D1 LED will flash on DW3000 red eval-shield boards.
-  // dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
+  dwt_setleds(DWT_LEDS_ENABLE | DWT_LEDS_INIT_BLINK);
 
   /* Configure DW IC. See NOTE 6 below. */
   if (dwt_configure(&config)) // if the dwt_configure returns DWT_ERROR either the PLL or RX calibration has failed the host should reset the device
